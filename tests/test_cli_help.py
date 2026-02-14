@@ -8,6 +8,7 @@ runner = CliRunner()
 def test_help():
     r = runner.invoke(app, ["--help"])
     assert r.exit_code == 0
+    assert "golden" in r.stdout
 
 
 def test_dataset_help_lists_normalize():
@@ -59,6 +60,15 @@ def test_eval_detect_help_lists_eval_flags():
     assert "--score-threshold" in r.stdout
 
 
+def test_eval_efficientdet_tflite_help_lists_eval_flags():
+    r = runner.invoke(app, ["eval", "efficientdet-tflite", "--help"])
+    assert r.exit_code == 0
+    assert "--coco" in r.stdout
+    assert "--images-dir" in r.stdout
+    assert "--model" in r.stdout
+    assert "--category-map" in r.stdout
+
+
 def test_export_tflite_help_lists_quant_and_rep_flags():
     r = runner.invoke(app, ["export", "tflite", "--help"])
     assert r.exit_code == 0
@@ -83,3 +93,12 @@ def test_inspect_tflite_help_lists_flags():
     r = runner.invoke(app, ["inspect", "tflite", "--help"])
     assert r.exit_code == 0
     assert "--model" in r.stdout
+
+
+def test_golden_detect_help_lists_flags():
+    r = runner.invoke(app, ["golden", "detect", "--help"])
+    assert r.exit_code == 0
+    assert "--model" in r.stdout
+    assert "--image" in r.stdout
+    assert "--out" in r.stdout
+    assert "--max-results" in r.stdout
