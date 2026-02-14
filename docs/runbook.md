@@ -88,3 +88,39 @@ Run artifacts:
 - `work\runs\<run_id>\checkpoints\*.weights.h5`
 - `work\runs\<run_id>\artifacts\detector.keras`
 - `work\runs\<run_id>\artifacts\saved_model\`
+
+## Evaluate detector (COCO mAP)
+
+Install evaluation deps:
+
+```powershell
+pip install -r requirements\eval.txt
+```
+
+Evaluate from a run directory:
+
+```powershell
+python -m owli_train eval detect --coco data\coco\instances_val.json --images-dir data\coco\images --run-dir work\runs\<run_id>
+```
+
+Evaluate from a direct model path:
+
+```powershell
+python -m owli_train eval detect --coco data\coco\instances_val.json --images-dir data\coco\images --model work\runs\<run_id>\artifacts\detector.keras --out work\reports\eval.json
+```
+
+Quick smoke eval:
+
+```powershell
+python -m owli_train eval detect --coco tests\data\coco_min.json --images-dir tests\data --run-dir work\runs\<run_id> --limit-images 1 --max-detections-per-image 10
+```
+
+Optional explicit class/category mapping:
+
+```powershell
+python -m owli_train eval detect --coco data\coco\instances_val.json --images-dir data\coco\images --run-dir work\runs\<run_id> --category-map configs\eval_category_map.json
+```
+
+Reports are written to:
+- `work\runs\<run_id>\reports\eval.json`
+- `work\runs\<run_id>\reports\eval.md`

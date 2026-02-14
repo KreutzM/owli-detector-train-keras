@@ -9,6 +9,7 @@
 - `src/owli_train/data/coco.py`: COCO load/validate/normalize/write helpers.
 - `src/owli_train/data/split.py`: deterministic split logic and split-file emission.
 - `src/owli_train/training/keras_detector.py`: config parsing, COCO-to-tf.data, preprocessing, KerasCV model build, run management.
+- `src/owli_train/eval/detect.py`: run/model loading, prediction conversion to COCO detections, pycocotools mAP, report artifacts.
 
 ## Dataset flow
 1. Load JSON from disk.

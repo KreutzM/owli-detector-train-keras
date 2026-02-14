@@ -3,7 +3,9 @@
 Local-first Python tooling to:
 - validate and normalize COCO object-detection datasets,
 - create reproducible train/val/test splits,
-- (next milestones) train a Keras-based detector and export to TFLite for Android,
+- train a KerasCV-based detector,
+- evaluate detector runs with COCO mAP reports,
+- export to TFLite for Android (next milestone),
 - (optional later) add segmentation and unified evaluation reports.
 
 ## Quickstart (Windows / PowerShell)
