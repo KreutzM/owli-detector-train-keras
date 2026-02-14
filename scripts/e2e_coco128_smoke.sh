@@ -5,6 +5,7 @@ PYTHON_EXE="${PYTHON_EXE:-python3}"
 if ! command -v "$PYTHON_EXE" >/dev/null 2>&1; then
   PYTHON_EXE="python"
 fi
+MODELMAKER_PYTHON_EXE="${MODELMAKER_PYTHON_EXE:-$PYTHON_EXE}"
 
 export TF_CPP_MIN_LOG_LEVEL="${TF_CPP_MIN_LOG_LEVEL:-3}"
 export TF_USE_LEGACY_KERAS="${TF_USE_LEGACY_KERAS:-1}"
@@ -18,14 +19,38 @@ run_python() {
   "$PYTHON_EXE" "$@"
 }
 
-if ! command -v curl >/dev/null 2>&1; then
-  echo "[ERROR] Missing dependency: curl"
-  exit 1
-fi
-if ! command -v unzip >/dev/null 2>&1; then
-  echo "[ERROR] Missing dependency: unzip"
-  exit 1
-fi
+run_modelmaker_python() {
+  echo ">> $MODELMAKER_PYTHON_EXE $*"
+  "$MODELMAKER_PYTHON_EXE" "$@"
+}
+
+download_with_python() {
+  "$PYTHON_EXE" - "$1" "$2" <<'PY'
+import pathlib
+import sys
+import urllib.request
+
+url = sys.argv[1]
+dst = pathlib.Path(sys.argv[2])
+dst.parent.mkdir(parents=True, exist_ok=True)
+with urllib.request.urlopen(url) as resp, dst.open("wb") as out:
+    out.write(resp.read())
+PY
+}
+
+extract_with_python() {
+  "$PYTHON_EXE" - "$1" "$2" <<'PY'
+import pathlib
+import sys
+import zipfile
+
+src = pathlib.Path(sys.argv[1])
+dst = pathlib.Path(sys.argv[2])
+dst.mkdir(parents=True, exist_ok=True)
+with zipfile.ZipFile(src, "r") as archive:
+    archive.extractall(dst)
+PY
+}
 
 mkdir -p data work
 
@@ -36,14 +61,24 @@ DATASET_ROOT="data/coco128"
 
 if [[ ! -f "$ZIP_PATH" ]]; then
   echo "Downloading COCO128 from Ultralytics assets..."
-  curl -L "$ZIP_URL" -o "$ZIP_PATH"
+  if command -v curl >/dev/null 2>&1; then
+    curl -L "$ZIP_URL" -o "$ZIP_PATH"
+  else
+    echo "curl not found, using Python download fallback..."
+    download_with_python "$ZIP_URL" "$ZIP_PATH"
+  fi
 else
   echo "Using cached archive: $REPO_ROOT/$ZIP_PATH"
 fi
 
 rm -rf "$EXTRACT_ROOT"
 mkdir -p "$EXTRACT_ROOT"
-unzip -oq "$ZIP_PATH" -d "$EXTRACT_ROOT"
+if command -v unzip >/dev/null 2>&1; then
+  unzip -oq "$ZIP_PATH" -d "$EXTRACT_ROOT"
+else
+  echo "unzip not found, using Python zipfile fallback..."
+  extract_with_python "$ZIP_PATH" "$EXTRACT_ROOT"
+fi
 
 resolve_root() {
   local root="$1"
@@ -147,12 +182,46 @@ run_python -m owli_train dataset export modelmaker-csv \
   --out "$CSV_OUT"
 
 set +e
-TRAIN_OUTPUT="$("$PYTHON_EXE" -m owli_train train efficientdet --variant lite2 --config configs/efficientdet_lite2_coco128.yaml --max-steps 1 2>&1)"
-TRAIN_EXIT_CODE=$?
+if [[ "$MODELMAKER_PYTHON_EXE" == "$PYTHON_EXE" ]]; then
+  TRAIN_OUTPUT="$("$PYTHON_EXE" -m owli_train train efficientdet --variant lite2 --config configs/efficientdet_lite2_coco128.yaml --max-steps 1 2>&1)"
+  TRAIN_EXIT_CODE=$?
+else
+  TRAIN_OUTPUT="$("$MODELMAKER_PYTHON_EXE" - <<'PY' 2>&1
+from pathlib import Path
+import sys
+
+from owli_train.training.modelmaker_efficientdet import (
+    MissingModelMakerDependenciesError,
+    train_efficientdet_from_config,
+)
+
+try:
+    artifacts = train_efficientdet_from_config(
+        config_path=Path("configs/efficientdet_lite2_coco128.yaml"),
+        variant="lite2",
+        max_steps=1,
+    )
+except MissingModelMakerDependenciesError as exc:
+    print(f"ERROR {exc}")
+    raise SystemExit(1) from exc
+except Exception as exc:  # pragma: no cover - runtime integration path
+    print(f"ERROR {exc}")
+    raise SystemExit(1) from exc
+
+print(f"OK run={artifacts.run_id}")
+print(f"run_dir: {artifacts.run_dir}")
+print(f"tflite: {artifacts.tflite_path}")
+PY
+)"
+  TRAIN_EXIT_CODE=$?
+fi
 set -e
 printf "%s\n" "$TRAIN_OUTPUT"
 if [[ $TRAIN_EXIT_CODE -ne 0 ]]; then
   echo "[HINT] Install Model Maker dependencies with: pip install -r requirements/modelmaker.txt"
+  if [[ "$MODELMAKER_PYTHON_EXE" != "$PYTHON_EXE" ]]; then
+    echo "[HINT] This run uses MODELMAKER_PYTHON_EXE=$MODELMAKER_PYTHON_EXE"
+  fi
   echo "EfficientDet smoke training failed (exit=$TRAIN_EXIT_CODE)."
   exit "$TRAIN_EXIT_CODE"
 fi
@@ -174,7 +243,31 @@ fi
 
 echo "Verified TFLite artifact: $TFLITE_PATH"
 echo "Inspecting exported TFLite model..."
-run_python -m owli_train inspect tflite --model "$TFLITE_PATH"
+if [[ "$MODELMAKER_PYTHON_EXE" == "$PYTHON_EXE" ]]; then
+  run_python -m owli_train inspect tflite --model "$TFLITE_PATH"
+else
+  run_modelmaker_python - "$TFLITE_PATH" <<'PY'
+from pathlib import Path
+import sys
+
+from owli_train.export.tflite_export import build_inspect_tflite_config, inspect_tflite
+
+model = Path(sys.argv[1])
+cfg = build_inspect_tflite_config(model_path=model)
+artifacts = inspect_tflite(cfg)
+print(f"OK model={artifacts.model_path}")
+print(f"builtin_ops_only: {str(artifacts.builtin_ops_only).lower()}")
+print(
+    f"operator_names: {', '.join(artifacts.operator_names) if artifacts.operator_names else ''}"
+)
+print("inputs:")
+for item in artifacts.inputs:
+    print(f"- {item['name']} shape={item['shape']} dtype={item['dtype']}")
+print("outputs:")
+for item in artifacts.outputs:
+    print(f"- {item['name']} shape={item['shape']} dtype={item['dtype']}")
+PY
+fi
 
 echo ""
 echo "E2E smoke completed successfully."

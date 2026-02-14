@@ -7,6 +7,8 @@ __pycache__/
 .dist/
 .build/
 .venv/
+.venv-modelmaker/
+.venv-modelmaker-py39/
 .env
 .pytest_cache/
 .ruff_cache/

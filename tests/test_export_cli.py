@@ -63,7 +63,8 @@ def test_export_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
     )
 
     assert result.exit_code == 0
-    assert "detector.tflite" in result.stdout
+    normalized_stdout = result.stdout.replace("\n", "")
+    assert "detector.tflite" in normalized_stdout
     assert captured["run_dir"] == run_dir
     assert captured["quant"] == "fp16"
     assert captured["rep_coco"] == rep_coco

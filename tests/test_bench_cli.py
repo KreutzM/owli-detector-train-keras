@@ -47,7 +47,8 @@ def test_bench_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
     )
 
     assert result.exit_code == 0
-    assert "bench_tflite.json" in result.stdout
+    normalized_stdout = result.stdout.replace("\n", "")
+    assert "bench_tflite.json" in normalized_stdout
     assert captured["model_path"] == model
     assert captured["limit_images"] == 2
     assert captured["warmup_runs"] == 1

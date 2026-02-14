@@ -13,7 +13,7 @@ Reference:
 
 ```bash
 sudo apt update
-sudo apt install -y python3 python3-venv python3-pip curl unzip
+sudo apt install -y python3 python3-venv python3-pip
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -31,11 +31,17 @@ For the EfficientDet Model Maker backend, prefer a separate venv:
 
 ```bash
 deactivate  # if needed
-python3 -m venv .venv-modelmaker
+python3.9 -m venv .venv-modelmaker
 source .venv-modelmaker/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements/modelmaker.txt
 ```
+
+Notes:
+- `scripts/e2e_coco128_smoke.sh` has Python fallbacks for download/extract, so `curl`/`unzip` are optional.
+- Model Maker currently targets a legacy stack. Use Python 3.9 for `.venv-modelmaker`.
+- The smoke script supports split interpreters via `MODELMAKER_PYTHON_EXE`:
+  `MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python bash scripts/e2e_coco128_smoke.sh`
 
 ## TensorFlow GPU note
 

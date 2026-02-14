@@ -57,6 +57,9 @@ python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco
 ```
 
 Use a dedicated venv for Model Maker dependencies.
+On WSL, use Python 3.9 for the Model Maker venv.
+For the WSL smoke script with split envs:
+`MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python bash scripts/e2e_coco128_smoke.sh`
 
 See `docs/runbook.md` for end-to-end dataset operations.
 See `docs/wsl-setup.md` for WSL-specific setup and performance notes.

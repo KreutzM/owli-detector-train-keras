@@ -8,5 +8,5 @@ tqdm>=4.66
 
 # Model Maker compatibility stack (WSL/Linux).
 numpy>=1.22,<1.24
-tensorflow==2.13.1
+tensorflow==2.8.4
 tflite-model-maker==0.4.3
