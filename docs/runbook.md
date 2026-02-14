@@ -75,6 +75,12 @@ Smoke run (bounded runtime):
 python -m owli_train train detect --config configs\train_detector.yaml --max-steps 1 --limit-train-images 8 --limit-val-images 4
 ```
 
+Tiny local smoke dataset run:
+
+```powershell
+python -m owli_train train detect --config configs\train_detector_smoke.yaml --max-steps 1
+```
+
 Resume from a checkpoint:
 
 ```powershell
