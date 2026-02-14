@@ -3,7 +3,10 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from owli_train.cli import app
-from owli_train.training.keras_detector import MissingTrainingDependenciesError, TrainingArtifacts
+from owli_train.training.keras_detector import (
+    MissingTrainingDependenciesError,
+    TrainingArtifacts,
+)
 
 runner = CliRunner()
 
@@ -84,3 +87,25 @@ def test_train_detect_cli_dependency_error_message(tmp_path: Path, monkeypatch):
 
     assert result.exit_code == 1
     assert "pip install -r requirements\\keras.txt" in result.stdout
+
+
+def test_train_detect_cli_missing_coco_path_message(tmp_path: Path):
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+
+    cfg = tmp_path / "train_missing_coco.yaml"
+    cfg.write_text(
+        f"""
+model:
+  arch: yolov8
+data:
+  coco_json: {tmp_path / "missing.json"}
+  images_dir: {images_dir}
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["train", "detect", "--config", str(cfg), "--max-steps", "1"])
+
+    assert result.exit_code == 1
+    assert "data.coco_json was not found" in result.stdout
