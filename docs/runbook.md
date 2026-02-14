@@ -229,6 +229,49 @@ Reports are written to:
 - `work\runs\<run_id>\reports\eval.json`
 - `work\runs\<run_id>\reports\eval.md`
 
+## Evaluate EfficientDet TFLite (Model Maker export)
+
+Install both dependency sets:
+
+```powershell
+pip install -r requirements\eval.txt
+pip install -r requirements\modelmaker.txt
+```
+
+If Model Maker lives in a separate venv, set `MODELMAKER_PYTHON_EXE` so the command auto-delegates:
+
+```powershell
+$env:MODELMAKER_PYTHON_EXE=".\.venv-modelmaker-py39\Scripts\python.exe"
+python -m owli_train eval efficientdet-tflite --coco work\datasets\coco128\instances_val.json --images-dir data\coco128\images\train2017 --model work\runs\<run_id>\artifacts\model.tflite --limit-images 20
+```
+
+WSL equivalent:
+
+```bash
+MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python python -m owli_train eval efficientdet-tflite --coco work/datasets/coco128/instances_val.json --images-dir data/coco128/images/train2017 --model work/runs/<run_id>/artifacts/model.tflite --limit-images 20
+```
+
+When all deps are already installed in the active environment, leave `MODELMAKER_PYTHON_EXE` unset and run directly:
+
+```powershell
+python -m owli_train eval efficientdet-tflite --coco data\coco\instances_val.json --images-dir data\coco\images --model work\runs\<run_id>\artifacts\model.tflite --out work\reports\eval_efficientdet_tflite.json
+```
+
+Optional explicit category mapping:
+
+```powershell
+python -m owli_train eval efficientdet-tflite --coco data\coco\instances_val.json --images-dir data\coco\images --model work\runs\<run_id>\artifacts\model.tflite --category-map configs\eval_category_map.yaml
+```
+
+Report content:
+- COCO metrics (AP/AP50/AP75/AR*)
+- Per-class TP/FP/FN plus precision/recall summary
+- Noise metric: `FP per 100 images` at `--score-threshold` (default `0.3`)
+
+Default output paths:
+- `work\runs\<run_id>\reports\eval_efficientdet_tflite.json` + `.md` (when model is under `artifacts\`)
+- `work\reports\eval-efficientdet-tflite-<timestamp>.json` + `.md` (direct model path)
+
 ## Export detector to TFLite
 
 Default export from run artifacts (prefers `saved_model`, fallback `.keras`):
@@ -297,6 +340,35 @@ python -m owli_train bench tflite --model work\runs\<run_id>\artifacts\detector.
 Bench report path:
 - `work\runs\<run_id>\reports\bench_tflite.json` (default with `--run-dir`)
 - `work\reports\bench_tflite.json` (default with direct `--model`)
+
+## Generate Android golden sample (detector)
+
+Generate a stable JSON sample for one image:
+
+```powershell
+python -m owli_train golden detect --model work\runs\<run_id>\artifacts\model.tflite --image data\coco128\images\train2017\000000000009.jpg --out work\golden\sample.json
+```
+
+WSL equivalent:
+
+```bash
+python -m owli_train golden detect --model work/runs/<run_id>/artifacts/model.tflite --image data/coco128/images/train2017/000000000009.jpg --out work/golden/sample.json
+```
+
+With split-venv delegation:
+
+```powershell
+$env:MODELMAKER_PYTHON_EXE=".\.venv-modelmaker-py39\Scripts\python.exe"
+python -m owli_train golden detect --model work\runs\<run_id>\artifacts\model.tflite --image data\coco128\images\train2017\000000000009.jpg --out work\golden\sample.json --score-threshold 0.3 --max-results 20
+```
+
+Golden JSON contains:
+- input preprocessing contract used (letterbox target size, dtype, normalization, pad value)
+- top detections (`class_name`, `score`, `bbox`)
+- model metadata snapshot (from `*.tflite.meta.json` when present)
+- inspect snapshot (operators and I/O tensors)
+
+Android integration should follow the same contract described in `docs/android-contract.md`.
 
 ## COCO128 E2E Smoke Script
 
