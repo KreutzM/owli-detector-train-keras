@@ -130,3 +130,57 @@ python -m owli_train eval detect --coco data\coco\instances_val.json --images-di
 Reports are written to:
 - `work\runs\<run_id>\reports\eval.json`
 - `work\runs\<run_id>\reports\eval.md`
+
+## Export detector to TFLite
+
+Default export from run artifacts (prefers `saved_model`, fallback `.keras`):
+
+```powershell
+python -m owli_train export tflite --run-dir work\runs\<run_id>
+```
+
+FP16 export:
+
+```powershell
+python -m owli_train export tflite --run-dir work\runs\<run_id> --quant fp16
+```
+
+INT8 export (with representative dataset):
+
+```powershell
+python -m owli_train export tflite --run-dir work\runs\<run_id> --quant int8 --rep-coco data\coco\instances_train.json --rep-images-dir data\coco\images --rep-max-images 32
+```
+
+Direct model export:
+
+```powershell
+python -m owli_train export tflite --model work\runs\<run_id>\artifacts\detector.keras --out outputs\detector.tflite
+```
+
+Export artifacts:
+- `work\runs\<run_id>\artifacts\detector.tflite` (default for `--run-dir`)
+- `...\detector.tflite.meta.json` (labels/class_names, bbox_format, input_size, settings)
+
+## Bench TFLite model
+
+Bench from run-dir exported model:
+
+```powershell
+python -m owli_train bench tflite --run-dir work\runs\<run_id> --limit-images 8 --warmup-runs 3 --runs 16
+```
+
+Bench direct model path:
+
+```powershell
+python -m owli_train bench tflite --model work\runs\<run_id>\artifacts\detector.tflite --limit-images 2
+```
+
+Optional real-image bench input:
+
+```powershell
+python -m owli_train bench tflite --model work\runs\<run_id>\artifacts\detector.tflite --images-dir tests\smoke_coco\images --limit-images 2
+```
+
+Bench report path:
+- `work\runs\<run_id>\reports\bench_tflite.json` (default with `--run-dir`)
+- `work\reports\bench_tflite.json` (default with direct `--model`)
