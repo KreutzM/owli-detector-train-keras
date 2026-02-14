@@ -41,6 +41,7 @@ def test_export_tflite_help_lists_quant_and_rep_flags():
     assert "--model" in r.stdout
     assert "--quant" in r.stdout
     assert "--rep-coco" in r.stdout
+    assert "--require-builtins-only" in r.stdout
 
 
 def test_bench_tflite_help_lists_bench_flags():
@@ -50,3 +51,9 @@ def test_bench_tflite_help_lists_bench_flags():
     assert "--model" in r.stdout
     assert "--limit-images" in r.stdout
     assert "--warmup-runs" in r.stdout
+
+
+def test_inspect_tflite_help_lists_flags():
+    r = runner.invoke(app, ["inspect", "tflite", "--help"])
+    assert r.exit_code == 0
+    assert "--model" in r.stdout

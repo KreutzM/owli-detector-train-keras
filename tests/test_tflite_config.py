@@ -6,6 +6,7 @@ from owli_train.export.tflite_export import (
     TFLiteConfigError,
     build_bench_tflite_config,
     build_export_tflite_config,
+    build_inspect_tflite_config,
 )
 
 
@@ -20,6 +21,7 @@ def test_export_config_requires_exactly_one_source():
             rep_coco=None,
             rep_images_dir=None,
             rep_max_images=8,
+            require_builtins_only=False,
         )
 
     with pytest.raises(TFLiteConfigError, match="exactly one model source"):
@@ -32,6 +34,7 @@ def test_export_config_requires_exactly_one_source():
             rep_coco=None,
             rep_images_dir=None,
             rep_max_images=8,
+            require_builtins_only=False,
         )
 
 
@@ -46,6 +49,7 @@ def test_export_config_validates_int8_requirements():
             rep_coco=None,
             rep_images_dir=None,
             rep_max_images=8,
+            require_builtins_only=False,
         )
 
 
@@ -59,10 +63,12 @@ def test_export_config_accepts_fp16_with_run_dir():
         rep_coco=None,
         rep_images_dir=None,
         rep_max_images=8,
+        require_builtins_only=True,
     )
 
     assert cfg.quant == "fp16"
     assert cfg.run_dir == Path("work/runs/a")
+    assert cfg.require_builtins_only is True
 
 
 def test_bench_config_requires_single_source_and_positive_values():
@@ -98,3 +104,11 @@ def test_bench_config_requires_single_source_and_positive_values():
         runs=2,
     )
     assert cfg.model_path == Path("model.tflite")
+
+
+def test_inspect_config_requires_tflite_model():
+    with pytest.raises(TFLiteConfigError, match="\\.tflite"):
+        build_inspect_tflite_config(model_path=Path("model.keras"))
+
+    cfg = build_inspect_tflite_config(model_path=Path("detector.tflite"))
+    assert cfg.model_path == Path("detector.tflite")

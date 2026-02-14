@@ -35,6 +35,7 @@ def test_export_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
             metadata_path=run_dir / "artifacts" / "detector.tflite.meta.json",
             quant="fp16",
             source_type="saved_model",
+            builtin_ops_only=True,
         )
 
     monkeypatch.setattr(
@@ -57,6 +58,7 @@ def test_export_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
             str(rep_images),
             "--rep-max-images",
             "4",
+            "--require-builtins-only",
         ],
     )
 
@@ -67,6 +69,7 @@ def test_export_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
     assert captured["rep_coco"] == rep_coco
     assert captured["rep_images_dir"] == rep_images
     assert captured["rep_max_images"] == 4
+    assert captured["require_builtins_only"] is True
 
 
 def test_export_tflite_cli_dependency_message(tmp_path: Path, monkeypatch):
