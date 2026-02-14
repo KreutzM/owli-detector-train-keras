@@ -145,6 +145,12 @@ FP16 export:
 python -m owli_train export tflite --run-dir work\runs\<run_id> --quant fp16
 ```
 
+Fail export when output requires Select TF Ops (Flex):
+
+```powershell
+python -m owli_train export tflite --run-dir work\runs\<run_id> --quant fp16 --require-builtins-only
+```
+
 INT8 export (with representative dataset):
 
 ```powershell
@@ -159,7 +165,15 @@ python -m owli_train export tflite --model work\runs\<run_id>\artifacts\detector
 
 Export artifacts:
 - `work\runs\<run_id>\artifacts\detector.tflite` (default for `--run-dir`)
-- `...\detector.tflite.meta.json` (labels/class_names, bbox_format, input_size, settings)
+- `...\detector.tflite.meta.json` (labels/class_names, bbox_format, input_size, settings, android_compat)
+
+Inspect TFLite Android compatibility:
+
+```powershell
+python -m owli_train inspect tflite --model work\runs\<run_id>\artifacts\detector.tflite
+```
+
+For Builtins vs Flex details, see `docs\android-deploy.md`.
 
 ## Bench TFLite model
 
