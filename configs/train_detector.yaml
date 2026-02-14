@@ -1,0 +1,17 @@
+model:
+  family: keras
+  arch: yolov8   # placeholder
+  input_size: 448
+  num_classes: 1
+  class_names: [person]
+data:
+  coco_json: data/coco/instances_train.json
+  images_dir: data/coco/images
+train:
+  seed: 1337
+  batch_size: 8
+  epochs: 50
+  lr: 0.0003
+outputs:
+  work_dir: work
+  out_dir: outputs

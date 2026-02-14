@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+.dist/
+.build/
+.venv/
+.env
+.pytest_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Data / outputs
+data/
+work/
+outputs/
+*.sqlite
+*.db
+*.db-wal
+*.db-shm
+!tests/data/
+!tests/data/**
+
+# Large artifacts
+*.npy
+*.npz
+*.pt
+*.pth
+*.onnx
+
+# My
+tmp/
+tags.txt
