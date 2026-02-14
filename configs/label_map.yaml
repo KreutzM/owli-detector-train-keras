@@ -1,0 +1,4 @@
+# Example label-merge config for dataset normalize
+map:
+  human: person
+  automobile: car

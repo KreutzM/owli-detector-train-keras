@@ -1,13 +1,24 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 import typer
 import yaml
 from rich import print
 
-from owli_train.data.coco import load_coco, validate_coco
-from owli_train.data.split import split_coco_image_ids, write_splits
+from owli_train.data.coco import (
+    load_coco,
+    load_label_map,
+    normalize_coco,
+    validate_coco,
+    write_coco,
+)
+from owli_train.data.split import split_coco_image_ids, write_split_coco_files, write_splits
+
+DEFAULT_NORMALIZED_OUT = Path("work/normalized/instances.json")
+DEFAULT_SPLITS_OUT_DIR = Path("work/splits")
+DEFAULT_EXPORT_OUT = Path("outputs/model.tflite")
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 dataset_app = typer.Typer(no_args_is_help=True)
@@ -20,14 +31,57 @@ app.add_typer(export_app, name="export")
 
 
 @dataset_app.command("validate")
-def dataset_validate(coco: Path = typer.Option(..., "--coco", exists=True, readable=True)):
+def dataset_validate(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    images_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--images-dir",
+            file_okay=False,
+            dir_okay=True,
+            exists=True,
+            readable=True,
+        ),
+    ] = None,
+):
     obj = load_coco(coco)
-    s = validate_coco(obj)
+    s = validate_coco(obj, images_dir=images_dir)
     print(f"[green]OK[/green] COCO: images={s.images}, ann={s.annotations}, cats={s.categories}")
 
 
+@dataset_app.command("normalize")
+def dataset_normalize(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    out: Annotated[Path, typer.Option("--out")] = DEFAULT_NORMALIZED_OUT,
+    images_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--images-dir",
+            file_okay=False,
+            dir_okay=True,
+            exists=True,
+            readable=True,
+        ),
+    ] = None,
+    label_map: Annotated[
+        Path | None, typer.Option("--label-map", exists=True, readable=True)
+    ] = None,
+):
+    obj = load_coco(coco)
+    _ = validate_coco(obj, images_dir=images_dir)
+
+    mapping = load_label_map(label_map) if label_map is not None else None
+    normalized = normalize_coco(obj, label_map=mapping)
+    _ = validate_coco(normalized, images_dir=images_dir)
+
+    out_path = write_coco(out, normalized)
+    print(f"[green]OK[/green] wrote normalized COCO: {out_path}")
+
+
 @dataset_app.command("summarize")
-def dataset_summarize(coco: Path = typer.Option(..., "--coco", exists=True, readable=True)):
+def dataset_summarize(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+):
     obj = load_coco(coco)
     s = validate_coco(obj)
     cats = ", ".join(s.category_names[:20])
@@ -40,21 +94,32 @@ def dataset_summarize(coco: Path = typer.Option(..., "--coco", exists=True, read
 
 @dataset_app.command("split")
 def dataset_split(
-    coco: Path = typer.Option(..., "--coco", exists=True, readable=True),
-    out_dir: Path = typer.Option(Path("work/splits"), "--out-dir"),
-    seed: int = typer.Option(1337, "--seed"),
-    train_frac: float = typer.Option(0.8, "--train-frac"),
-    val_frac: float = typer.Option(0.1, "--val-frac"),
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    out_dir: Annotated[Path, typer.Option("--out-dir")] = DEFAULT_SPLITS_OUT_DIR,
+    seed: Annotated[int, typer.Option("--seed")] = 1337,
+    train_frac: Annotated[float, typer.Option("--train-frac")] = 0.8,
+    val_frac: Annotated[float, typer.Option("--val-frac")] = 0.1,
+    write_coco_files: Annotated[bool, typer.Option("--write-coco")] = False,
 ):
     obj = load_coco(coco)
     _ = validate_coco(obj)
     splits = split_coco_image_ids(obj, seed=seed, train_frac=train_frac, val_frac=val_frac)
     out = write_splits(out_dir, splits)
-    print(f"[green]OK[/green] wrote {out}")
+
+    if write_coco_files:
+        written = write_split_coco_files(out_dir=out_dir, coco=obj, splits=splits)
+        print(
+            "[green]OK[/green] wrote "
+            f"{out} and split COCO files: train={written['train']}, val={written['val']}, test={written['test']}"
+        )
+    else:
+        print(f"[green]OK[/green] wrote {out}")
 
 
 @train_app.command("detect")
-def train_detect(config: Path = typer.Option(..., "--config", exists=True, readable=True)):
+def train_detect(
+    config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
+):
     cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
     print("[yellow]TODO[/yellow] training is not implemented in the base project yet.")
     print(cfg)
@@ -62,8 +127,8 @@ def train_detect(config: Path = typer.Option(..., "--config", exists=True, reada
 
 @export_app.command("tflite")
 def export_tflite(
-    saved_model: Path = typer.Option(..., "--saved-model"),
-    out: Path = typer.Option(Path("outputs/model.tflite"), "--out"),
+    saved_model: Annotated[Path, typer.Option("--saved-model")],
+    out: Annotated[Path, typer.Option("--out")] = DEFAULT_EXPORT_OUT,
 ):
     print("[yellow]TODO[/yellow] export is not implemented in the base project yet.")
     print({"saved_model": str(saved_model), "out": str(out)})
