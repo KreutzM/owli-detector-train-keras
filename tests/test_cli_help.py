@@ -22,3 +22,12 @@ def test_train_detect_help_lists_smoke_flags():
     assert "--max-steps" in r.stdout
     assert "--limit-train-images" in r.stdout
     assert "--limit-val-images" in r.stdout
+
+
+def test_eval_detect_help_lists_eval_flags():
+    r = runner.invoke(app, ["eval", "detect", "--help"])
+    assert r.exit_code == 0
+    assert "--run-dir" in r.stdout
+    assert "--model" in r.stdout
+    assert "--limit-images" in r.stdout
+    assert "--score-threshold" in r.stdout
