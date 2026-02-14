@@ -20,6 +20,6 @@ class TrainConfig:
 
 def train_detector(cfg: TrainConfig) -> None:
     raise NotImplementedError(
-        'Training is not implemented in the base project yet. '
-        'Use Codex to implement a Keras/KerasCV detector training pipeline.'
+        "Training is not implemented in the base project yet. "
+        "Use Codex to implement a Keras/KerasCV detector training pipeline."
     )
