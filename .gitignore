@@ -43,4 +43,8 @@ outputs/
 
 # My
 tmp/
+TMP/
+.tmp/
+**/tmp/**
+**/TMP/**
 tags.txt
