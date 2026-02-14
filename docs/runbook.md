@@ -271,3 +271,31 @@ python -m owli_train bench tflite --model work\runs\<run_id>\artifacts\detector.
 Bench report path:
 - `work\runs\<run_id>\reports\bench_tflite.json` (default with `--run-dir`)
 - `work\reports\bench_tflite.json` (default with direct `--model`)
+
+## COCO128 E2E Smoke Script
+
+Run full COCO128 smoke flow (download -> convert -> split -> CSV -> train -> inspect):
+
+```powershell
+.\scripts\e2e_coco128_smoke.ps1
+```
+
+Script behavior:
+- Download URL: `https://github.com/ultralytics/assets/releases/download/v0.0.0/coco128.zip`
+- Uses CLI commands:
+  - `dataset import yolo`
+  - `dataset split`
+  - `dataset export modelmaker-csv`
+  - `train efficientdet --variant lite2 --max-steps 1`
+  - `inspect tflite`
+
+Writes only to:
+- `data\` (download + extracted dataset)
+- `work\` (generated datasets + runs/artifacts)
+
+Cleanup examples:
+
+```powershell
+Remove-Item -Path data\coco128, data\coco128_extract, work\datasets\coco128 -Recurse -Force
+Remove-Item -Path work\runs\<run_id> -Recurse -Force
+```
