@@ -48,6 +48,18 @@ If gate fails, try:
 - Export from `.keras` source (`--model ...\detector.keras`)
 - A different detector architecture/backbone
 
+## Builtins-first recommendation
+
+For easiest Android deployment, prefer a RetinaNet smoke/baseline config:
+
+```powershell
+python -m owli_train train detect --config configs\train_detector_builtins_smoke.yaml --max-steps 1
+python -m owli_train export tflite --run-dir work\runs\<run_id> --require-builtins-only
+python -m owli_train inspect tflite --model work\runs\<run_id>\artifacts\detector.tflite
+```
+
+Expected inspect output: `builtin_ops_only: true`.
+
 ## Android guidance
 
 If `builtin_ops_only: true`:

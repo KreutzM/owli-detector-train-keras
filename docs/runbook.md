@@ -75,10 +75,22 @@ Smoke run (bounded runtime):
 python -m owli_train train detect --config configs\train_detector.yaml --max-steps 1 --limit-train-images 8 --limit-val-images 4
 ```
 
+Override architecture at runtime:
+
+```powershell
+python -m owli_train train detect --config configs\train_detector.yaml --arch retinanet --max-steps 1
+```
+
 Tiny local smoke dataset run:
 
 ```powershell
 python -m owli_train train detect --config configs\train_detector_smoke.yaml --max-steps 1
+```
+
+Builtins-first tiny smoke run (RetinaNet):
+
+```powershell
+python -m owli_train train detect --config configs\train_detector_builtins_smoke.yaml --max-steps 1
 ```
 
 Resume from a checkpoint:
@@ -174,6 +186,7 @@ python -m owli_train inspect tflite --model work\runs\<run_id>\artifacts\detecto
 ```
 
 For Builtins vs Flex details, see `docs\android-deploy.md`.
+For TFLite I/O contract details, see `docs\android-export-contract.md`.
 
 ## Bench TFLite model
 
