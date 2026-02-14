@@ -1,0 +1,11 @@
+{
+  "images": [
+    {"id": 2, "file_name": "smoke2.jpg", "width": 120, "height": 90}
+  ],
+  "annotations": [
+    {"id": 2, "image_id": 2, "category_id": 1, "bbox": [35, 20, 55, 50], "area": 2750, "iscrowd": 0}
+  ],
+  "categories": [
+    {"id": 1, "name": "person"}
+  ]
+}

@@ -1,0 +1,3 @@
+-r base.txt
+tensorflow>=2.15
+tflite-model-maker>=0.4.3

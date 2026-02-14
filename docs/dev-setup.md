@@ -15,4 +15,6 @@ Optional training deps:
 pip install -r requirements\keras.txt
 ```
 
-GPU note: TensorFlow GPU is generally easiest in WSL2 (Ubuntu).
+GPU note:
+- TensorFlow GPU on Windows is supported via WSL2 (Ubuntu) and is the recommended setup.
+- Native Windows TensorFlow for TF>=2.11 is typically CPU-only.

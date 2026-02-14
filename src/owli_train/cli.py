@@ -1,33 +1,131 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 import typer
-import yaml
 from rich import print
 
-from owli_train.data.coco import load_coco, validate_coco
-from owli_train.data.split import split_coco_image_ids, write_splits
+from owli_train.data.coco import (
+    load_coco,
+    load_label_map,
+    normalize_coco,
+    validate_coco,
+    write_coco,
+)
+from owli_train.data.modelmaker_csv import export_coco_to_modelmaker_csv
+from owli_train.data.split import split_coco_image_ids, write_split_coco_files, write_splits
+from owli_train.data.yolo_adapter import import_yolo_to_coco
+from owli_train.eval.detect import (
+    EvalConfigError,
+    MissingEvalDependenciesError,
+    build_eval_detect_config,
+    evaluate_detect,
+)
+from owli_train.export.tflite_export import (
+    MissingTFLiteDependenciesError,
+    TFLiteConfigError,
+    TFLiteExportError,
+    build_bench_tflite_config,
+    build_export_tflite_config,
+    build_inspect_tflite_config,
+)
+from owli_train.export.tflite_export import (
+    bench_tflite as run_bench_tflite,
+)
+from owli_train.export.tflite_export import (
+    export_tflite as run_export_tflite,
+)
+from owli_train.export.tflite_export import (
+    inspect_tflite as run_inspect_tflite,
+)
+from owli_train.training.keras_detector import (
+    MissingTrainingDependenciesError,
+    TrainingError,
+    train_detector_from_config,
+)
+from owli_train.training.modelmaker_efficientdet import (
+    EfficientDetTrainingError,
+    MissingModelMakerDependenciesError,
+    train_efficientdet_from_config,
+)
+
+DEFAULT_NORMALIZED_OUT = Path("work/normalized/instances.json")
+DEFAULT_SPLITS_OUT_DIR = Path("work/splits")
+DEFAULT_MODELMAKER_CSV_OUT = Path("work/datasets/modelmaker/dataset.csv")
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 dataset_app = typer.Typer(no_args_is_help=True)
+dataset_import_app = typer.Typer(no_args_is_help=True)
+dataset_export_app = typer.Typer(no_args_is_help=True)
 train_app = typer.Typer(no_args_is_help=True)
+eval_app = typer.Typer(no_args_is_help=True)
 export_app = typer.Typer(no_args_is_help=True)
+bench_app = typer.Typer(no_args_is_help=True)
+inspect_app = typer.Typer(no_args_is_help=True)
 
 app.add_typer(dataset_app, name="dataset")
+dataset_app.add_typer(dataset_import_app, name="import")
+dataset_app.add_typer(dataset_export_app, name="export")
 app.add_typer(train_app, name="train")
+app.add_typer(eval_app, name="eval")
 app.add_typer(export_app, name="export")
+app.add_typer(bench_app, name="bench")
+app.add_typer(inspect_app, name="inspect")
 
 
 @dataset_app.command("validate")
-def dataset_validate(coco: Path = typer.Option(..., "--coco", exists=True, readable=True)):
+def dataset_validate(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    images_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--images-dir",
+            file_okay=False,
+            dir_okay=True,
+            exists=True,
+            readable=True,
+        ),
+    ] = None,
+):
     obj = load_coco(coco)
-    s = validate_coco(obj)
+    s = validate_coco(obj, images_dir=images_dir)
     print(f"[green]OK[/green] COCO: images={s.images}, ann={s.annotations}, cats={s.categories}")
 
 
+@dataset_app.command("normalize")
+def dataset_normalize(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    out: Annotated[Path, typer.Option("--out")] = DEFAULT_NORMALIZED_OUT,
+    images_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--images-dir",
+            file_okay=False,
+            dir_okay=True,
+            exists=True,
+            readable=True,
+        ),
+    ] = None,
+    label_map: Annotated[
+        Path | None, typer.Option("--label-map", exists=True, readable=True)
+    ] = None,
+):
+    obj = load_coco(coco)
+    _ = validate_coco(obj, images_dir=images_dir)
+
+    mapping = load_label_map(label_map) if label_map is not None else None
+    normalized = normalize_coco(obj, label_map=mapping)
+    _ = validate_coco(normalized, images_dir=images_dir)
+
+    out_path = write_coco(out, normalized)
+    print(f"[green]OK[/green] wrote normalized COCO: {out_path}")
+
+
 @dataset_app.command("summarize")
-def dataset_summarize(coco: Path = typer.Option(..., "--coco", exists=True, readable=True)):
+def dataset_summarize(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+):
     obj = load_coco(coco)
     s = validate_coco(obj)
     cats = ", ".join(s.category_names[:20])
@@ -40,33 +138,345 @@ def dataset_summarize(coco: Path = typer.Option(..., "--coco", exists=True, read
 
 @dataset_app.command("split")
 def dataset_split(
-    coco: Path = typer.Option(..., "--coco", exists=True, readable=True),
-    out_dir: Path = typer.Option(Path("work/splits"), "--out-dir"),
-    seed: int = typer.Option(1337, "--seed"),
-    train_frac: float = typer.Option(0.8, "--train-frac"),
-    val_frac: float = typer.Option(0.1, "--val-frac"),
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    out_dir: Annotated[Path, typer.Option("--out-dir")] = DEFAULT_SPLITS_OUT_DIR,
+    seed: Annotated[int, typer.Option("--seed")] = 1337,
+    train_frac: Annotated[float, typer.Option("--train-frac")] = 0.8,
+    val_frac: Annotated[float, typer.Option("--val-frac")] = 0.1,
+    write_coco_files: Annotated[bool, typer.Option("--write-coco")] = False,
 ):
     obj = load_coco(coco)
     _ = validate_coco(obj)
     splits = split_coco_image_ids(obj, seed=seed, train_frac=train_frac, val_frac=val_frac)
     out = write_splits(out_dir, splits)
-    print(f"[green]OK[/green] wrote {out}")
+
+    if write_coco_files:
+        written = write_split_coco_files(out_dir=out_dir, coco=obj, splits=splits)
+        print(
+            "[green]OK[/green] wrote "
+            f"{out} and split COCO files: train={written['train']}, val={written['val']}, test={written['test']}"
+        )
+    else:
+        print(f"[green]OK[/green] wrote {out}")
+
+
+@dataset_import_app.command("yolo")
+def dataset_import_yolo(
+    yolo_dir: Annotated[
+        Path,
+        typer.Option(
+            "--yolo-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ],
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+    data_yaml: Annotated[
+        Path | None, typer.Option("--data-yaml", exists=True, readable=True)
+    ] = None,
+):
+    out_path = (
+        out if out is not None else Path("work") / "datasets" / yolo_dir.name / "instances.json"
+    )
+    try:
+        artifacts = import_yolo_to_coco(
+            yolo_dir=yolo_dir,
+            out_path=out_path,
+            data_yaml=data_yaml,
+        )
+    except ValueError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote COCO: {artifacts.coco_path}")
+    print(f"class_names_json: {artifacts.class_names_path}")
+    print(
+        "summary: "
+        f"images={artifacts.images}, annotations={artifacts.annotations}, categories={artifacts.categories}"
+    )
+
+
+@dataset_export_app.command("modelmaker-csv")
+def dataset_export_modelmaker_csv(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    images_dir: Annotated[
+        Path,
+        typer.Option(
+            "--images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ],
+    out: Annotated[Path, typer.Option("--out")] = DEFAULT_MODELMAKER_CSV_OUT,
+    splits_json: Annotated[
+        Path | None, typer.Option("--splits-json", exists=True, readable=True)
+    ] = None,
+    class_names_out: Annotated[Path | None, typer.Option("--class-names-out")] = None,
+):
+    try:
+        artifacts = export_coco_to_modelmaker_csv(
+            coco_path=coco,
+            images_dir=images_dir,
+            out_csv=out,
+            splits_json=splits_json,
+            class_names_out=class_names_out,
+        )
+    except ValueError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote CSV: {artifacts.csv_path}")
+    print(f"class_names_json: {artifacts.class_names_path}")
+    print(
+        "summary: "
+        f"rows={artifacts.rows}, images={artifacts.images}, annotations={artifacts.annotations}"
+    )
 
 
 @train_app.command("detect")
-def train_detect(config: Path = typer.Option(..., "--config", exists=True, readable=True)):
-    cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
-    print("[yellow]TODO[/yellow] training is not implemented in the base project yet.")
-    print(cfg)
+def train_detect(
+    config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
+    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
+    arch: Annotated[str | None, typer.Option("--arch")] = None,
+    max_steps: Annotated[int | None, typer.Option("--max-steps")] = None,
+    limit_train_images: Annotated[int | None, typer.Option("--limit-train-images")] = None,
+    limit_val_images: Annotated[int | None, typer.Option("--limit-val-images")] = None,
+    resume: Annotated[Path | None, typer.Option("--resume", exists=True, readable=True)] = None,
+):
+    try:
+        artifacts = train_detector_from_config(
+            config_path=config,
+            run_name=run_name,
+            arch=arch,
+            max_steps=max_steps,
+            limit_train_images=limit_train_images,
+            limit_val_images=limit_val_images,
+            resume=resume,
+        )
+    except (MissingTrainingDependenciesError, TrainingError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] run={artifacts.run_id}")
+    print(f"run_dir: {artifacts.run_dir}")
+    print(f"keras_model: {artifacts.keras_model_path}")
+    print(f"saved_model: {artifacts.saved_model_dir}")
+
+
+@train_app.command("efficientdet")
+def train_efficientdet(
+    config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
+    variant: Annotated[str | None, typer.Option("--variant")] = None,
+    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
+    max_steps: Annotated[int | None, typer.Option("--max-steps")] = None,
+):
+    try:
+        artifacts = train_efficientdet_from_config(
+            config_path=config,
+            variant=variant,
+            run_name=run_name,
+            max_steps=max_steps,
+        )
+    except (EfficientDetTrainingError, MissingModelMakerDependenciesError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] run={artifacts.run_id}")
+    print(f"run_dir: {artifacts.run_dir}")
+    print(f"tflite: {artifacts.tflite_path}")
+    print(f"labels: {artifacts.labels_path}")
+
+
+@eval_app.command("detect")
+def eval_detect_cli(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    images_dir: Annotated[
+        Path,
+        typer.Option(
+            "--images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ],
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
+    limit_images: Annotated[int | None, typer.Option("--limit-images")] = None,
+    score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.25,
+    max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
+    category_map: Annotated[
+        Path | None, typer.Option("--category-map", exists=True, readable=True)
+    ] = None,
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+):
+    try:
+        cfg = build_eval_detect_config(
+            coco_path=coco,
+            images_dir=images_dir,
+            run_dir=run_dir,
+            model_path=model,
+            limit_images=limit_images,
+            score_threshold=score_threshold,
+            max_detections_per_image=max_detections_per_image,
+            out_path=out,
+            category_map_path=category_map,
+        )
+        artifacts = evaluate_detect(cfg)
+    except (EvalConfigError, MissingEvalDependenciesError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] model={artifacts.model_path}")
+    print(f"report_json: {artifacts.json_report_path}")
+    print(f"report_md: {artifacts.markdown_report_path}")
 
 
 @export_app.command("tflite")
 def export_tflite(
-    saved_model: Path = typer.Option(..., "--saved-model"),
-    out: Path = typer.Option(Path("outputs/model.tflite"), "--out"),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    saved_model: Annotated[
+        Path | None,
+        typer.Option(
+            "--saved-model",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+    quant: Annotated[str, typer.Option("--quant")] = "none",
+    rep_coco: Annotated[Path | None, typer.Option("--rep-coco", exists=True, readable=True)] = None,
+    rep_images_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--rep-images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    rep_max_images: Annotated[int, typer.Option("--rep-max-images")] = 32,
+    require_builtins_only: Annotated[bool, typer.Option("--require-builtins-only")] = False,
 ):
-    print("[yellow]TODO[/yellow] export is not implemented in the base project yet.")
-    print({"saved_model": str(saved_model), "out": str(out)})
+    try:
+        cfg = build_export_tflite_config(
+            run_dir=run_dir,
+            saved_model_path=saved_model,
+            model_path=model,
+            out_path=out,
+            quant=quant,
+            rep_coco=rep_coco,
+            rep_images_dir=rep_images_dir,
+            rep_max_images=rep_max_images,
+            require_builtins_only=require_builtins_only,
+        )
+        artifacts = run_export_tflite(cfg)
+    except (TFLiteConfigError, MissingTFLiteDependenciesError, TFLiteExportError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote {artifacts.tflite_path}")
+    print(f"meta_json: {artifacts.metadata_path}")
+    print(f"quant: {artifacts.quant}")
+    if artifacts.builtin_ops_only is not None:
+        print(f"builtin_ops_only: {str(artifacts.builtin_ops_only).lower()}")
+
+
+@bench_app.command("tflite")
+def bench_tflite_cli(
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
+    images_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    limit_images: Annotated[int, typer.Option("--limit-images")] = 16,
+    warmup_runs: Annotated[int, typer.Option("--warmup-runs")] = 3,
+    runs: Annotated[int, typer.Option("--runs")] = 16,
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+):
+    try:
+        cfg = build_bench_tflite_config(
+            run_dir=run_dir,
+            model_path=model,
+            out_path=out,
+            images_dir=images_dir,
+            limit_images=limit_images,
+            warmup_runs=warmup_runs,
+            runs=runs,
+        )
+        artifacts = run_bench_tflite(cfg)
+    except (TFLiteConfigError, MissingTFLiteDependenciesError, TFLiteExportError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] model={artifacts.model_path}")
+    print(f"report_json: {artifacts.report_path}")
+
+
+@inspect_app.command("tflite")
+def inspect_tflite_cli(
+    model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
+):
+    try:
+        cfg = build_inspect_tflite_config(model_path=model)
+        artifacts = run_inspect_tflite(cfg)
+    except (TFLiteConfigError, MissingTFLiteDependenciesError, TFLiteExportError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] model={artifacts.model_path}")
+    print(f"builtin_ops_only: {str(artifacts.builtin_ops_only).lower()}")
+    print(
+        f"operator_names: {', '.join(artifacts.operator_names) if artifacts.operator_names else ''}"
+    )
+    print("inputs:")
+    for item in artifacts.inputs:
+        print(f"- {item['name']} shape={item['shape']} dtype={item['dtype']}")
+    print("outputs:")
+    for item in artifacts.outputs:
+        print(f"- {item['name']} shape={item['shape']} dtype={item['dtype']}")
 
 
 if __name__ == "__main__":

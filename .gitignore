@@ -21,6 +21,10 @@ Desktop.ini
 
 # Data / outputs
 data/
+!src/owli_train/data/
+!src/owli_train/data/**
+src/owli_train/data/__pycache__/
+src/owli_train/data/*.py[cod]
 work/
 outputs/
 *.sqlite
@@ -39,4 +43,8 @@ outputs/
 
 # My
 tmp/
+TMP/
+.tmp/
+**/tmp/**
+**/TMP/**
 tags.txt
