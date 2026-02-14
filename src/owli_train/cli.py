@@ -13,7 +13,9 @@ from owli_train.data.coco import (
     validate_coco,
     write_coco,
 )
+from owli_train.data.modelmaker_csv import export_coco_to_modelmaker_csv
 from owli_train.data.split import split_coco_image_ids, write_split_coco_files, write_splits
+from owli_train.data.yolo_adapter import import_yolo_to_coco
 from owli_train.eval.detect import (
     EvalConfigError,
     MissingEvalDependenciesError,
@@ -42,12 +44,20 @@ from owli_train.training.keras_detector import (
     TrainingError,
     train_detector_from_config,
 )
+from owli_train.training.modelmaker_efficientdet import (
+    EfficientDetTrainingError,
+    MissingModelMakerDependenciesError,
+    train_efficientdet_from_config,
+)
 
 DEFAULT_NORMALIZED_OUT = Path("work/normalized/instances.json")
 DEFAULT_SPLITS_OUT_DIR = Path("work/splits")
+DEFAULT_MODELMAKER_CSV_OUT = Path("work/datasets/modelmaker/dataset.csv")
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 dataset_app = typer.Typer(no_args_is_help=True)
+dataset_import_app = typer.Typer(no_args_is_help=True)
+dataset_export_app = typer.Typer(no_args_is_help=True)
 train_app = typer.Typer(no_args_is_help=True)
 eval_app = typer.Typer(no_args_is_help=True)
 export_app = typer.Typer(no_args_is_help=True)
@@ -55,6 +65,8 @@ bench_app = typer.Typer(no_args_is_help=True)
 inspect_app = typer.Typer(no_args_is_help=True)
 
 app.add_typer(dataset_app, name="dataset")
+dataset_app.add_typer(dataset_import_app, name="import")
+dataset_app.add_typer(dataset_export_app, name="export")
 app.add_typer(train_app, name="train")
 app.add_typer(eval_app, name="eval")
 app.add_typer(export_app, name="export")
@@ -148,6 +160,83 @@ def dataset_split(
         print(f"[green]OK[/green] wrote {out}")
 
 
+@dataset_import_app.command("yolo")
+def dataset_import_yolo(
+    yolo_dir: Annotated[
+        Path,
+        typer.Option(
+            "--yolo-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ],
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+    data_yaml: Annotated[
+        Path | None, typer.Option("--data-yaml", exists=True, readable=True)
+    ] = None,
+):
+    out_path = (
+        out if out is not None else Path("work") / "datasets" / yolo_dir.name / "instances.json"
+    )
+    try:
+        artifacts = import_yolo_to_coco(
+            yolo_dir=yolo_dir,
+            out_path=out_path,
+            data_yaml=data_yaml,
+        )
+    except ValueError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote COCO: {artifacts.coco_path}")
+    print(f"class_names_json: {artifacts.class_names_path}")
+    print(
+        "summary: "
+        f"images={artifacts.images}, annotations={artifacts.annotations}, categories={artifacts.categories}"
+    )
+
+
+@dataset_export_app.command("modelmaker-csv")
+def dataset_export_modelmaker_csv(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    images_dir: Annotated[
+        Path,
+        typer.Option(
+            "--images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ],
+    out: Annotated[Path, typer.Option("--out")] = DEFAULT_MODELMAKER_CSV_OUT,
+    splits_json: Annotated[
+        Path | None, typer.Option("--splits-json", exists=True, readable=True)
+    ] = None,
+    class_names_out: Annotated[Path | None, typer.Option("--class-names-out")] = None,
+):
+    try:
+        artifacts = export_coco_to_modelmaker_csv(
+            coco_path=coco,
+            images_dir=images_dir,
+            out_csv=out,
+            splits_json=splits_json,
+            class_names_out=class_names_out,
+        )
+    except ValueError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote CSV: {artifacts.csv_path}")
+    print(f"class_names_json: {artifacts.class_names_path}")
+    print(
+        "summary: "
+        f"rows={artifacts.rows}, images={artifacts.images}, annotations={artifacts.annotations}"
+    )
+
+
 @train_app.command("detect")
 def train_detect(
     config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
@@ -176,6 +265,30 @@ def train_detect(
     print(f"run_dir: {artifacts.run_dir}")
     print(f"keras_model: {artifacts.keras_model_path}")
     print(f"saved_model: {artifacts.saved_model_dir}")
+
+
+@train_app.command("efficientdet")
+def train_efficientdet(
+    config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
+    variant: Annotated[str | None, typer.Option("--variant")] = None,
+    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
+    max_steps: Annotated[int | None, typer.Option("--max-steps")] = None,
+):
+    try:
+        artifacts = train_efficientdet_from_config(
+            config_path=config,
+            variant=variant,
+            run_name=run_name,
+            max_steps=max_steps,
+        )
+    except (EfficientDetTrainingError, MissingModelMakerDependenciesError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] run={artifacts.run_id}")
+    print(f"run_dir: {artifacts.run_dir}")
+    print(f"tflite: {artifacts.tflite_path}")
+    print(f"labels: {artifacts.labels_path}")
 
 
 @eval_app.command("detect")

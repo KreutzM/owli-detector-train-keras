@@ -1,0 +1,16 @@
+model:
+  variant: lite2
+
+data:
+  csv: work/datasets/smoke/modelmaker.csv
+  images_dir: tests/smoke_coco/images
+  label_map_json: work/datasets/smoke/class_names.json
+
+train:
+  epochs: 1
+  batch_size: 1
+  train_whole_model: false
+
+outputs:
+  work_dir: work
+  out_dir: outputs
