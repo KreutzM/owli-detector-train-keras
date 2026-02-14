@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from owli_train.training.keras_detector import load_train_detect_config
+from owli_train.training.keras_detector import _save_snapshots, load_train_detect_config
 
 
 def test_load_train_detect_config_parses_new_schema(tmp_path: Path):
@@ -78,3 +78,57 @@ data:
 
     with pytest.raises(ValueError, match="num_classes"):
         load_train_detect_config(cfg_path)
+
+
+def test_load_train_detect_config_sets_retinanet_default_backbone(tmp_path: Path):
+    cfg_path = tmp_path / "retinanet.yaml"
+    cfg_path.write_text(
+        """
+model:
+  arch: retinanet
+  class_names: [person]
+data:
+  coco_json: data/coco/instances.json
+  images_dir: data/coco/images
+""",
+        encoding="utf-8",
+    )
+
+    cfg = load_train_detect_config(cfg_path)
+    assert cfg.model.arch == "retinanet"
+    assert cfg.model.backbone == "resnet18_tiny"
+
+
+def test_save_snapshots_writes_model_arch_preset_backbone(tmp_path: Path):
+    cfg_path = tmp_path / "train.yaml"
+    cfg_path.write_text(
+        """
+model:
+  arch: retinanet
+  backbone: resnet18_tiny
+  class_names: [person]
+data:
+  coco_json: data/coco/instances.json
+  images_dir: data/coco/images
+""",
+        encoding="utf-8",
+    )
+    cfg = load_train_detect_config(cfg_path)
+
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    _save_snapshots(
+        config_path=cfg_path,
+        cfg=cfg,
+        run_id="run-1",
+        run_dir=run_dir,
+        class_names=["person"],
+        category_mapping={1: 0},
+    )
+
+    snapshot_path = run_dir / "label_map_snapshot.json"
+    payload = snapshot_path.read_text(encoding="utf-8")
+
+    assert '"arch": "retinanet"' in payload
+    assert '"backbone": "resnet18_tiny"' in payload
+    assert '"model": {' in payload

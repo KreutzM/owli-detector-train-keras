@@ -19,6 +19,7 @@ def test_dataset_help_lists_normalize():
 def test_train_detect_help_lists_smoke_flags():
     r = runner.invoke(app, ["train", "detect", "--help"])
     assert r.exit_code == 0
+    assert "--arch" in r.stdout
     assert "--max-steps" in r.stdout
     assert "--limit-train-images" in r.stdout
     assert "--limit-val-images" in r.stdout

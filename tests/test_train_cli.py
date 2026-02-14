@@ -52,6 +52,8 @@ def test_train_detect_cli_wires_runtime_flags(tmp_path: Path, monkeypatch):
             "detect",
             "--config",
             str(cfg),
+            "--arch",
+            "retinanet",
             "--run-name",
             "smoke",
             "--max-steps",
@@ -66,6 +68,7 @@ def test_train_detect_cli_wires_runtime_flags(tmp_path: Path, monkeypatch):
     assert result.exit_code == 0
     assert "run=run-123" in result.stdout
     assert captured["config_path"] == cfg
+    assert captured["arch"] == "retinanet"
     assert captured["run_name"] == "smoke"
     assert captured["max_steps"] == 1
     assert captured["limit_train_images"] == 3
