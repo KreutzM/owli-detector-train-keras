@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-import yaml
 from rich import print
 
 from owli_train.data.coco import (
@@ -15,6 +14,10 @@ from owli_train.data.coco import (
     write_coco,
 )
 from owli_train.data.split import split_coco_image_ids, write_split_coco_files, write_splits
+from owli_train.training.keras_detector import (
+    MissingTrainingDependenciesError,
+    train_detector_from_config,
+)
 
 DEFAULT_NORMALIZED_OUT = Path("work/normalized/instances.json")
 DEFAULT_SPLITS_OUT_DIR = Path("work/splits")
@@ -119,10 +122,29 @@ def dataset_split(
 @train_app.command("detect")
 def train_detect(
     config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
+    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
+    max_steps: Annotated[int | None, typer.Option("--max-steps")] = None,
+    limit_train_images: Annotated[int | None, typer.Option("--limit-train-images")] = None,
+    limit_val_images: Annotated[int | None, typer.Option("--limit-val-images")] = None,
+    resume: Annotated[Path | None, typer.Option("--resume", exists=True, readable=True)] = None,
 ):
-    cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
-    print("[yellow]TODO[/yellow] training is not implemented in the base project yet.")
-    print(cfg)
+    try:
+        artifacts = train_detector_from_config(
+            config_path=config,
+            run_name=run_name,
+            max_steps=max_steps,
+            limit_train_images=limit_train_images,
+            limit_val_images=limit_val_images,
+            resume=resume,
+        )
+    except MissingTrainingDependenciesError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] run={artifacts.run_id}")
+    print(f"run_dir: {artifacts.run_dir}")
+    print(f"keras_model: {artifacts.keras_model_path}")
+    print(f"saved_model: {artifacts.saved_model_dir}")
 
 
 @export_app.command("tflite")

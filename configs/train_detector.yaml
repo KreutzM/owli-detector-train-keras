@@ -1,17 +1,40 @@
 model:
-  family: keras
-  arch: yolov8   # placeholder
+  arch: yolov8
+  # Optional KerasCV detector preset, e.g. "yolo_v8_xs_coco".
+  # preset: yolo_v8_xs_coco
+  # Optional backbone preset when `preset` is not set.
+  backbone: yolo_v8_xs_backbone
   input_size: 448
   num_classes: 1
-  class_names: [person]
+  class_names:
+    - person
+  bounding_box_format: xywh
+
 data:
+  # Option A: single COCO + optional precomputed splits.json
   coco_json: data/coco/instances_train.json
   images_dir: data/coco/images
+  # splits_json: work/splits/splits.json
+
+  # Option B: explicit train/val COCO files (overrides splits when both present)
+  # train_coco_json: data/coco/instances_train.json
+  # val_coco_json: data/coco/instances_val.json
+
 train:
   seed: 1337
   batch_size: 8
   epochs: 50
   lr: 0.0003
+  # weight_decay: 0.0001
+  # steps_per_epoch: 100
+  # val_steps: 20
+  val_frac: 0.1
+  color_jitter: false
+  max_boxes: 100
+  callbacks:
+    checkpoint: true
+    tensorboard: true
+
 outputs:
   work_dir: work
   out_dir: outputs
