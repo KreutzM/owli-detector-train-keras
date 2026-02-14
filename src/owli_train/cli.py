@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Annotated
 
@@ -22,6 +25,12 @@ from owli_train.eval.detect import (
     build_eval_detect_config,
     evaluate_detect,
 )
+from owli_train.eval.efficientdet_tflite import (
+    EfficientDetTFLiteEvalConfigError,
+    MissingEfficientDetTFLiteEvalDependenciesError,
+    build_eval_efficientdet_tflite_config,
+    evaluate_efficientdet_tflite,
+)
 from owli_train.export.tflite_export import (
     MissingTFLiteDependenciesError,
     TFLiteConfigError,
@@ -38,6 +47,12 @@ from owli_train.export.tflite_export import (
 )
 from owli_train.export.tflite_export import (
     inspect_tflite as run_inspect_tflite,
+)
+from owli_train.golden.detect import (
+    GoldenDetectConfigError,
+    MissingGoldenDependenciesError,
+    build_golden_detect_config,
+    generate_golden_detect,
 )
 from owli_train.training.keras_detector import (
     MissingTrainingDependenciesError,
@@ -63,6 +78,7 @@ eval_app = typer.Typer(no_args_is_help=True)
 export_app = typer.Typer(no_args_is_help=True)
 bench_app = typer.Typer(no_args_is_help=True)
 inspect_app = typer.Typer(no_args_is_help=True)
+golden_app = typer.Typer(no_args_is_help=True)
 
 app.add_typer(dataset_app, name="dataset")
 dataset_app.add_typer(dataset_import_app, name="import")
@@ -72,6 +88,35 @@ app.add_typer(eval_app, name="eval")
 app.add_typer(export_app, name="export")
 app.add_typer(bench_app, name="bench")
 app.add_typer(inspect_app, name="inspect")
+app.add_typer(golden_app, name="golden")
+
+
+def _delegate_to_modelmaker_python(args: list[str]) -> int | None:
+    requested = os.environ.get("MODELMAKER_PYTHON_EXE")
+    if not requested:
+        return None
+    if os.environ.get("OWLI_MODELMAKER_DELEGATED") == "1":
+        return None
+
+    current_exe = str(Path(sys.executable).resolve())
+    requested_path = Path(requested)
+    if requested_path.exists():
+        resolved_requested = str(requested_path.resolve())
+        if resolved_requested == current_exe:
+            return None
+
+    env = os.environ.copy()
+    env["OWLI_MODELMAKER_DELEGATED"] = "1"
+    cmd = [requested, "-m", "owli_train", *args]
+    try:
+        result = subprocess.run(cmd, env=env, check=False)
+    except FileNotFoundError:
+        print(
+            "[red]ERROR[/red] MODELMAKER_PYTHON_EXE is set, but the executable was not found: "
+            f"{requested}"
+        )
+        return 1
+    return int(result.returncode)
 
 
 @dataset_app.command("validate")
@@ -345,6 +390,77 @@ def eval_detect_cli(
     print(f"report_md: {artifacts.markdown_report_path}")
 
 
+@eval_app.command("efficientdet-tflite")
+def eval_efficientdet_tflite_cli(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    images_dir: Annotated[
+        Path,
+        typer.Option(
+            "--images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ],
+    model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
+    limit_images: Annotated[int | None, typer.Option("--limit-images")] = None,
+    score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
+    max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
+    category_map: Annotated[
+        Path | None, typer.Option("--category-map", exists=True, readable=True)
+    ] = None,
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+):
+    delegate_args = [
+        "eval",
+        "efficientdet-tflite",
+        "--coco",
+        str(coco),
+        "--images-dir",
+        str(images_dir),
+        "--model",
+        str(model),
+        "--score-threshold",
+        str(score_threshold),
+        "--max-detections-per-image",
+        str(max_detections_per_image),
+    ]
+    if limit_images is not None:
+        delegate_args.extend(["--limit-images", str(limit_images)])
+    if category_map is not None:
+        delegate_args.extend(["--category-map", str(category_map)])
+    if out is not None:
+        delegate_args.extend(["--out", str(out)])
+
+    delegated = _delegate_to_modelmaker_python(delegate_args)
+    if delegated is not None:
+        raise typer.Exit(code=delegated)
+
+    try:
+        cfg = build_eval_efficientdet_tflite_config(
+            coco_path=coco,
+            images_dir=images_dir,
+            model_path=model,
+            limit_images=limit_images,
+            score_threshold=score_threshold,
+            max_detections_per_image=max_detections_per_image,
+            out_path=out,
+            category_map_path=category_map,
+        )
+        artifacts = evaluate_efficientdet_tflite(cfg)
+    except (
+        EfficientDetTFLiteEvalConfigError,
+        MissingEfficientDetTFLiteEvalDependenciesError,
+    ) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] model={artifacts.model_path}")
+    print(f"report_json: {artifacts.json_report_path}")
+    print(f"report_md: {artifacts.markdown_report_path}")
+
+
 @export_app.command("tflite")
 def export_tflite(
     run_dir: Annotated[
@@ -477,6 +593,49 @@ def inspect_tflite_cli(
     print("outputs:")
     for item in artifacts.outputs:
         print(f"- {item['name']} shape={item['shape']} dtype={item['dtype']}")
+
+
+@golden_app.command("detect")
+def golden_detect_cli(
+    model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
+    image: Annotated[Path, typer.Option("--image", exists=True, readable=True)],
+    out: Annotated[Path, typer.Option("--out")],
+    score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
+    max_results: Annotated[int, typer.Option("--max-results")] = 20,
+):
+    delegate_args = [
+        "golden",
+        "detect",
+        "--model",
+        str(model),
+        "--image",
+        str(image),
+        "--out",
+        str(out),
+        "--score-threshold",
+        str(score_threshold),
+        "--max-results",
+        str(max_results),
+    ]
+    delegated = _delegate_to_modelmaker_python(delegate_args)
+    if delegated is not None:
+        raise typer.Exit(code=delegated)
+
+    try:
+        cfg = build_golden_detect_config(
+            model_path=model,
+            image_path=image,
+            out_path=out,
+            score_threshold=score_threshold,
+            max_results=max_results,
+        )
+        artifacts = generate_golden_detect(cfg)
+    except (GoldenDetectConfigError, MissingGoldenDependenciesError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote {artifacts.out_path}")
+    print(f"detections: {artifacts.num_detections}")
 
 
 if __name__ == "__main__":
