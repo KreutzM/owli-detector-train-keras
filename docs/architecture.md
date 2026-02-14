@@ -2,12 +2,13 @@
 
 ## Scope
 - Dataset foundation for COCO: validate, normalize, split.
-- Keras/TFLite modules remain stubs in this milestone.
+- Baseline detector training via TensorFlow + KerasCV (YOLOv8).
 
 ## Modules
 - `src/owli_train/cli.py`: Typer command surface.
 - `src/owli_train/data/coco.py`: COCO load/validate/normalize/write helpers.
 - `src/owli_train/data/split.py`: deterministic split logic and split-file emission.
+- `src/owli_train/training/keras_detector.py`: config parsing, COCO-to-tf.data, preprocessing, KerasCV model build, run management.
 
 ## Dataset flow
 1. Load JSON from disk.
@@ -23,7 +24,9 @@
 ## Determinism
 - Split IDs are sorted before seeded shuffle.
 - Normalized category IDs are rebuilt in sorted name order (contiguous IDs starting at 1).
+- Training run seeds are applied to Python, NumPy, and TensorFlow.
 
 ## Testing constraints
 - Tests are offline, small-fixture, and GPU-free.
 - No TensorFlow/Keras imports are required for dataset tests.
+- Default test suite validates training config + CLI wiring without importing TensorFlow.

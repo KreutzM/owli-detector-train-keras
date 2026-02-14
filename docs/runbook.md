@@ -60,3 +60,31 @@ map:
 human: person
 automobile: car
 ```
+
+## Train detector (KerasCV YOLOv8 baseline)
+
+Install training dependencies first:
+
+```powershell
+pip install -r requirements\keras.txt
+```
+
+Smoke run (bounded runtime):
+
+```powershell
+python -m owli_train train detect --config configs\train_detector.yaml --max-steps 1 --limit-train-images 8 --limit-val-images 4
+```
+
+Resume from a checkpoint:
+
+```powershell
+python -m owli_train train detect --config configs\train_detector.yaml --resume work\runs\<run_id>\checkpoints\epoch-001.weights.h5
+```
+
+Run artifacts:
+- `work\runs\<run_id>\config.yaml`
+- `work\runs\<run_id>\label_map_snapshot.json`
+- `work\runs\<run_id>\logs\train.csv`
+- `work\runs\<run_id>\checkpoints\*.weights.h5`
+- `work\runs\<run_id>\artifacts\detector.keras`
+- `work\runs\<run_id>\artifacts\saved_model\`

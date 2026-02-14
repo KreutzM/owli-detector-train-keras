@@ -26,6 +26,13 @@ python -m owli_train dataset normalize --coco tests\data\coco_min.json --out wor
 python -m owli_train dataset split --coco tests\data\coco_min.json --out-dir work\splits --seed 1337
 ```
 
+## Milestone 2 training smoke
+
+```powershell
+pip install -r requirements\keras.txt
+python -m owli_train train detect --config configs\train_detector.yaml --max-steps 1 --limit-train-images 8 --limit-val-images 4
+```
+
 ## Optional with image checks
 
 ```powershell

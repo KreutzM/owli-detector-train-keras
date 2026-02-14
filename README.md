@@ -27,6 +27,13 @@ python -m owli_train dataset normalize --coco tests\data\coco_min.json --out wor
 python -m owli_train dataset split --coco tests\data\coco_min.json --out-dir work\splits --seed 1337
 ```
 
+Training baseline (requires TensorFlow + KerasCV):
+
+```powershell
+pip install -r requirements\keras.txt
+python -m owli_train train detect --config configs\train_detector.yaml --max-steps 1
+```
+
 See `docs/runbook.md` for end-to-end dataset operations.
 
 GPU note (RTX-3060 on Windows): TensorFlow GPU is generally smoothest in WSL2.
