@@ -1,25 +1,24 @@
-# Owli Detector Training Tool (Keras + COCO) - Base Project
+# Codex Start (PowerShell)
 
-Local-first Python tooling to:
-- validate and normalize COCO object-detection datasets,
-- create reproducible train/val/test splits,
-- (next milestones) train a Keras-based detector and export to TFLite for Android,
-- (optional later) add segmentation and unified evaluation reports.
-
-## Quickstart (Windows / PowerShell)
+## Setup
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements\dev.txt
+```
+
+## Sanity checks
+
+```powershell
 python -m ruff format .
 python -m ruff check .
 python -m pytest
 python -m owli_train --help
 ```
 
-## CLI examples
+## Milestone 1 smoke commands
 
 ```powershell
 python -m owli_train dataset validate --coco tests\data\coco_min.json
@@ -27,6 +26,8 @@ python -m owli_train dataset normalize --coco tests\data\coco_min.json --out wor
 python -m owli_train dataset split --coco tests\data\coco_min.json --out-dir work\splits --seed 1337
 ```
 
-See `docs/runbook.md` for end-to-end dataset operations.
+## Optional with image checks
 
-GPU note (RTX-3060 on Windows): TensorFlow GPU is generally smoothest in WSL2.
+```powershell
+python -m owli_train dataset validate --coco data\instances.json --images-dir data\images
+```
