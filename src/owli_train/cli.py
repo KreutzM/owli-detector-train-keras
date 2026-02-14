@@ -20,6 +20,19 @@ from owli_train.eval.detect import (
     build_eval_detect_config,
     evaluate_detect,
 )
+from owli_train.export.tflite_export import (
+    MissingTFLiteDependenciesError,
+    TFLiteConfigError,
+    TFLiteExportError,
+    build_bench_tflite_config,
+    build_export_tflite_config,
+)
+from owli_train.export.tflite_export import (
+    bench_tflite as run_bench_tflite,
+)
+from owli_train.export.tflite_export import (
+    export_tflite as run_export_tflite,
+)
 from owli_train.training.keras_detector import (
     MissingTrainingDependenciesError,
     TrainingError,
@@ -28,18 +41,19 @@ from owli_train.training.keras_detector import (
 
 DEFAULT_NORMALIZED_OUT = Path("work/normalized/instances.json")
 DEFAULT_SPLITS_OUT_DIR = Path("work/splits")
-DEFAULT_EXPORT_OUT = Path("outputs/model.tflite")
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 dataset_app = typer.Typer(no_args_is_help=True)
 train_app = typer.Typer(no_args_is_help=True)
 eval_app = typer.Typer(no_args_is_help=True)
 export_app = typer.Typer(no_args_is_help=True)
+bench_app = typer.Typer(no_args_is_help=True)
 
 app.add_typer(dataset_app, name="dataset")
 app.add_typer(train_app, name="train")
 app.add_typer(eval_app, name="eval")
 app.add_typer(export_app, name="export")
+app.add_typer(bench_app, name="bench")
 
 
 @dataset_app.command("validate")
@@ -212,11 +226,108 @@ def eval_detect_cli(
 
 @export_app.command("tflite")
 def export_tflite(
-    saved_model: Annotated[Path, typer.Option("--saved-model")],
-    out: Annotated[Path, typer.Option("--out")] = DEFAULT_EXPORT_OUT,
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    saved_model: Annotated[
+        Path | None,
+        typer.Option(
+            "--saved-model",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+    quant: Annotated[str, typer.Option("--quant")] = "none",
+    rep_coco: Annotated[Path | None, typer.Option("--rep-coco", exists=True, readable=True)] = None,
+    rep_images_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--rep-images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    rep_max_images: Annotated[int, typer.Option("--rep-max-images")] = 32,
 ):
-    print("[yellow]TODO[/yellow] export is not implemented in the base project yet.")
-    print({"saved_model": str(saved_model), "out": str(out)})
+    try:
+        cfg = build_export_tflite_config(
+            run_dir=run_dir,
+            saved_model_path=saved_model,
+            model_path=model,
+            out_path=out,
+            quant=quant,
+            rep_coco=rep_coco,
+            rep_images_dir=rep_images_dir,
+            rep_max_images=rep_max_images,
+        )
+        artifacts = run_export_tflite(cfg)
+    except (TFLiteConfigError, MissingTFLiteDependenciesError, TFLiteExportError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote {artifacts.tflite_path}")
+    print(f"meta_json: {artifacts.metadata_path}")
+    print(f"quant: {artifacts.quant}")
+
+
+@bench_app.command("tflite")
+def bench_tflite_cli(
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
+    images_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    limit_images: Annotated[int, typer.Option("--limit-images")] = 16,
+    warmup_runs: Annotated[int, typer.Option("--warmup-runs")] = 3,
+    runs: Annotated[int, typer.Option("--runs")] = 16,
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+):
+    try:
+        cfg = build_bench_tflite_config(
+            run_dir=run_dir,
+            model_path=model,
+            out_path=out,
+            images_dir=images_dir,
+            limit_images=limit_images,
+            warmup_runs=warmup_runs,
+            runs=runs,
+        )
+        artifacts = run_bench_tflite(cfg)
+    except (TFLiteConfigError, MissingTFLiteDependenciesError, TFLiteExportError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] model={artifacts.model_path}")
+    print(f"report_json: {artifacts.report_path}")
 
 
 if __name__ == "__main__":
