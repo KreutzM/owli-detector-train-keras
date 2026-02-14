@@ -215,6 +215,33 @@ def ensure_training_dependencies() -> tuple[Any, Any]:
     return tf, keras_cv
 
 
+def _ensure_file(path: Path, label: str) -> None:
+    if not path.is_file():
+        raise TrainingError(
+            f"{label} was not found: {path}. Check your config paths before training."
+        )
+
+
+def _ensure_dir(path: Path, label: str) -> None:
+    if not path.is_dir():
+        raise TrainingError(
+            f"{label} was not found: {path}. Check your config paths before training."
+        )
+
+
+def _validate_dataset_paths(cfg: TrainDetectConfig) -> None:
+    _ensure_dir(cfg.data.images_dir, "data.images_dir")
+
+    if cfg.data.coco_json is not None:
+        _ensure_file(cfg.data.coco_json, "data.coco_json")
+    if cfg.data.train_coco_json is not None:
+        _ensure_file(cfg.data.train_coco_json, "data.train_coco_json")
+    if cfg.data.val_coco_json is not None:
+        _ensure_file(cfg.data.val_coco_json, "data.val_coco_json")
+    if cfg.data.splits_json is not None:
+        _ensure_file(cfg.data.splits_json, "data.splits_json")
+
+
 def _load_splits(path: Path) -> dict[str, list[int]]:
     raw = json.loads(path.read_text(encoding="utf-8"))
     obj = _as_mapping(raw, "splits_json")
@@ -580,6 +607,7 @@ def train_detector_from_config(
 ) -> TrainingArtifacts:
     cfg_path = Path(config_path)
     cfg = load_train_detect_config(cfg_path)
+    _validate_dataset_paths(cfg)
     tf, keras_cv = ensure_training_dependencies()
 
     run_id, run_dir, logs_dir, checkpoint_dir = _prepare_run_dirs(cfg, run_name)

@@ -22,6 +22,7 @@ from owli_train.eval.detect import (
 )
 from owli_train.training.keras_detector import (
     MissingTrainingDependenciesError,
+    TrainingError,
     train_detector_from_config,
 )
 
@@ -145,7 +146,7 @@ def train_detect(
             limit_val_images=limit_val_images,
             resume=resume,
         )
-    except MissingTrainingDependenciesError as exc:
+    except (MissingTrainingDependenciesError, TrainingError) as exc:
         print(f"[red]ERROR[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
