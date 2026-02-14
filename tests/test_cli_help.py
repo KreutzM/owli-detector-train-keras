@@ -31,3 +31,22 @@ def test_eval_detect_help_lists_eval_flags():
     assert "--model" in r.stdout
     assert "--limit-images" in r.stdout
     assert "--score-threshold" in r.stdout
+
+
+def test_export_tflite_help_lists_quant_and_rep_flags():
+    r = runner.invoke(app, ["export", "tflite", "--help"])
+    assert r.exit_code == 0
+    assert "--run-dir" in r.stdout
+    assert "--saved-model" in r.stdout
+    assert "--model" in r.stdout
+    assert "--quant" in r.stdout
+    assert "--rep-coco" in r.stdout
+
+
+def test_bench_tflite_help_lists_bench_flags():
+    r = runner.invoke(app, ["bench", "tflite", "--help"])
+    assert r.exit_code == 0
+    assert "--run-dir" in r.stdout
+    assert "--model" in r.stdout
+    assert "--limit-images" in r.stdout
+    assert "--warmup-runs" in r.stdout
