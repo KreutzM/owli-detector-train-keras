@@ -27,7 +27,7 @@ class MissingTrainingDependenciesError(TrainingError):
 class ModelConfig:
     arch: str = "yolov8"
     preset: str | None = None
-    backbone: str | None = "yolo_v8_xs_backbone"
+    backbone: str | None = None
     input_size: int = 640
     num_classes: int | None = None
     class_names: list[str] = field(default_factory=list)
@@ -118,6 +118,10 @@ def load_train_detect_config(path: str | Path) -> TrainDetectConfig:
     raw = _load_yaml(cfg_path)
 
     model_raw = _as_mapping(raw.get("model", {}), "model")
+    model_arch = str(model_raw.get("arch", "yolov8"))
+    default_backbone = "yolo_v8_xs_backbone"
+    if model_arch.lower() == "retinanet":
+        default_backbone = "resnet18_tiny"
     class_names = [str(v) for v in model_raw.get("class_names", [])]
     parsed_num_classes = model_raw.get("num_classes")
     num_classes = int(parsed_num_classes) if parsed_num_classes is not None else None
@@ -128,9 +132,9 @@ def load_train_detect_config(path: str | Path) -> TrainDetectConfig:
         raise ValueError("model.num_classes must match len(model.class_names).")
 
     model = ModelConfig(
-        arch=str(model_raw.get("arch", "yolov8")),
+        arch=model_arch,
         preset=model_raw.get("preset") or model_raw.get("backbone_preset"),
-        backbone=model_raw.get("backbone") or "yolo_v8_xs_backbone",
+        backbone=model_raw.get("backbone") or default_backbone,
         input_size=int(model_raw.get("input_size", 640)),
         num_classes=num_classes,
         class_names=class_names,
@@ -467,29 +471,76 @@ def _build_tf_dataset(
 
 def _build_model(tf: Any, keras_cv: Any, cfg: TrainDetectConfig) -> Any:
     arch = cfg.model.arch.lower()
-    if arch != "yolov8":
-        raise TrainingError(f"Unsupported model.arch: {cfg.model.arch}")
 
     num_classes = cfg.model.num_classes or len(cfg.model.class_names)
     if num_classes <= 0:
         raise TrainingError("num_classes must be positive.")
 
-    if cfg.model.preset:
-        model = keras_cv.models.YOLOV8Detector.from_preset(
-            cfg.model.preset,
-            bounding_box_format=cfg.model.bounding_box_format,
-            num_classes=num_classes,
-        )
+    if arch == "yolov8":
+        if cfg.model.preset:
+            model = keras_cv.models.YOLOV8Detector.from_preset(
+                cfg.model.preset,
+                bounding_box_format=cfg.model.bounding_box_format,
+                num_classes=num_classes,
+            )
+        else:
+            backbone = keras_cv.models.YOLOV8Backbone.from_preset(
+                cfg.model.backbone or "yolo_v8_xs_backbone",
+                load_weights=False,
+            )
+            model = keras_cv.models.YOLOV8Detector(
+                num_classes=num_classes,
+                bounding_box_format=cfg.model.bounding_box_format,
+                backbone=backbone,
+            )
+        classification_loss = "binary_crossentropy"
+        box_loss = "ciou"
+    elif arch == "retinanet":
+        if cfg.model.preset:
+            model = keras_cv.models.RetinaNet.from_preset(
+                cfg.model.preset,
+                bounding_box_format=cfg.model.bounding_box_format,
+                num_classes=num_classes,
+            )
+        else:
+            backbone_name = (cfg.model.backbone or "resnet18_tiny").lower()
+            if backbone_name == "resnet18_tiny":
+                backbone = keras_cv.models.ResNetBackbone(
+                    stackwise_filters=[32, 64, 128, 256],
+                    stackwise_blocks=[2, 2, 2, 2],
+                    stackwise_strides=[1, 2, 2, 2],
+                    include_rescaling=False,
+                    input_shape=(None, None, 3),
+                )
+            elif backbone_name == "resnet18":
+                backbone = keras_cv.models.ResNetBackbone(
+                    stackwise_filters=[64, 128, 256, 512],
+                    stackwise_blocks=[2, 2, 2, 2],
+                    stackwise_strides=[1, 2, 2, 2],
+                    include_rescaling=False,
+                    input_shape=(None, None, 3),
+                )
+            else:
+                try:
+                    backbone = keras_cv.models.ResNetBackbone.from_preset(
+                        cfg.model.backbone,
+                        load_weights=False,
+                    )
+                except Exception as exc:
+                    raise TrainingError(
+                        "Unsupported RetinaNet backbone. Use one of: "
+                        "'resnet18_tiny', 'resnet18', or a valid ResNetBackbone preset."
+                    ) from exc
+
+            model = keras_cv.models.RetinaNet(
+                backbone=backbone,
+                num_classes=num_classes,
+                bounding_box_format=cfg.model.bounding_box_format,
+            )
+        classification_loss = "focal"
+        box_loss = "smoothl1"
     else:
-        backbone = keras_cv.models.YOLOV8Backbone.from_preset(
-            cfg.model.backbone or "yolo_v8_xs_backbone",
-            load_weights=False,
-        )
-        model = keras_cv.models.YOLOV8Detector(
-            num_classes=num_classes,
-            bounding_box_format=cfg.model.bounding_box_format,
-            backbone=backbone,
-        )
+        raise TrainingError(f"Unsupported model.arch: {cfg.model.arch}")
 
     if cfg.train.weight_decay is not None:
         optimizer = tf.keras.optimizers.AdamW(
@@ -500,8 +551,8 @@ def _build_model(tf: Any, keras_cv: Any, cfg: TrainDetectConfig) -> Any:
         optimizer = tf.keras.optimizers.Adam(learning_rate=cfg.train.lr)
 
     model.compile(
-        classification_loss="binary_crossentropy",
-        box_loss="ciou",
+        classification_loss=classification_loss,
+        box_loss=box_loss,
         optimizer=optimizer,
     )
     return model
@@ -587,6 +638,18 @@ def _save_snapshots(
 
     snapshot = {
         "run_id": run_id,
+        "model": {
+            "arch": cfg.model.arch,
+            "preset": cfg.model.preset,
+            "backbone": cfg.model.backbone,
+            "input_size": cfg.model.input_size,
+            "num_classes": len(class_names),
+            "bounding_box_format": cfg.model.bounding_box_format,
+        },
+        "arch": cfg.model.arch,
+        "preset": cfg.model.preset,
+        "backbone": cfg.model.backbone,
+        "input_size": cfg.model.input_size,
         "class_names": class_names,
         "category_id_to_class_index": {str(k): int(v) for k, v in sorted(category_mapping.items())},
         "bounding_box_format": cfg.model.bounding_box_format,
@@ -600,6 +663,7 @@ def _save_snapshots(
 def train_detector_from_config(
     config_path: str | Path,
     run_name: str | None = None,
+    arch: str | None = None,
     max_steps: int | None = None,
     limit_train_images: int | None = None,
     limit_val_images: int | None = None,
@@ -607,6 +671,14 @@ def train_detector_from_config(
 ) -> TrainingArtifacts:
     cfg_path = Path(config_path)
     cfg = load_train_detect_config(cfg_path)
+    if arch is not None and arch.strip():
+        cfg.model.arch = arch.strip()
+        if cfg.model.arch.lower() == "retinanet" and (
+            cfg.model.backbone is None or cfg.model.backbone == "yolo_v8_xs_backbone"
+        ):
+            cfg.model.backbone = "resnet18_tiny"
+        if cfg.model.arch.lower() == "yolov8" and cfg.model.backbone is None:
+            cfg.model.backbone = "yolo_v8_xs_backbone"
     _validate_dataset_paths(cfg)
     tf, keras_cv = ensure_training_dependencies()
 

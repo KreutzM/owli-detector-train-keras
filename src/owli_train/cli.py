@@ -152,6 +152,7 @@ def dataset_split(
 def train_detect(
     config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
     run_name: Annotated[str | None, typer.Option("--run-name")] = None,
+    arch: Annotated[str | None, typer.Option("--arch")] = None,
     max_steps: Annotated[int | None, typer.Option("--max-steps")] = None,
     limit_train_images: Annotated[int | None, typer.Option("--limit-train-images")] = None,
     limit_val_images: Annotated[int | None, typer.Option("--limit-val-images")] = None,
@@ -161,6 +162,7 @@ def train_detect(
         artifacts = train_detector_from_config(
             config_path=config,
             run_name=run_name,
+            arch=arch,
             max_steps=max_steps,
             limit_train_images=limit_train_images,
             limit_val_images=limit_val_images,

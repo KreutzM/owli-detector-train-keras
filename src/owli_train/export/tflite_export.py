@@ -200,6 +200,13 @@ def _read_run_snapshot(run_dir: Path) -> dict[str, Any]:
         payload = json.loads(label_snapshot.read_text(encoding="utf-8"))
         if isinstance(payload, dict):
             snapshot.update(payload)
+            model_info = payload.get("model") or {}
+            if isinstance(model_info, dict):
+                snapshot.setdefault("arch", model_info.get("arch"))
+                snapshot.setdefault("preset", model_info.get("preset"))
+                snapshot.setdefault("backbone", model_info.get("backbone"))
+                snapshot.setdefault("input_size", model_info.get("input_size"))
+                snapshot.setdefault("bounding_box_format", model_info.get("bounding_box_format"))
 
     config_path = run_dir / "config.yaml"
     if config_path.is_file():
@@ -207,6 +214,9 @@ def _read_run_snapshot(run_dir: Path) -> dict[str, Any]:
         if isinstance(payload, dict):
             model_cfg = payload.get("model") or {}
             if isinstance(model_cfg, dict):
+                snapshot.setdefault("arch", model_cfg.get("arch"))
+                snapshot.setdefault("preset", model_cfg.get("preset"))
+                snapshot.setdefault("backbone", model_cfg.get("backbone"))
                 snapshot.setdefault("class_names", model_cfg.get("class_names") or [])
                 snapshot.setdefault("bounding_box_format", model_cfg.get("bounding_box_format"))
                 snapshot.setdefault("input_size", model_cfg.get("input_size"))
@@ -454,6 +464,11 @@ def export_tflite(cfg: ExportTFLiteConfig) -> ExportTFLiteArtifacts:
         "quant": cfg.quant,
         "input_size": input_size,
         "bbox_format": snapshot.get("bounding_box_format") or "xywh",
+        "model": {
+            "arch": snapshot.get("arch"),
+            "preset": snapshot.get("preset"),
+            "backbone": snapshot.get("backbone"),
+        },
         "class_names": [str(v) for v in class_names],
         "settings": {
             "rep_coco": str(cfg.rep_coco) if cfg.rep_coco is not None else None,

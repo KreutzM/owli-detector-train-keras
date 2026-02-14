@@ -1,9 +1,11 @@
 model:
   arch: yolov8
+  # arch options: yolov8 | retinanet
   # Optional KerasCV detector preset, e.g. "yolo_v8_xs_coco".
   # preset: yolo_v8_xs_coco
   # Optional backbone preset when `preset` is not set.
   backbone: yolo_v8_xs_backbone
+  # For retinanet, builtins-first smoke baseline uses: resnet18_tiny
   input_size: 448
   num_classes: 1
   class_names:
