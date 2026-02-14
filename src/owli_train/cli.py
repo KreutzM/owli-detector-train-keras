@@ -14,6 +14,12 @@ from owli_train.data.coco import (
     write_coco,
 )
 from owli_train.data.split import split_coco_image_ids, write_split_coco_files, write_splits
+from owli_train.eval.detect import (
+    EvalConfigError,
+    MissingEvalDependenciesError,
+    build_eval_detect_config,
+    evaluate_detect,
+)
 from owli_train.training.keras_detector import (
     MissingTrainingDependenciesError,
     train_detector_from_config,
@@ -26,10 +32,12 @@ DEFAULT_EXPORT_OUT = Path("outputs/model.tflite")
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 dataset_app = typer.Typer(no_args_is_help=True)
 train_app = typer.Typer(no_args_is_help=True)
+eval_app = typer.Typer(no_args_is_help=True)
 export_app = typer.Typer(no_args_is_help=True)
 
 app.add_typer(dataset_app, name="dataset")
 app.add_typer(train_app, name="train")
+app.add_typer(eval_app, name="eval")
 app.add_typer(export_app, name="export")
 
 
@@ -145,6 +153,60 @@ def train_detect(
     print(f"run_dir: {artifacts.run_dir}")
     print(f"keras_model: {artifacts.keras_model_path}")
     print(f"saved_model: {artifacts.saved_model_dir}")
+
+
+@eval_app.command("detect")
+def eval_detect_cli(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    images_dir: Annotated[
+        Path,
+        typer.Option(
+            "--images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ],
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
+    limit_images: Annotated[int | None, typer.Option("--limit-images")] = None,
+    score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.25,
+    max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
+    category_map: Annotated[
+        Path | None, typer.Option("--category-map", exists=True, readable=True)
+    ] = None,
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+):
+    try:
+        cfg = build_eval_detect_config(
+            coco_path=coco,
+            images_dir=images_dir,
+            run_dir=run_dir,
+            model_path=model,
+            limit_images=limit_images,
+            score_threshold=score_threshold,
+            max_detections_per_image=max_detections_per_image,
+            out_path=out,
+            category_map_path=category_map,
+        )
+        artifacts = evaluate_detect(cfg)
+    except (EvalConfigError, MissingEvalDependenciesError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] model={artifacts.model_path}")
+    print(f"report_json: {artifacts.json_report_path}")
+    print(f"report_md: {artifacts.markdown_report_path}")
 
 
 @export_app.command("tflite")
