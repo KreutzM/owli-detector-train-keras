@@ -14,6 +14,23 @@ def test_dataset_help_lists_normalize():
     r = runner.invoke(app, ["dataset", "--help"])
     assert r.exit_code == 0
     assert "normalize" in r.stdout
+    assert "import" in r.stdout
+    assert "export" in r.stdout
+
+
+def test_dataset_import_yolo_help_lists_flags():
+    r = runner.invoke(app, ["dataset", "import", "yolo", "--help"])
+    assert r.exit_code == 0
+    assert "--yolo-dir" in r.stdout
+    assert "--data-yaml" in r.stdout
+
+
+def test_dataset_export_modelmaker_csv_help_lists_flags():
+    r = runner.invoke(app, ["dataset", "export", "modelmaker-csv", "--help"])
+    assert r.exit_code == 0
+    assert "--coco" in r.stdout
+    assert "--images-dir" in r.stdout
+    assert "--out" in r.stdout
 
 
 def test_train_detect_help_lists_smoke_flags():
@@ -23,6 +40,14 @@ def test_train_detect_help_lists_smoke_flags():
     assert "--max-steps" in r.stdout
     assert "--limit-train-images" in r.stdout
     assert "--limit-val-images" in r.stdout
+
+
+def test_train_efficientdet_help_lists_flags():
+    r = runner.invoke(app, ["train", "efficientdet", "--help"])
+    assert r.exit_code == 0
+    assert "--config" in r.stdout
+    assert "--variant" in r.stdout
+    assert "--max-steps" in r.stdout
 
 
 def test_eval_detect_help_lists_eval_flags():
