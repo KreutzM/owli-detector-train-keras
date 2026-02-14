@@ -21,6 +21,19 @@ python -m pytest
 python -m owli_train --help
 ```
 
+## Quickstart (WSL2 / Ubuntu)
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements/dev.txt
+python -m ruff format .
+python -m ruff check .
+python -m pytest
+python -m owli_train --help
+```
+
 ## CLI examples
 
 ```powershell
@@ -36,6 +49,16 @@ pip install -r requirements\keras.txt
 python -m owli_train train detect --config configs\train_detector.yaml --max-steps 1
 ```
 
+EfficientDet Model Maker backend:
+
+```powershell
+pip install -r requirements\modelmaker.txt
+python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco128.yaml --max-steps 1
+```
+
+Use a dedicated venv for Model Maker dependencies.
+
 See `docs/runbook.md` for end-to-end dataset operations.
+See `docs/wsl-setup.md` for WSL-specific setup and performance notes.
 
 GPU note (RTX-3060 on Windows): TensorFlow GPU is generally smoothest in WSL2.

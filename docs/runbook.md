@@ -1,4 +1,15 @@
-# Dataset Runbook (PowerShell)
+# Dataset Runbook (PowerShell + WSL)
+
+## WSL quick setup
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements/dev.txt
+```
+
+WSL-specific setup notes: `docs/wsl-setup.md`
 
 ## Validate COCO
 
@@ -66,8 +77,15 @@ automobile: car
 Download COCO128 (YOLO format):
 
 ```powershell
-Invoke-WebRequest -Uri "https://github.com/ultralytics/yolov5/releases/download/v1.0/coco128.zip" -OutFile "data\coco128.zip"
+Invoke-WebRequest -Uri "https://github.com/ultralytics/assets/releases/download/v0.0.0/coco128.zip" -OutFile "data\coco128.zip"
 Expand-Archive -Path "data\coco128.zip" -DestinationPath "data" -Force
+```
+
+WSL equivalent:
+
+```bash
+curl -L "https://github.com/ultralytics/assets/releases/download/v0.0.0/coco128.zip" -o data/coco128.zip
+unzip -oq data/coco128.zip -d data
 ```
 
 Convert YOLO labels to COCO JSON:
@@ -146,6 +164,14 @@ Install Model Maker dependencies:
 
 ```powershell
 pip install -r requirements\modelmaker.txt
+```
+
+Note: this backend is best run in a dedicated venv, separate from the KerasCV detector env.
+
+WSL equivalent:
+
+```bash
+pip install -r requirements/modelmaker.txt
 ```
 
 Train EfficientDet-Lite2 with config:
@@ -280,6 +306,12 @@ Run full COCO128 smoke flow (download -> convert -> split -> CSV -> train -> ins
 .\scripts\e2e_coco128_smoke.ps1
 ```
 
+WSL equivalent:
+
+```bash
+bash scripts/e2e_coco128_smoke.sh
+```
+
 Script behavior:
 - Download URL: `https://github.com/ultralytics/assets/releases/download/v0.0.0/coco128.zip`
 - Uses CLI commands:
@@ -298,4 +330,9 @@ Cleanup examples:
 ```powershell
 Remove-Item -Path data\coco128, data\coco128_extract, work\datasets\coco128 -Recurse -Force
 Remove-Item -Path work\runs\<run_id> -Recurse -Force
+```
+
+```bash
+rm -rf data/coco128 data/coco128_extract work/datasets/coco128
+rm -rf work/runs/<run_id>
 ```
