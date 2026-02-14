@@ -1,5 +1,7 @@
 from pathlib import Path
+
 from typer.testing import CliRunner
+
 from owli_train.cli import app
 
 runner = CliRunner()
