@@ -37,6 +37,7 @@ class ExportTFLiteConfig:
     rep_coco: Path | None
     rep_images_dir: Path | None
     rep_max_images: int
+    require_builtins_only: bool
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,7 @@ class ExportTFLiteArtifacts:
     metadata_path: Path
     quant: str
     source_type: str
+    builtin_ops_only: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -63,6 +65,20 @@ class BenchTFLiteConfig:
 class BenchTFLiteArtifacts:
     model_path: Path
     report_path: Path
+
+
+@dataclass(frozen=True)
+class InspectTFLiteConfig:
+    model_path: Path
+
+
+@dataclass(frozen=True)
+class InspectTFLiteArtifacts:
+    model_path: Path
+    builtin_ops_only: bool
+    operator_names: list[str]
+    inputs: list[dict[str, Any]]
+    outputs: list[dict[str, Any]]
 
 
 def ensure_tflite_dependencies() -> Any:
@@ -100,6 +116,7 @@ def build_export_tflite_config(
     rep_coco: Path | None,
     rep_images_dir: Path | None,
     rep_max_images: int,
+    require_builtins_only: bool,
 ) -> ExportTFLiteConfig:
     _resolve_exactly_one_source(run_dir=run_dir, saved_model=saved_model_path, model=model_path)
 
@@ -124,7 +141,15 @@ def build_export_tflite_config(
         rep_coco=Path(rep_coco) if rep_coco is not None else None,
         rep_images_dir=Path(rep_images_dir) if rep_images_dir is not None else None,
         rep_max_images=rep_max_images,
+        require_builtins_only=require_builtins_only,
     )
+
+
+def build_inspect_tflite_config(*, model_path: Path) -> InspectTFLiteConfig:
+    resolved = Path(model_path)
+    if resolved.suffix.lower() != ".tflite":
+        raise TFLiteConfigError("--model must point to a .tflite file.")
+    return InspectTFLiteConfig(model_path=resolved)
 
 
 def build_bench_tflite_config(
@@ -404,6 +429,16 @@ def export_tflite(cfg: ExportTFLiteConfig) -> ExportTFLiteArtifacts:
                 "TFLite conversion failed. Try --model <detector.keras> or --quant none."
             ) from exc
 
+    builtin_ops_only, operator_names, _inputs, _outputs = _inspect_tflite_model(
+        tf=tf, model_content=tflite_bytes
+    )
+    if cfg.require_builtins_only and not builtin_ops_only:
+        raise TFLiteExportError(
+            "Export produced a model requiring SELECT_TF_OPS (Flex), but "
+            "--require-builtins-only was set. Try --quant none/fp16, export from "
+            "--model <detector.keras>, or use a different model architecture."
+        )
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_bytes(tflite_bytes)
 
@@ -424,6 +459,12 @@ def export_tflite(cfg: ExportTFLiteConfig) -> ExportTFLiteArtifacts:
             "rep_coco": str(cfg.rep_coco) if cfg.rep_coco is not None else None,
             "rep_images_dir": str(cfg.rep_images_dir) if cfg.rep_images_dir is not None else None,
             "rep_max_images": cfg.rep_max_images,
+            "require_builtins_only": cfg.require_builtins_only,
+        },
+        "android_compat": {
+            "builtin_ops_only": builtin_ops_only,
+            "requires_select_tf_ops": not builtin_ops_only,
+            "operator_names": operator_names,
         },
     }
     meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
@@ -434,6 +475,7 @@ def export_tflite(cfg: ExportTFLiteConfig) -> ExportTFLiteArtifacts:
         metadata_path=meta_path,
         quant=cfg.quant,
         source_type=source_type,
+        builtin_ops_only=builtin_ops_only,
     )
 
 
@@ -479,6 +521,85 @@ def _dtype_np_from_tf(dtype: Any) -> Any:
     if hasattr(dtype, "as_numpy_dtype"):
         return dtype.as_numpy_dtype
     return np.float32
+
+
+def _summarize_tensor_details(details: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    summary: list[dict[str, Any]] = []
+    for item in details:
+        shape_values = item.get("shape") or []
+        shape = [int(v) for v in shape_values]
+        summary.append(
+            {
+                "name": str(item.get("name")),
+                "shape": shape,
+                "dtype": str(item.get("dtype")),
+            }
+        )
+    return summary
+
+
+def _extract_operator_names(interpreter: Any) -> list[str]:
+    getter = getattr(interpreter, "_get_ops_details", None)
+    if getter is None:
+        return []
+
+    try:
+        op_details = getter()
+    except Exception:
+        return []
+
+    names: list[str] = []
+    seen: set[str] = set()
+    for item in op_details:
+        op_name = item.get("op_name") or item.get("name")
+        if not op_name:
+            continue
+        name = str(op_name)
+        if name in seen:
+            continue
+        seen.add(name)
+        names.append(name)
+    return names
+
+
+def _is_builtin_ops_only(operator_names: list[str]) -> bool:
+    return not any(name.startswith("Flex") for name in operator_names)
+
+
+def _inspect_tflite_interpreter(
+    interpreter: Any,
+) -> tuple[bool, list[str], list[dict[str, Any]], list[dict[str, Any]]]:
+    operator_names = _extract_operator_names(interpreter)
+    builtin_ops_only = _is_builtin_ops_only(operator_names)
+
+    try:
+        input_details = _summarize_tensor_details(interpreter.get_input_details())
+    except Exception:
+        input_details = []
+
+    try:
+        output_details = _summarize_tensor_details(interpreter.get_output_details())
+    except Exception:
+        output_details = []
+
+    return builtin_ops_only, operator_names, input_details, output_details
+
+
+def _inspect_tflite_model(
+    *,
+    tf: Any,
+    model_path: Path | None = None,
+    model_content: bytes | None = None,
+) -> tuple[bool, list[str], list[dict[str, Any]], list[dict[str, Any]]]:
+    if model_path is None and model_content is None:
+        raise TFLiteConfigError("Internal error: expected model_path or model_content.")
+
+    if model_path is not None:
+        interpreter = tf.lite.Interpreter(model_path=str(model_path))
+    else:
+        interpreter = tf.lite.Interpreter(model_content=model_content)
+
+    return _inspect_tflite_interpreter(interpreter)
 
 
 def _build_bench_inputs(
@@ -624,6 +745,25 @@ def bench_tflite(cfg: BenchTFLiteConfig) -> BenchTFLiteArtifacts:
     return BenchTFLiteArtifacts(model_path=model_path, report_path=out_path)
 
 
+def inspect_tflite(cfg: InspectTFLiteConfig) -> InspectTFLiteArtifacts:
+    tf = ensure_tflite_dependencies()
+
+    _ensure_file(cfg.model_path, "--model")
+    if cfg.model_path.suffix.lower() != ".tflite":
+        raise TFLiteConfigError("--model must point to a .tflite file.")
+
+    builtin_ops_only, operator_names, inputs, outputs = _inspect_tflite_model(
+        tf=tf, model_path=cfg.model_path
+    )
+    return InspectTFLiteArtifacts(
+        model_path=cfg.model_path,
+        builtin_ops_only=builtin_ops_only,
+        operator_names=operator_names,
+        inputs=inputs,
+        outputs=outputs,
+    )
+
+
 def export_saved_model_to_tflite(saved_model_dir: str | Path, out_path: str | Path) -> None:
     """Backward-compatible wrapper for direct SavedModel export (no quantization)."""
 
@@ -636,5 +776,6 @@ def export_saved_model_to_tflite(saved_model_dir: str | Path, out_path: str | Pa
         rep_coco=None,
         rep_images_dir=None,
         rep_max_images=32,
+        require_builtins_only=False,
     )
     _ = export_tflite(cfg)

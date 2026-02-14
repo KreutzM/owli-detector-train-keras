@@ -26,12 +26,16 @@ from owli_train.export.tflite_export import (
     TFLiteExportError,
     build_bench_tflite_config,
     build_export_tflite_config,
+    build_inspect_tflite_config,
 )
 from owli_train.export.tflite_export import (
     bench_tflite as run_bench_tflite,
 )
 from owli_train.export.tflite_export import (
     export_tflite as run_export_tflite,
+)
+from owli_train.export.tflite_export import (
+    inspect_tflite as run_inspect_tflite,
 )
 from owli_train.training.keras_detector import (
     MissingTrainingDependenciesError,
@@ -48,12 +52,14 @@ train_app = typer.Typer(no_args_is_help=True)
 eval_app = typer.Typer(no_args_is_help=True)
 export_app = typer.Typer(no_args_is_help=True)
 bench_app = typer.Typer(no_args_is_help=True)
+inspect_app = typer.Typer(no_args_is_help=True)
 
 app.add_typer(dataset_app, name="dataset")
 app.add_typer(train_app, name="train")
 app.add_typer(eval_app, name="eval")
 app.add_typer(export_app, name="export")
 app.add_typer(bench_app, name="bench")
+app.add_typer(inspect_app, name="inspect")
 
 
 @dataset_app.command("validate")
@@ -261,6 +267,7 @@ def export_tflite(
         ),
     ] = None,
     rep_max_images: Annotated[int, typer.Option("--rep-max-images")] = 32,
+    require_builtins_only: Annotated[bool, typer.Option("--require-builtins-only")] = False,
 ):
     try:
         cfg = build_export_tflite_config(
@@ -272,6 +279,7 @@ def export_tflite(
             rep_coco=rep_coco,
             rep_images_dir=rep_images_dir,
             rep_max_images=rep_max_images,
+            require_builtins_only=require_builtins_only,
         )
         artifacts = run_export_tflite(cfg)
     except (TFLiteConfigError, MissingTFLiteDependenciesError, TFLiteExportError) as exc:
@@ -281,6 +289,8 @@ def export_tflite(
     print(f"[green]OK[/green] wrote {artifacts.tflite_path}")
     print(f"meta_json: {artifacts.metadata_path}")
     print(f"quant: {artifacts.quant}")
+    if artifacts.builtin_ops_only is not None:
+        print(f"builtin_ops_only: {str(artifacts.builtin_ops_only).lower()}")
 
 
 @bench_app.command("tflite")
@@ -328,6 +338,30 @@ def bench_tflite_cli(
 
     print(f"[green]OK[/green] model={artifacts.model_path}")
     print(f"report_json: {artifacts.report_path}")
+
+
+@inspect_app.command("tflite")
+def inspect_tflite_cli(
+    model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
+):
+    try:
+        cfg = build_inspect_tflite_config(model_path=model)
+        artifacts = run_inspect_tflite(cfg)
+    except (TFLiteConfigError, MissingTFLiteDependenciesError, TFLiteExportError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] model={artifacts.model_path}")
+    print(f"builtin_ops_only: {str(artifacts.builtin_ops_only).lower()}")
+    print(
+        f"operator_names: {', '.join(artifacts.operator_names) if artifacts.operator_names else ''}"
+    )
+    print("inputs:")
+    for item in artifacts.inputs:
+        print(f"- {item['name']} shape={item['shape']} dtype={item['dtype']}")
+    print("outputs:")
+    for item in artifacts.outputs:
+        print(f"- {item['name']} shape={item['shape']} dtype={item['dtype']}")
 
 
 if __name__ == "__main__":
