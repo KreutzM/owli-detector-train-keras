@@ -61,6 +61,39 @@ human: person
 automobile: car
 ```
 
+## Import YOLO dataset -> COCO
+
+Download COCO128 (YOLO format):
+
+```powershell
+Invoke-WebRequest -Uri "https://github.com/ultralytics/yolov5/releases/download/v1.0/coco128.zip" -OutFile "data\coco128.zip"
+Expand-Archive -Path "data\coco128.zip" -DestinationPath "data" -Force
+```
+
+Convert YOLO labels to COCO JSON:
+
+```powershell
+python -m owli_train dataset import yolo --yolo-dir data\coco128 --out work\datasets\coco128\instances.json
+```
+
+Outputs:
+- `work\datasets\coco128\instances.json`
+- `work\datasets\coco128\class_names.json`
+
+## Export COCO -> Model Maker CSV
+
+Export rows compatible with `object_detector.DataLoader.from_csv`:
+
+```powershell
+python -m owli_train dataset export modelmaker-csv --coco work\datasets\coco128\instances.json --images-dir data\coco128\images --out work\datasets\coco128\modelmaker.csv
+```
+
+Optional split mapping:
+
+```powershell
+python -m owli_train dataset export modelmaker-csv --coco work\datasets\coco128\instances.json --images-dir data\coco128\images --splits-json work\splits\splits.json --out work\datasets\coco128\modelmaker.csv
+```
+
 ## Train detector (KerasCV YOLOv8 baseline)
 
 Install training dependencies first:
@@ -106,6 +139,33 @@ Run artifacts:
 - `work\runs\<run_id>\checkpoints\*.weights.h5`
 - `work\runs\<run_id>\artifacts\detector.keras`
 - `work\runs\<run_id>\artifacts\saved_model\`
+
+## Train EfficientDet-Lite (TFLite Model Maker)
+
+Install Model Maker dependencies:
+
+```powershell
+pip install -r requirements\modelmaker.txt
+```
+
+Train EfficientDet-Lite2 with config:
+
+```powershell
+python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco128.yaml --max-steps 1
+```
+
+Override variant at runtime (`lite0..lite4`):
+
+```powershell
+python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco128.yaml --variant lite3 --max-steps 1
+```
+
+Run artifacts:
+- `work\runs\<run_id>\config.yaml`
+- `work\runs\<run_id>\mapping_files.json`
+- `work\runs\<run_id>\artifacts\model.tflite`
+- `work\runs\<run_id>\artifacts\labels.txt`
+- `work\runs\<run_id>\artifacts\class_names.json`
 
 ## Evaluate detector (COCO mAP)
 
