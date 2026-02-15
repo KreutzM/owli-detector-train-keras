@@ -60,6 +60,8 @@ Use a dedicated venv for Model Maker dependencies.
 On WSL, use Python 3.9 for the Model Maker venv.
 For the WSL smoke script with split envs:
 `MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python bash scripts/e2e_coco128_smoke.sh`
+For COCO val2017 compare bootstrap (dataset + optional baseline model):
+`bash scripts/fetch_coco2017_val.sh --coco-root data/coco2017 --with-baseline`
 
 See `docs/runbook.md` for end-to-end dataset operations.
 See `docs/wsl-setup.md` for WSL-specific setup and performance notes.

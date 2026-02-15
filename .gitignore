@@ -50,3 +50,9 @@ TMP/
 **/tmp/**
 **/TMP/**
 tags.txt
+
+# Local download leftovers (repo root)
+/*.download.log
+/*.download.pid
+/*.aria2
+/annotations_trainval2017.zip

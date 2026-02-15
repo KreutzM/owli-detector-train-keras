@@ -1,0 +1,1 @@
+"""Golden sample generation helpers."""

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 from rich import print
@@ -22,6 +25,12 @@ from owli_train.eval.detect import (
     build_eval_detect_config,
     evaluate_detect,
 )
+from owli_train.eval.efficientdet_tflite import (
+    EfficientDetTFLiteEvalConfigError,
+    MissingEfficientDetTFLiteEvalDependenciesError,
+    build_eval_efficientdet_tflite_config,
+    evaluate_efficientdet_tflite,
+)
 from owli_train.export.tflite_export import (
     MissingTFLiteDependenciesError,
     TFLiteConfigError,
@@ -38,6 +47,12 @@ from owli_train.export.tflite_export import (
 )
 from owli_train.export.tflite_export import (
     inspect_tflite as run_inspect_tflite,
+)
+from owli_train.golden.detect import (
+    GoldenDetectConfigError,
+    MissingGoldenDependenciesError,
+    build_golden_detect_config,
+    generate_golden_detect,
 )
 from owli_train.training.keras_detector import (
     MissingTrainingDependenciesError,
@@ -63,6 +78,7 @@ eval_app = typer.Typer(no_args_is_help=True)
 export_app = typer.Typer(no_args_is_help=True)
 bench_app = typer.Typer(no_args_is_help=True)
 inspect_app = typer.Typer(no_args_is_help=True)
+golden_app = typer.Typer(no_args_is_help=True)
 
 app.add_typer(dataset_app, name="dataset")
 dataset_app.add_typer(dataset_import_app, name="import")
@@ -72,13 +88,42 @@ app.add_typer(eval_app, name="eval")
 app.add_typer(export_app, name="export")
 app.add_typer(bench_app, name="bench")
 app.add_typer(inspect_app, name="inspect")
+app.add_typer(golden_app, name="golden")
+
+
+def _delegate_to_modelmaker_python(args: list[str]) -> Optional[int]:
+    requested = os.environ.get("MODELMAKER_PYTHON_EXE")
+    if not requested:
+        return None
+    if os.environ.get("OWLI_MODELMAKER_DELEGATED") == "1":
+        return None
+
+    current_exe = str(Path(sys.executable).resolve())
+    requested_path = Path(requested)
+    if requested_path.exists():
+        resolved_requested = str(requested_path.resolve())
+        if resolved_requested == current_exe:
+            return None
+
+    env = os.environ.copy()
+    env["OWLI_MODELMAKER_DELEGATED"] = "1"
+    cmd = [requested, "-m", "owli_train", *args]
+    try:
+        result = subprocess.run(cmd, env=env, check=False)
+    except FileNotFoundError:
+        print(
+            "[red]ERROR[/red] MODELMAKER_PYTHON_EXE is set, but the executable was not found: "
+            f"{requested}"
+        )
+        return 1
+    return int(result.returncode)
 
 
 @dataset_app.command("validate")
 def dataset_validate(
     coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
     images_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--images-dir",
             file_okay=False,
@@ -98,7 +143,7 @@ def dataset_normalize(
     coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
     out: Annotated[Path, typer.Option("--out")] = DEFAULT_NORMALIZED_OUT,
     images_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--images-dir",
             file_okay=False,
@@ -108,7 +153,7 @@ def dataset_normalize(
         ),
     ] = None,
     label_map: Annotated[
-        Path | None, typer.Option("--label-map", exists=True, readable=True)
+        Optional[Path], typer.Option("--label-map", exists=True, readable=True)
     ] = None,
 ):
     obj = load_coco(coco)
@@ -172,9 +217,9 @@ def dataset_import_yolo(
             dir_okay=True,
         ),
     ],
-    out: Annotated[Path | None, typer.Option("--out")] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
     data_yaml: Annotated[
-        Path | None, typer.Option("--data-yaml", exists=True, readable=True)
+        Optional[Path], typer.Option("--data-yaml", exists=True, readable=True)
     ] = None,
 ):
     out_path = (
@@ -213,9 +258,9 @@ def dataset_export_modelmaker_csv(
     ],
     out: Annotated[Path, typer.Option("--out")] = DEFAULT_MODELMAKER_CSV_OUT,
     splits_json: Annotated[
-        Path | None, typer.Option("--splits-json", exists=True, readable=True)
+        Optional[Path], typer.Option("--splits-json", exists=True, readable=True)
     ] = None,
-    class_names_out: Annotated[Path | None, typer.Option("--class-names-out")] = None,
+    class_names_out: Annotated[Optional[Path], typer.Option("--class-names-out")] = None,
 ):
     try:
         artifacts = export_coco_to_modelmaker_csv(
@@ -240,12 +285,12 @@ def dataset_export_modelmaker_csv(
 @train_app.command("detect")
 def train_detect(
     config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
-    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
-    arch: Annotated[str | None, typer.Option("--arch")] = None,
-    max_steps: Annotated[int | None, typer.Option("--max-steps")] = None,
-    limit_train_images: Annotated[int | None, typer.Option("--limit-train-images")] = None,
-    limit_val_images: Annotated[int | None, typer.Option("--limit-val-images")] = None,
-    resume: Annotated[Path | None, typer.Option("--resume", exists=True, readable=True)] = None,
+    run_name: Annotated[Optional[str], typer.Option("--run-name")] = None,
+    arch: Annotated[Optional[str], typer.Option("--arch")] = None,
+    max_steps: Annotated[Optional[int], typer.Option("--max-steps")] = None,
+    limit_train_images: Annotated[Optional[int], typer.Option("--limit-train-images")] = None,
+    limit_val_images: Annotated[Optional[int], typer.Option("--limit-val-images")] = None,
+    resume: Annotated[Optional[Path], typer.Option("--resume", exists=True, readable=True)] = None,
 ):
     try:
         artifacts = train_detector_from_config(
@@ -270,9 +315,9 @@ def train_detect(
 @train_app.command("efficientdet")
 def train_efficientdet(
     config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
-    variant: Annotated[str | None, typer.Option("--variant")] = None,
-    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
-    max_steps: Annotated[int | None, typer.Option("--max-steps")] = None,
+    variant: Annotated[Optional[str], typer.Option("--variant")] = None,
+    run_name: Annotated[Optional[str], typer.Option("--run-name")] = None,
+    max_steps: Annotated[Optional[int], typer.Option("--max-steps")] = None,
 ):
     try:
         artifacts = train_efficientdet_from_config(
@@ -305,7 +350,7 @@ def eval_detect_cli(
         ),
     ],
     run_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--run-dir",
             exists=True,
@@ -314,14 +359,14 @@ def eval_detect_cli(
             dir_okay=True,
         ),
     ] = None,
-    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
-    limit_images: Annotated[int | None, typer.Option("--limit-images")] = None,
+    model: Annotated[Optional[Path], typer.Option("--model", exists=True, readable=True)] = None,
+    limit_images: Annotated[Optional[int], typer.Option("--limit-images")] = None,
     score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.25,
     max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
     category_map: Annotated[
-        Path | None, typer.Option("--category-map", exists=True, readable=True)
+        Optional[Path], typer.Option("--category-map", exists=True, readable=True)
     ] = None,
-    out: Annotated[Path | None, typer.Option("--out")] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
 ):
     try:
         cfg = build_eval_detect_config(
@@ -345,10 +390,99 @@ def eval_detect_cli(
     print(f"report_md: {artifacts.markdown_report_path}")
 
 
+@eval_app.command("efficientdet-tflite")
+def eval_efficientdet_tflite_cli(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    images_dir: Annotated[
+        Path,
+        typer.Option(
+            "--images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ],
+    model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
+    limit_images: Annotated[Optional[int], typer.Option("--limit-images")] = None,
+    score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
+    noise_thresholds: Annotated[Optional[str], typer.Option("--noise-thresholds")] = None,
+    max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
+    num_threads: Annotated[Optional[int], typer.Option("--num-threads")] = None,
+    category_map: Annotated[
+        Optional[Path], typer.Option("--category-map", exists=True, readable=True)
+    ] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
+):
+    delegate_args = [
+        "eval",
+        "efficientdet-tflite",
+        str(coco),
+        str(images_dir),
+        str(model),
+        "--score-threshold",
+        str(score_threshold),
+        "--max-detections-per-image",
+        str(max_detections_per_image),
+    ]
+    if noise_thresholds is not None:
+        delegate_args.extend(["--noise-thresholds", noise_thresholds])
+    if num_threads is not None:
+        delegate_args.extend(["--num-threads", str(num_threads)])
+    if limit_images is not None:
+        delegate_args.extend(["--limit-images", str(limit_images)])
+    if category_map is not None:
+        delegate_args.extend(["--category-map", str(category_map)])
+    if out is not None:
+        delegate_args.extend(["--out", str(out)])
+
+    delegated = _delegate_to_modelmaker_python(delegate_args)
+    if delegated is not None:
+        raise typer.Exit(code=delegated)
+
+    parsed_noise_thresholds: Optional[list[float]] = None
+    if noise_thresholds is not None:
+        parsed_noise_thresholds = []
+        for value in noise_thresholds.split(","):
+            raw = value.strip()
+            if not raw:
+                continue
+            try:
+                parsed_noise_thresholds.append(float(raw))
+            except ValueError as exc:
+                print("[red]ERROR[/red] --noise-thresholds expects comma-separated numeric values.")
+                raise typer.Exit(code=1) from exc
+
+    try:
+        cfg = build_eval_efficientdet_tflite_config(
+            coco_path=coco,
+            images_dir=images_dir,
+            model_path=model,
+            limit_images=limit_images,
+            score_threshold=score_threshold,
+            noise_thresholds=parsed_noise_thresholds,
+            max_detections_per_image=max_detections_per_image,
+            num_threads=num_threads,
+            out_path=out,
+            category_map_path=category_map,
+        )
+        artifacts = evaluate_efficientdet_tflite(cfg)
+    except (
+        EfficientDetTFLiteEvalConfigError,
+        MissingEfficientDetTFLiteEvalDependenciesError,
+    ) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] model={artifacts.model_path}")
+    print(f"report_json: {artifacts.json_report_path}")
+    print(f"report_md: {artifacts.markdown_report_path}")
+
+
 @export_app.command("tflite")
 def export_tflite(
     run_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--run-dir",
             exists=True,
@@ -358,7 +492,7 @@ def export_tflite(
         ),
     ] = None,
     saved_model: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--saved-model",
             exists=True,
@@ -367,12 +501,14 @@ def export_tflite(
             dir_okay=True,
         ),
     ] = None,
-    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
-    out: Annotated[Path | None, typer.Option("--out")] = None,
+    model: Annotated[Optional[Path], typer.Option("--model", exists=True, readable=True)] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
     quant: Annotated[str, typer.Option("--quant")] = "none",
-    rep_coco: Annotated[Path | None, typer.Option("--rep-coco", exists=True, readable=True)] = None,
+    rep_coco: Annotated[
+        Optional[Path], typer.Option("--rep-coco", exists=True, readable=True)
+    ] = None,
     rep_images_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--rep-images-dir",
             exists=True,
@@ -411,7 +547,7 @@ def export_tflite(
 @bench_app.command("tflite")
 def bench_tflite_cli(
     run_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--run-dir",
             exists=True,
@@ -420,9 +556,9 @@ def bench_tflite_cli(
             dir_okay=True,
         ),
     ] = None,
-    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
+    model: Annotated[Optional[Path], typer.Option("--model", exists=True, readable=True)] = None,
     images_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--images-dir",
             exists=True,
@@ -434,7 +570,7 @@ def bench_tflite_cli(
     limit_images: Annotated[int, typer.Option("--limit-images")] = 16,
     warmup_runs: Annotated[int, typer.Option("--warmup-runs")] = 3,
     runs: Annotated[int, typer.Option("--runs")] = 16,
-    out: Annotated[Path | None, typer.Option("--out")] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
 ):
     try:
         cfg = build_bench_tflite_config(
@@ -477,6 +613,46 @@ def inspect_tflite_cli(
     print("outputs:")
     for item in artifacts.outputs:
         print(f"- {item['name']} shape={item['shape']} dtype={item['dtype']}")
+
+
+@golden_app.command("detect")
+def golden_detect_cli(
+    model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
+    image: Annotated[Path, typer.Option("--image", exists=True, readable=True)],
+    out: Annotated[Path, typer.Option("--out")],
+    score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
+    max_results: Annotated[int, typer.Option("--max-results")] = 20,
+):
+    delegate_args = [
+        "golden",
+        "detect",
+        str(model),
+        str(image),
+        str(out),
+        "--score-threshold",
+        str(score_threshold),
+        "--max-results",
+        str(max_results),
+    ]
+    delegated = _delegate_to_modelmaker_python(delegate_args)
+    if delegated is not None:
+        raise typer.Exit(code=delegated)
+
+    try:
+        cfg = build_golden_detect_config(
+            model_path=model,
+            image_path=image,
+            out_path=out,
+            score_threshold=score_threshold,
+            max_results=max_results,
+        )
+        artifacts = generate_golden_detect(cfg)
+    except (GoldenDetectConfigError, MissingGoldenDependenciesError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote {artifacts.out_path}")
+    print(f"detections: {artifacts.num_detections}")
 
 
 if __name__ == "__main__":
