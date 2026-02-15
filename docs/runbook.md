@@ -272,6 +272,37 @@ Default output paths:
 - `work\runs\<run_id>\reports\eval_efficientdet_tflite.json` + `.md` (when model is under `artifacts\`)
 - `work\reports\eval-efficientdet-tflite-<timestamp>.json` + `.md` (direct model path)
 
+### COCO val2017 compare (fine-tuned vs baseline)
+
+Expected COCO layout:
+- `data/coco2017/val2017/*.jpg`
+- `data/coco2017/annotations/instances_val2017.json`
+
+Run the compare wrapper (WSL/bash):
+
+```bash
+MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python \
+bash scripts/eval_coco_val2017.sh \
+  --coco-root data/coco2017 \
+  --fine-tuned-model work/runs/<run_id>/artifacts/model.tflite \
+  --baseline-model work/models/efficientdet_lite2_baseline.tflite \
+  --limit-images 5000 \
+  --max-detections 100 \
+  --noise-thresholds 0.05,0.1,0.3
+```
+
+Outputs:
+- Combined Markdown: `docs/COCO2017_Val_Eval_Report.md`
+- Combined JSON: `docs/COCO2017_Val_Eval_Report.json`
+- Raw per-model eval JSON:
+  - `work/reports/val2017_compare/fine_tuned_eval.json`
+  - `work/reports/val2017_compare/baseline_eval.json`
+
+Notes:
+- The script requires a user-supplied baseline TFLite path (`--baseline-model`).
+- mAP is computed from detections with `score >= 0.0` (all model outputs retained by postprocess + max detections cap).
+- Noise metrics are reported side-by-side at thresholds `0.05`, `0.1`, and `0.3`.
+
 ## Export detector to TFLite
 
 Default export from run artifacts (prefers `saved_model`, fallback `.keras`):
