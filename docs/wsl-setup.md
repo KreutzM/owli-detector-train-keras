@@ -58,6 +58,14 @@ bash scripts/modelmaker_gpu_docker.sh gpu-check
 bash scripts/modelmaker_gpu_docker.sh run -- train efficientdet configs/efficientdet_lite2_coco2017.yaml --max-steps 500 --subset-seed 1337 --require-gpu
 ```
 
+If your selected container Python is a mounted venv path (for example a py39 venv that symlinks into `~/.local/share/uv`), set:
+
+```bash
+export MODELMAKER_DOCKER_PYTHON_EXE=/workspace/.venv-modelmaker-py39/bin/python
+export MODELMAKER_DOCKER_EXTRA_MOUNTS="$HOME/.local/share/uv:$HOME/.local/share/uv:ro"
+bash scripts/modelmaker_gpu_docker.sh gpu-check
+```
+
 PowerShell:
 
 ```powershell
