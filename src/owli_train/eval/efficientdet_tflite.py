@@ -199,19 +199,32 @@ def _load_category_mapping(
             mapping[class_index] = category_id
         return mapping, "explicit_map"
 
+    def _is_placeholder_label(name: str) -> bool:
+        lowered = name.strip().lower()
+        if not lowered:
+            return True
+        if lowered in {"?", "???", "background", "__background__", "n/a", "na", "none", "null"}:
+            return True
+        return lowered.startswith("unused")
+
     if label_map:
         mapping: dict[int, int] = {}
         missing: list[str] = []
         for class_index, class_name in enumerate(label_map):
-            if class_name in by_name:
-                mapping[class_index] = int(by_name[class_name]["id"])
+            normalized = str(class_name).strip()
+            if normalized in by_name:
+                mapping[class_index] = int(by_name[normalized]["id"])
+            elif _is_placeholder_label(normalized):
+                continue
             else:
-                missing.append(class_name)
+                missing.append(normalized)
         if mapping:
             if missing:
+                preview = ", ".join(missing[:8])
+                suffix = "" if len(missing) <= 8 else ", ..."
                 raise EfficientDetTFLiteEvalConfigError(
                     "Could not align class names to COCO categories: "
-                    f"{', '.join(missing)}. Provide --category-map to override."
+                    f"{preview}{suffix}. Provide --category-map to override."
                 )
             return mapping, "label_name_match"
 

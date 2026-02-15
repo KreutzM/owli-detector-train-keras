@@ -82,12 +82,58 @@ def load_tflite_metadata(model_path: Path) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _coerce_class_names(raw: Any) -> list[str] | None:
+    if not isinstance(raw, list) or not raw:
+        return None
+    return [str(item).strip() for item in raw]
+
+
+def _load_labels_from_class_names_json(path: Path) -> list[str] | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    if isinstance(payload, list):
+        return _coerce_class_names(payload)
+    if isinstance(payload, dict):
+        return _coerce_class_names(payload.get("class_names"))
+    return None
+
+
+def _load_embedded_label_map(model_path: Path) -> tuple[list[str], str] | None:
+    try:
+        from tflite_support import metadata
+    except Exception:
+        return None
+
+    try:
+        displayer = metadata.MetadataDisplayer.with_model_file(str(model_path))
+        file_names = displayer.get_packed_associated_file_list()
+    except Exception:
+        return None
+
+    for file_name in file_names:
+        lower = file_name.lower()
+        if "label" not in lower:
+            continue
+        try:
+            raw = displayer.get_associated_file_buffer(file_name)
+        except Exception:
+            continue
+        labels = [line.strip() for line in raw.decode("utf-8", errors="ignore").splitlines()]
+        if any(label for label in labels):
+            return labels, file_name
+    return None
+
+
 def load_tflite_label_map(model_path: Path, metadata: dict[str, Any] | None) -> TFLiteLabelMap:
     if isinstance(metadata, dict):
-        class_names = metadata.get("class_names")
-        if isinstance(class_names, list) and class_names:
+        class_names = _coerce_class_names(metadata.get("class_names"))
+        if class_names:
             return TFLiteLabelMap(
-                class_names=[str(v) for v in class_names], source="meta.class_names"
+                class_names=class_names,
+                source="meta.class_names",
             )
 
     labels_path = model_path.parent / "labels.txt"
@@ -99,12 +145,17 @@ def load_tflite_label_map(model_path: Path, metadata: dict[str, Any] | None) -> 
 
     class_names_json = model_path.parent / "class_names.json"
     if class_names_json.is_file():
-        try:
-            payload = json.loads(class_names_json.read_text(encoding="utf-8"))
-        except Exception:
-            payload = None
-        if isinstance(payload, list) and payload:
-            return TFLiteLabelMap(class_names=[str(v) for v in payload], source="class_names.json")
+        labels = _load_labels_from_class_names_json(class_names_json)
+        if labels:
+            return TFLiteLabelMap(class_names=labels, source="class_names.json")
+
+    embedded = _load_embedded_label_map(model_path)
+    if embedded is not None:
+        labels, file_name = embedded
+        return TFLiteLabelMap(
+            class_names=labels,
+            source=f"tflite_metadata:{file_name}",
+        )
 
     return TFLiteLabelMap(class_names=[], source="class_index_fallback")
 
