@@ -278,6 +278,18 @@ Expected COCO layout:
 - `data/coco2017/val2017/*.jpg`
 - `data/coco2017/annotations/instances_val2017.json`
 
+Bootstrap dataset + baseline model (PowerShell):
+
+```powershell
+.\scripts\fetch_coco2017_val.ps1 -CocoRoot data\coco2017 -WithBaseline -BaselineOut work\models\efficientdet_lite2_baseline.tflite
+```
+
+Bootstrap dataset + baseline model (WSL/bash):
+
+```bash
+bash scripts/fetch_coco2017_val.sh --coco-root data/coco2017 --with-baseline --baseline-out work/models/efficientdet_lite2_baseline.tflite
+```
+
 Run the compare wrapper (WSL/bash):
 
 ```bash
@@ -289,6 +301,18 @@ bash scripts/eval_coco_val2017.sh \
   --limit-images 5000 \
   --max-detections 100 \
   --noise-thresholds 0.05,0.1,0.3
+```
+
+Optional auto-bootstrap when files are missing:
+
+```bash
+MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python \
+bash scripts/eval_coco_val2017.sh \
+  --coco-root data/coco2017 \
+  --fine-tuned-model work/runs/<run_id>/artifacts/model.tflite \
+  --baseline-model work/models/efficientdet_lite2_baseline.tflite \
+  --download-coco-if-missing \
+  --download-baseline-if-missing
 ```
 
 Outputs:

@@ -21,6 +21,8 @@ NOISE_THRESHOLDS="0.05,0.1,0.3"
 OUT_MD="docs/COCO2017_Val_Eval_Report.md"
 OUT_JSON=""
 CATEGORY_MAP=""
+DOWNLOAD_COCO_IF_MISSING=0
+DOWNLOAD_BASELINE_IF_MISSING=0
 
 usage() {
   cat <<'USAGE'
@@ -33,6 +35,8 @@ Usage:
     [--max-detections 100] \
     [--score-threshold 0.3] \
     [--noise-thresholds 0.05,0.1,0.3] \
+    [--download-coco-if-missing] \
+    [--download-baseline-if-missing] \
     [--category-map <path/to/map.yaml>] \
     [--out-md docs/COCO2017_Val_Eval_Report.md] \
     [--out-json docs/COCO2017_Val_Eval_Report.json]
@@ -73,6 +77,14 @@ while [[ $# -gt 0 ]]; do
       NOISE_THRESHOLDS="$2"
       shift 2
       ;;
+    --download-coco-if-missing)
+      DOWNLOAD_COCO_IF_MISSING=1
+      shift
+      ;;
+    --download-baseline-if-missing)
+      DOWNLOAD_BASELINE_IF_MISSING=1
+      shift
+      ;;
     --category-map)
       CATEGORY_MAP="$2"
       shift 2
@@ -109,6 +121,15 @@ fi
 
 COCO_JSON="${COCO_ROOT}/annotations/instances_val2017.json"
 IMAGES_DIR="${COCO_ROOT}/val2017"
+
+if [[ (! -f "$COCO_JSON" || ! -d "$IMAGES_DIR") && "$DOWNLOAD_COCO_IF_MISSING" -eq 1 ]]; then
+  echo ">> COCO val2017 data missing. Bootstrapping dataset..."
+  bash scripts/fetch_coco2017_val.sh --coco-root "$COCO_ROOT"
+fi
+if [[ ! -f "$BASELINE_MODEL" && "$DOWNLOAD_BASELINE_IF_MISSING" -eq 1 ]]; then
+  echo ">> Baseline model missing. Downloading pretrained EfficientDet-Lite2..."
+  bash scripts/fetch_coco2017_val.sh --coco-root "$COCO_ROOT" --with-baseline --baseline-out "$BASELINE_MODEL"
+fi
 
 if [[ ! -f "$COCO_JSON" ]]; then
   echo "[ERROR] Missing COCO annotations: $COCO_JSON"

@@ -25,7 +25,7 @@ tmux new-session -d -s coco2017_train \
 Notes:
 - The pipeline downloaded/extracted COCO2017 train + annotations, removed 2 invalid-width/height boxes, exported Model Maker CSV, then trained EfficientDet-Lite2 with `max_steps=5000`.
 
-Eval (Model Maker env; direct function call due Python 3.9 Typer CLI type-hint issue):
+Eval (Model Maker env; direct function call used in this historical run):
 
 ```bash
 .venv-modelmaker-py39/bin/python - <<'PY'
@@ -156,4 +156,4 @@ Snippet:
 
 ## Notes
 
-- The Python 3.9 CLI path (`python -m owli_train ...`) currently fails in Typer when parsing `| None` type hints. For Model Maker eval/golden/inspect in this run, direct module function calls were used in the same interpreter.
+- At the time of this run, the Python 3.9 CLI path had a Typer type-hint incompatibility. This has since been fixed (`efbba06`), so direct CLI invocation is now supported again.
