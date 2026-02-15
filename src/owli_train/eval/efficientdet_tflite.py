@@ -344,6 +344,23 @@ def _metrics_from_stats(stats: Any) -> dict[str, float]:
     return {name: float(stats[idx]) for idx, name in enumerate(names)}
 
 
+def _zero_metrics() -> dict[str, float]:
+    return {
+        "AP": 0.0,
+        "AP50": 0.0,
+        "AP75": 0.0,
+        "AP_small": 0.0,
+        "AP_medium": 0.0,
+        "AP_large": 0.0,
+        "AR1": 0.0,
+        "AR10": 0.0,
+        "AR100": 0.0,
+        "AR_small": 0.0,
+        "AR_medium": 0.0,
+        "AR_large": 0.0,
+    }
+
+
 def _write_markdown(path: Path, report: dict[str, Any]) -> None:
     metrics = report["metrics"]
     noise = report["noise_metric"]
@@ -432,15 +449,18 @@ def evaluate_efficientdet_tflite(
                 }
             )
 
-    coco_gt = COCO(str(cfg.coco_path))
-    coco_dt = coco_gt.loadRes(detections if detections else [])
-    coco_eval = COCOeval(coco_gt, coco_dt, "bbox")
-    coco_eval.params.imgIds = sorted(eval_image_ids)
-    coco_eval.params.maxDets = [1, 10, cfg.max_detections_per_image]
-    coco_eval.evaluate()
-    coco_eval.accumulate()
-    coco_eval.summarize()
-    metrics = _metrics_from_stats(coco_eval.stats)
+    if detections:
+        coco_gt = COCO(str(cfg.coco_path))
+        coco_dt = coco_gt.loadRes(detections)
+        coco_eval = COCOeval(coco_gt, coco_dt, "bbox")
+        coco_eval.params.imgIds = sorted(eval_image_ids)
+        coco_eval.params.maxDets = [1, 10, cfg.max_detections_per_image]
+        coco_eval.evaluate()
+        coco_eval.accumulate()
+        coco_eval.summarize()
+        metrics = _metrics_from_stats(coco_eval.stats)
+    else:
+        metrics = _zero_metrics()
 
     eval_annotations = [
         ann
