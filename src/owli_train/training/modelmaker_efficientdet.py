@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import random
 import shutil
 from dataclasses import dataclass
 from datetime import datetime
@@ -60,6 +61,19 @@ class EfficientDetArtifacts:
     labels_path: Path
     config_snapshot_path: Path
     mapping_snapshot_path: Path
+
+
+@dataclass(frozen=True)
+class LabelMapSpec:
+    class_names: list[str]
+    category_ids: list[int] | None
+
+
+@dataclass(frozen=True)
+class CanonicalizedCSV:
+    path: Path
+    present_class_names: list[str]
+    missing_class_names: list[str]
 
 
 def _as_mapping(obj: Any, label: str) -> dict[str, Any]:
@@ -189,6 +203,7 @@ def _subset_csv_for_max_steps(
     source_csv: Path,
     subset_csv: Path,
     max_train_images: int,
+    seed: int,
 ) -> Path:
     if max_train_images <= 0:
         raise EfficientDetTrainingError("--max-steps requires at least one training image.")
@@ -196,28 +211,36 @@ def _subset_csv_for_max_steps(
     with source_csv.open("r", encoding="utf-8", newline="") as handle:
         rows = list(csv.reader(handle))
 
-    selected_train_images: list[str] = []
-    selected_train_set: set[str] = set()
-    subset_rows: list[list[str]] = []
-
+    train_images: list[str] = []
+    train_seen: set[str] = set()
     for row in rows:
         if len(row) < 2:
             continue
         set_name = row[0].strip().upper()
         image_name = row[1].strip()
-        if set_name.startswith("TRAIN"):
-            if image_name in selected_train_set:
-                subset_rows.append(row)
-                continue
-            if len(selected_train_images) < max_train_images:
-                selected_train_images.append(image_name)
-                selected_train_set.add(image_name)
-                subset_rows.append(row)
+        if not set_name.startswith("TRAIN"):
+            continue
+        if image_name in train_seen:
+            continue
+        train_images.append(image_name)
+        train_seen.add(image_name)
+
+    if not train_images:
+        raise EfficientDetTrainingError("Model Maker CSV did not contain TRAIN rows.")
+
+    shuffled = list(train_images)
+    random.Random(seed).shuffle(shuffled)
+    selected_train_set = set(shuffled[:max_train_images])
+
+    subset_rows: list[list[str]] = []
+    for row in rows:
+        if len(row) < 2:
+            continue
+        set_name = row[0].strip().upper()
+        image_name = row[1].strip()
+        if set_name.startswith("TRAIN") and image_name not in selected_train_set:
             continue
         subset_rows.append(row)
-
-    if not selected_train_images:
-        raise EfficientDetTrainingError("Model Maker CSV did not contain TRAIN rows.")
 
     subset_csv.parent.mkdir(parents=True, exist_ok=True)
     with subset_csv.open("w", encoding="utf-8", newline="") as handle:
@@ -227,12 +250,126 @@ def _subset_csv_for_max_steps(
     return subset_csv
 
 
+def _load_label_map_spec(path: Path) -> LabelMapSpec:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise EfficientDetTrainingError(f"Failed to read data.label_map_json: {path}") from exc
+    if not isinstance(payload, dict):
+        raise EfficientDetTrainingError("data.label_map_json must be a JSON object.")
+
+    raw_names = payload.get("class_names")
+    if not isinstance(raw_names, list) or not raw_names:
+        raise EfficientDetTrainingError(
+            "data.label_map_json must contain a non-empty `class_names` list."
+        )
+    class_names = [str(item).strip() for item in raw_names]
+    if any(not name for name in class_names):
+        raise EfficientDetTrainingError("data.label_map_json contains empty class names.")
+    if len(set(class_names)) != len(class_names):
+        raise EfficientDetTrainingError("data.label_map_json contains duplicate class names.")
+
+    raw_category_ids = payload.get("category_ids")
+    if raw_category_ids is None:
+        return LabelMapSpec(class_names=class_names, category_ids=None)
+    if not isinstance(raw_category_ids, list):
+        raise EfficientDetTrainingError("data.label_map_json `category_ids` must be a list.")
+    category_ids = [int(item) for item in raw_category_ids]
+    if len(category_ids) != len(class_names):
+        raise EfficientDetTrainingError(
+            "data.label_map_json `category_ids` length must match `class_names` length."
+        )
+    return LabelMapSpec(class_names=class_names, category_ids=category_ids)
+
+
+def _canonicalize_csv_by_class_order(
+    *,
+    source_csv: Path,
+    out_csv: Path,
+    expected_class_names: list[str],
+) -> CanonicalizedCSV:
+    if not expected_class_names:
+        raise EfficientDetTrainingError("Expected class order must not be empty.")
+
+    with source_csv.open("r", encoding="utf-8", newline="") as handle:
+        rows = list(csv.reader(handle))
+
+    rows_by_class: dict[str, list[list[str]]] = {}
+    passthrough_rows: list[list[str]] = []
+    observed_set: set[str] = set()
+    for row in rows:
+        if len(row) < 3:
+            passthrough_rows.append(row)
+            continue
+        class_name = row[2].strip()
+        if not class_name:
+            passthrough_rows.append(row)
+            continue
+        observed_set.add(class_name)
+        rows_by_class.setdefault(class_name, []).append(row)
+
+    expected_set = set(expected_class_names)
+    unexpected = sorted(observed_set - expected_set)
+    if unexpected:
+        preview = ", ".join(unexpected[:8])
+        suffix = "" if len(unexpected) <= 8 else ", ..."
+        raise EfficientDetTrainingError(
+            f"CSV contains classes not present in data.label_map_json: {preview}{suffix}"
+        )
+
+    canonical_rows: list[list[str]] = []
+    present_class_names: list[str] = []
+    missing_class_names: list[str] = []
+    for class_name in expected_class_names:
+        class_rows = rows_by_class.get(class_name, [])
+        if class_rows:
+            present_class_names.append(class_name)
+            canonical_rows.extend(class_rows)
+        else:
+            missing_class_names.append(class_name)
+    canonical_rows.extend(passthrough_rows)
+
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    with out_csv.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerows(canonical_rows)
+
+    return CanonicalizedCSV(
+        path=out_csv,
+        present_class_names=present_class_names,
+        missing_class_names=missing_class_names,
+    )
+
+
+def _validate_resolved_label_order(*, expected: list[str], actual: list[str]) -> None:
+    if actual == expected:
+        return
+    mismatch_at = -1
+    for idx, (left, right) in enumerate(zip(expected, actual, strict=False)):
+        if left != right:
+            mismatch_at = idx
+            break
+    if mismatch_at < 0 and len(expected) != len(actual):
+        mismatch_at = min(len(expected), len(actual))
+
+    expected_preview = ", ".join(expected[:8])
+    actual_preview = ", ".join(actual[:8])
+    mismatch_msg = f"first mismatch index={mismatch_at}" if mismatch_at >= 0 else "labels differ"
+    raise EfficientDetTrainingError(
+        "Model Maker class index order mismatch after CSV canonicalization. "
+        f"{mismatch_msg}. "
+        f"expected=[{expected_preview}] actual=[{actual_preview}]. "
+        "This can corrupt pretrained EfficientDet class alignment."
+    )
+
+
 def train_efficientdet_from_config(
     *,
     config_path: str | Path,
     variant: str | None = None,
     run_name: str | None = None,
     max_steps: int | None = None,
+    subset_seed: int = 1337,
 ) -> EfficientDetArtifacts:
     cfg_path = Path(config_path)
     try:
@@ -263,6 +400,8 @@ def train_efficientdet_from_config(
     data_csv_path = cfg.data.csv_path
     effective_epochs = cfg.train.epochs
     effective_batch_size = cfg.train.batch_size
+    if subset_seed < 0:
+        raise EfficientDetTrainingError("--subset-seed must be >= 0.")
     if max_steps is not None:
         if max_steps <= 0:
             raise EfficientDetTrainingError("--max-steps must be > 0 when provided.")
@@ -271,7 +410,19 @@ def train_efficientdet_from_config(
             source_csv=cfg.data.csv_path,
             subset_csv=artifacts_dir / "train_subset.csv",
             max_train_images=max_steps * cfg.train.batch_size,
+            seed=subset_seed,
         )
+
+    label_map_spec: LabelMapSpec | None = None
+    canonical_csv: CanonicalizedCSV | None = None
+    if cfg.data.label_map_json is not None:
+        label_map_spec = _load_label_map_spec(cfg.data.label_map_json)
+        canonical_csv = _canonicalize_csv_by_class_order(
+            source_csv=data_csv_path,
+            out_csv=artifacts_dir / "train_canonicalized.csv",
+            expected_class_names=label_map_spec.class_names,
+        )
+        data_csv_path = canonical_csv.path
 
     try:
         train_data, val_data, _test_data = object_detector.DataLoader.from_csv(
@@ -285,6 +436,13 @@ def train_efficientdet_from_config(
 
     if train_data is None:
         raise EfficientDetTrainingError("Model Maker CSV did not contain TRAIN rows.")
+
+    train_label_map = getattr(train_data, "label_map", {}) or {}
+    resolved_labels = [str(train_label_map[key]) for key in sorted(train_label_map)]
+    if canonical_csv is not None:
+        _validate_resolved_label_order(
+            expected=canonical_csv.present_class_names, actual=resolved_labels
+        )
 
     model_spec = variant_factory(
         epochs=effective_epochs,
@@ -314,8 +472,11 @@ def train_efficientdet_from_config(
     except Exception as exc:
         raise EfficientDetTrainingError("Model export to TFLite failed.") from exc
 
-    label_map = getattr(train_data, "label_map", {}) or {}
-    labels = [str(label_map[key]) for key in sorted(label_map)]
+    labels = (
+        canonical_csv.present_class_names
+        if canonical_csv is not None
+        else [str(item) for item in resolved_labels]
+    )
     labels_path = artifacts_dir / "labels.txt"
     labels_path.write_text("\n".join(labels) + ("\n" if labels else ""), encoding="utf-8")
 
@@ -341,6 +502,23 @@ def train_efficientdet_from_config(
             "epochs": effective_epochs,
             "batch_size": effective_batch_size,
             "max_steps": max_steps,
+            "subset_seed": subset_seed if max_steps is not None else None,
+        },
+        "label_alignment": {
+            "source": "label_map_json" if label_map_spec is not None else "train_data.label_map",
+            "class_count": len(labels),
+            "missing_classes_from_training": (
+                canonical_csv.missing_class_names if canonical_csv is not None else []
+            ),
+            "class_index_to_name": labels,
+            "class_index_to_category_id": (
+                [
+                    int(label_map_spec.category_ids[label_map_spec.class_names.index(name)])
+                    for name in labels
+                ]
+                if label_map_spec is not None and label_map_spec.category_ids is not None
+                else None
+            ),
         },
         "artifacts": {
             "tflite": str(tflite_path),

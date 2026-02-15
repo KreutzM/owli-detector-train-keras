@@ -467,6 +467,7 @@ def train_efficientdet(
     variant: Annotated[Optional[str], typer.Option("--variant")] = None,
     run_name: Annotated[Optional[str], typer.Option("--run-name")] = None,
     max_steps: Annotated[Optional[int], typer.Option("--max-steps")] = None,
+    subset_seed: Annotated[int, typer.Option("--subset-seed")] = 1337,
 ):
     try:
         artifacts = train_efficientdet_from_config(
@@ -474,6 +475,7 @@ def train_efficientdet(
             variant=variant,
             run_name=run_name,
             max_steps=max_steps,
+            subset_seed=subset_seed,
         )
     except (EfficientDetTrainingError, MissingModelMakerDependenciesError) as exc:
         print(f"[red]ERROR[/red] {exc}")

@@ -180,11 +180,22 @@ Train EfficientDet-Lite2 with config:
 python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco128.yaml --max-steps 1
 ```
 
+Use `--subset-seed` to make `--max-steps` subset selection deterministic:
+
+```powershell
+python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco128.yaml --max-steps 5000 --subset-seed 1337
+```
+
 Override variant at runtime (`lite0..lite4`):
 
 ```powershell
 python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco128.yaml --variant lite3 --max-steps 1
 ```
+
+Class-order invariant for pretrained Lite models:
+- Keep `data.label_map_json` aligned to the canonical dataset class order.
+- The training pipeline canonicalizes CSV class order from `label_map_json` before Model Maker load.
+- If loaded class indices still mismatch, training aborts with a clear error to prevent corrupted fine-tuning.
 
 Run artifacts:
 - `work\runs\<run_id>\config.yaml`
@@ -370,11 +381,15 @@ bash scripts/eval_coco_val2017.sh \
 ```
 
 Outputs:
-- Combined Markdown: `docs/COCO2017_Val_Eval_Report.md`
-- Combined JSON: `docs/COCO2017_Val_Eval_Report.json`
+- Combined Markdown: `work/reports/val2017_compare/COCO2017_Val_Eval_Report.md`
+- Combined JSON: `work/reports/val2017_compare/COCO2017_Val_Eval_Report.json`
 - Raw per-model eval JSON:
   - `work/reports/val2017_compare/fine_tuned_eval.json`
   - `work/reports/val2017_compare/baseline_eval.json`
+
+Optional committed docs snapshot:
+- `--out-md docs/COCO2017_Val_Eval_Report.md`
+- `--out-json docs/COCO2017_Val_Eval_Report.json`
 
 Notes:
 - The script requires a user-supplied baseline TFLite path (`--baseline-model`).

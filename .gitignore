@@ -56,3 +56,6 @@ tags.txt
 /*.download.pid
 /*.aria2
 /annotations_trainval2017.zip
+
+# Generated eval compare reports (keep optional markdown template in docs/)
+/docs/COCO2017_Val_Eval_Report.json
