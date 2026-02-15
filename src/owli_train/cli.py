@@ -54,6 +54,13 @@ from owli_train.golden.detect import (
     build_golden_detect_config,
     generate_golden_detect,
 )
+from owli_train.pseudo_label.teacher_tfhub import (
+    DEFAULT_TFHUB_TEACHER,
+    MissingTeacherDependenciesError,
+    TeacherPseudoLabelConfigError,
+    build_teacher_pseudo_label_config,
+    generate_teacher_pseudo_labels,
+)
 from owli_train.training.keras_detector import (
     MissingTrainingDependenciesError,
     TrainingError,
@@ -73,6 +80,7 @@ app = typer.Typer(add_completion=False, no_args_is_help=True)
 dataset_app = typer.Typer(no_args_is_help=True)
 dataset_import_app = typer.Typer(no_args_is_help=True)
 dataset_export_app = typer.Typer(no_args_is_help=True)
+dataset_pseudo_label_app = typer.Typer(no_args_is_help=True)
 train_app = typer.Typer(no_args_is_help=True)
 eval_app = typer.Typer(no_args_is_help=True)
 export_app = typer.Typer(no_args_is_help=True)
@@ -83,6 +91,7 @@ golden_app = typer.Typer(no_args_is_help=True)
 app.add_typer(dataset_app, name="dataset")
 dataset_app.add_typer(dataset_import_app, name="import")
 dataset_app.add_typer(dataset_export_app, name="export")
+dataset_app.add_typer(dataset_pseudo_label_app, name="pseudo-label")
 app.add_typer(train_app, name="train")
 app.add_typer(eval_app, name="eval")
 app.add_typer(export_app, name="export")
@@ -113,6 +122,34 @@ def _delegate_to_modelmaker_python(args: list[str]) -> Optional[int]:
     except FileNotFoundError:
         print(
             "[red]ERROR[/red] MODELMAKER_PYTHON_EXE is set, but the executable was not found: "
+            f"{requested}"
+        )
+        return 1
+    return int(result.returncode)
+
+
+def _delegate_to_teacher_python(args: list[str]) -> Optional[int]:
+    requested = os.environ.get("TEACHER_PYTHON_EXE")
+    if not requested:
+        return None
+    if os.environ.get("OWLI_TEACHER_DELEGATED") == "1":
+        return None
+
+    current_exe = str(Path(sys.executable).resolve())
+    requested_path = Path(requested)
+    if requested_path.exists():
+        resolved_requested = str(requested_path.resolve())
+        if resolved_requested == current_exe:
+            return None
+
+    env = os.environ.copy()
+    env["OWLI_TEACHER_DELEGATED"] = "1"
+    cmd = [requested, "-m", "owli_train", *args]
+    try:
+        result = subprocess.run(cmd, env=env, check=False)
+    except FileNotFoundError:
+        print(
+            "[red]ERROR[/red] TEACHER_PYTHON_EXE is set, but the executable was not found: "
             f"{requested}"
         )
         return 1
@@ -280,6 +317,118 @@ def dataset_export_modelmaker_csv(
         "summary: "
         f"rows={artifacts.rows}, images={artifacts.images}, annotations={artifacts.annotations}"
     )
+
+
+@dataset_pseudo_label_app.command("coco")
+def dataset_pseudo_label_coco(
+    images_dir: Annotated[
+        Path,
+        typer.Option(
+            "--images-dir",
+            file_okay=False,
+            dir_okay=True,
+            writable=False,
+            readable=True,
+            resolve_path=False,
+        ),
+    ],
+    out: Annotated[Path, typer.Option("--out")],
+    teacher: Annotated[str, typer.Option("--teacher")] = DEFAULT_TFHUB_TEACHER,
+    teacher_savedmodel: Annotated[Optional[Path], typer.Option("--teacher-savedmodel")] = None,
+    batch_size: Annotated[int, typer.Option("--batch-size")] = 16,
+    input_size: Annotated[int, typer.Option("--input-size")] = 640,
+    score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.6,
+    max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 50,
+    classes: Annotated[Optional[str], typer.Option("--classes")] = None,
+    limit_images: Annotated[Optional[int], typer.Option("--limit-images")] = None,
+    seed: Annotated[int, typer.Option("--seed")] = 1337,
+    num_parallel_calls: Annotated[int, typer.Option("--num-parallel-calls")] = 4,
+    prefetch_buffer: Annotated[int, typer.Option("--prefetch-buffer")] = 2,
+    report_out: Annotated[Optional[Path], typer.Option("--report-out")] = None,
+    debug_io: Annotated[bool, typer.Option("--debug-io")] = False,
+    viz_out_dir: Annotated[Optional[Path], typer.Option("--viz-out-dir")] = None,
+    viz_max_images: Annotated[int, typer.Option("--viz-max-images")] = 25,
+):
+    delegate_args = [
+        "dataset",
+        "pseudo-label",
+        "coco",
+        "--images-dir",
+        str(images_dir),
+        "--out",
+        str(out),
+        "--teacher",
+        str(teacher),
+        "--batch-size",
+        str(batch_size),
+        "--input-size",
+        str(input_size),
+        "--score-threshold",
+        str(score_threshold),
+        "--max-detections-per-image",
+        str(max_detections_per_image),
+        "--seed",
+        str(seed),
+        "--num-parallel-calls",
+        str(num_parallel_calls),
+        "--prefetch-buffer",
+        str(prefetch_buffer),
+        "--viz-max-images",
+        str(viz_max_images),
+    ]
+    if teacher_savedmodel is not None:
+        delegate_args.extend(["--teacher-savedmodel", str(teacher_savedmodel)])
+    if classes is not None:
+        delegate_args.extend(["--classes", classes])
+    if limit_images is not None:
+        delegate_args.extend(["--limit-images", str(limit_images)])
+    if report_out is not None:
+        delegate_args.extend(["--report-out", str(report_out)])
+    if debug_io:
+        delegate_args.append("--debug-io")
+    if viz_out_dir is not None:
+        delegate_args.extend(["--viz-out-dir", str(viz_out_dir)])
+
+    delegated = _delegate_to_teacher_python(delegate_args)
+    if delegated is not None:
+        raise typer.Exit(code=delegated)
+
+    try:
+        cfg = build_teacher_pseudo_label_config(
+            images_dir=images_dir,
+            out_path=out,
+            teacher=teacher,
+            teacher_savedmodel=teacher_savedmodel,
+            batch_size=batch_size,
+            input_size=input_size,
+            score_threshold=score_threshold,
+            max_detections_per_image=max_detections_per_image,
+            classes_filter=classes,
+            limit_images=limit_images,
+            seed=seed,
+            num_parallel_calls=num_parallel_calls,
+            prefetch_buffer=prefetch_buffer,
+            debug_io=debug_io,
+            report_out_path=report_out,
+            viz_out_dir=viz_out_dir,
+            viz_max_images=viz_max_images,
+        )
+        artifacts = generate_teacher_pseudo_labels(cfg)
+    except (TeacherPseudoLabelConfigError, MissingTeacherDependenciesError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        if isinstance(exc, MissingTeacherDependenciesError):
+            print(
+                "[yellow]HINT[/yellow] Set TEACHER_PYTHON_EXE to a dedicated teacher venv if needed."
+            )
+            print("[yellow]HINT[/yellow] Example: TEACHER_PYTHON_EXE=.venv-teacher/bin/python")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] teacher={artifacts.teacher_source}")
+    print(f"pseudo_coco: {artifacts.pseudo_coco_path}")
+    print(f"pseudo_report: {artifacts.report_path}")
+    print(f"images_processed: {artifacts.images_processed}")
+    print(f"detections_kept: {artifacts.detections_kept}")
+    print(f"elapsed_seconds: {artifacts.elapsed_seconds:.2f}")
 
 
 @train_app.command("detect")
