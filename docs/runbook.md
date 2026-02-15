@@ -193,6 +193,59 @@ Run artifacts:
 - `work\runs\<run_id>\artifacts\labels.txt`
 - `work\runs\<run_id>\artifacts\class_names.json`
 
+## Generate COCO-80 pseudo labels (GPU teacher: TF2 SavedModel / TF Hub)
+
+Use a dedicated teacher venv so heavy TF Hub dependencies stay isolated.
+
+PowerShell setup:
+
+```powershell
+python -m venv .venv-teacher
+.\.venv-teacher\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements\teacher.txt
+$env:TEACHER_PYTHON_EXE=".\.venv-teacher\Scripts\python.exe"
+```
+
+WSL setup:
+
+```bash
+python3 -m venv .venv-teacher
+source .venv-teacher/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements/teacher.txt
+export TEACHER_PYTHON_EXE=.venv-teacher/bin/python
+```
+
+Sanity check GPU visibility (teacher env):
+
+```bash
+$TEACHER_PYTHON_EXE -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))"
+```
+
+Pseudo-label command (COCO-80 categories):
+
+```powershell
+python -m owli_train dataset pseudo-label coco --images-dir data\ba\images --out work\pseudo\ba_pseudo_coco80.json --limit-images 50 --batch-size 16 --score-threshold 0.6 --max-detections-per-image 50
+```
+
+WSL equivalent:
+
+```bash
+python -m owli_train dataset pseudo-label coco --images-dir data/ba/images --out work/pseudo/ba_pseudo_coco80.json --limit-images 50 --batch-size 16 --score-threshold 0.6 --max-detections-per-image 50
+```
+
+Outputs:
+- pseudo COCO JSON: `--out`
+- QC report JSON: defaults to `<out>.report.json` (override via `--report-out`)
+
+Useful options:
+- `--teacher <tfhub_handle>` or `--teacher-savedmodel <dir>`
+- `--classes person,car` (name/id filter)
+- `--num-parallel-calls`, `--prefetch-buffer`
+- `--debug-io` (print teacher output signature + tensor shapes)
+- `--viz-out-dir <dir>` (optional visual sample export; disabled by default)
+
 ## Evaluate detector (COCO mAP)
 
 Install evaluation deps:
