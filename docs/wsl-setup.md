@@ -42,6 +42,39 @@ Notes:
 - Model Maker currently targets a legacy stack. Use Python 3.9 for `.venv-modelmaker`.
 - The smoke script supports split interpreters via `MODELMAKER_PYTHON_EXE`:
   `MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python bash scripts/e2e_coco128_smoke.sh`
+- Before long runs, verify GPU visibility in that interpreter:
+  `.venv-modelmaker/bin/python -c "import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices('GPU'))"`
+- Use `--require-gpu` with `train efficientdet` to fail fast if training would run on CPU.
+
+## Docker GPU fallback (legacy Model Maker)
+
+If the local Model Maker venv cannot initialize CUDA (`tf.config.list_physical_devices('GPU') == []`), run EfficientDet through the project Docker image.
+
+WSL/bash:
+
+```bash
+bash scripts/modelmaker_gpu_docker.sh build
+bash scripts/modelmaker_gpu_docker.sh gpu-check
+bash scripts/modelmaker_gpu_docker.sh run -- train efficientdet configs/efficientdet_lite2_coco2017.yaml --max-steps 500 --subset-seed 1337 --require-gpu
+```
+
+The bash script auto-picks `/workspace/.venv-modelmaker-py39/bin/python` if `.venv-modelmaker-py39` exists in the repo.
+
+If your selected container Python is a mounted venv path (for example a py39 venv that symlinks into `~/.local/share/uv`), set:
+
+```bash
+export MODELMAKER_DOCKER_PYTHON_EXE=/workspace/.venv-modelmaker-py39/bin/python
+export MODELMAKER_DOCKER_EXTRA_MOUNTS="$HOME/.local/share/uv:$HOME/.local/share/uv:ro"
+bash scripts/modelmaker_gpu_docker.sh gpu-check
+```
+
+PowerShell:
+
+```powershell
+.\scripts\modelmaker_gpu_docker.ps1 build
+.\scripts\modelmaker_gpu_docker.ps1 gpu-check
+.\scripts\modelmaker_gpu_docker.ps1 run train efficientdet configs\efficientdet_lite2_coco2017.yaml --max-steps 500 --subset-seed 1337 --require-gpu
+```
 
 ## TensorFlow GPU note
 

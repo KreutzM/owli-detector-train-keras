@@ -4,7 +4,12 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Optional
+
+try:
+    from typing import Annotated
+except ImportError:  # Python < 3.9
+    from typing_extensions import Annotated  # noqa: UP035
 
 import typer
 from rich import print
@@ -468,6 +473,7 @@ def train_efficientdet(
     run_name: Annotated[Optional[str], typer.Option("--run-name")] = None,
     max_steps: Annotated[Optional[int], typer.Option("--max-steps")] = None,
     subset_seed: Annotated[int, typer.Option("--subset-seed")] = 1337,
+    require_gpu: Annotated[bool, typer.Option("--require-gpu")] = False,
 ):
     try:
         artifacts = train_efficientdet_from_config(
@@ -476,6 +482,7 @@ def train_efficientdet(
             run_name=run_name,
             max_steps=max_steps,
             subset_seed=subset_seed,
+            require_gpu=require_gpu,
         )
     except (EfficientDetTrainingError, MissingModelMakerDependenciesError) as exc:
         print(f"[red]ERROR[/red] {exc}")

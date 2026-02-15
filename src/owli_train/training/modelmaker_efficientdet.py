@@ -142,6 +142,26 @@ def ensure_modelmaker_dependencies() -> Any:
     return tf, object_detector
 
 
+def _visible_gpu_count(tf_module: Any) -> int:
+    try:
+        devices = tf_module.config.list_physical_devices("GPU")
+    except Exception:
+        return 0
+    return len(devices)
+
+
+def _gpu_missing_error_message(tf_module: Any) -> str:
+    tf_version = getattr(tf_module, "__version__", "unknown")
+    return (
+        "No TensorFlow GPU device detected for EfficientDet training. "
+        f"tensorflow={tf_version}. "
+        "GPU runs on WSL2 require a TensorFlow build/stack that exposes GPUs in this venv. "
+        'Check with: python -c "import tensorflow as tf; '
+        "print(tf.__version__); print(tf.config.list_physical_devices('GPU'))\". "
+        "If empty, fix the ModelMaker venv or set MODELMAKER_PYTHON_EXE to a GPU-ready interpreter."
+    )
+
+
 def _ensure_file(path: Path, label: str) -> None:
     if not path.is_file():
         raise EfficientDetTrainingError(f"{label} was not found: {path}")
@@ -370,6 +390,7 @@ def train_efficientdet_from_config(
     run_name: str | None = None,
     max_steps: int | None = None,
     subset_seed: int = 1337,
+    require_gpu: bool = False,
 ) -> EfficientDetArtifacts:
     cfg_path = Path(config_path)
     try:
@@ -389,7 +410,9 @@ def train_efficientdet_from_config(
     if cfg.data.label_map_json is not None:
         _ensure_file(cfg.data.label_map_json, "data.label_map_json")
 
-    _, object_detector = ensure_modelmaker_dependencies()
+    tf_module, object_detector = ensure_modelmaker_dependencies()
+    if require_gpu and _visible_gpu_count(tf_module) <= 0:
+        raise EfficientDetTrainingError(_gpu_missing_error_message(tf_module))
     variant_factory, resolved_variant = _resolve_variant_factory(object_detector, cfg.model.variant)
 
     run_id, run_dir = _prepare_run_dirs(cfg, run_name)
