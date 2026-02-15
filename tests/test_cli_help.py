@@ -66,6 +66,7 @@ def test_eval_efficientdet_tflite_help_lists_eval_flags():
     assert "--coco" in r.stdout
     assert "--images-dir" in r.stdout
     assert "--model" in r.stdout
+    assert "--noise-thresholds" in r.stdout
     assert "--category-map" in r.stdout
 
 

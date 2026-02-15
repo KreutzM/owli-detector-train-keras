@@ -60,6 +60,8 @@ def test_eval_efficientdet_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
             "7",
             "--score-threshold",
             "0.4",
+            "--noise-thresholds",
+            "0.05,0.1,0.3",
             "--max-detections-per-image",
             "50",
             "--category-map",
@@ -74,8 +76,43 @@ def test_eval_efficientdet_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
     assert captured_cfg["model_path"] == model
     assert captured_cfg["limit_images"] == 7
     assert captured_cfg["score_threshold"] == 0.4
+    assert captured_cfg["noise_thresholds"] == [0.05, 0.1, 0.3]
     assert captured_cfg["max_detections_per_image"] == 50
     assert captured_cfg["category_map_path"] == category_map
+
+
+def test_eval_efficientdet_tflite_cli_rejects_non_numeric_noise_thresholds(
+    tmp_path: Path, monkeypatch
+):
+    monkeypatch.delenv("MODELMAKER_PYTHON_EXE", raising=False)
+    coco = tmp_path / "eval.json"
+    coco.write_text(
+        '{"images": [], "annotations": [], "categories": [{"id": 1, "name": "person"}]}',
+        encoding="utf-8",
+    )
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    model = tmp_path / "model.tflite"
+    model.write_bytes(b"fake")
+
+    result = runner.invoke(
+        app,
+        [
+            "eval",
+            "efficientdet-tflite",
+            "--coco",
+            str(coco),
+            "--images-dir",
+            str(images_dir),
+            "--model",
+            str(model),
+            "--noise-thresholds",
+            "0.1,abc",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "comma-separated numeric values" in result.stdout
 
 
 def test_eval_efficientdet_tflite_cli_dependency_message(tmp_path: Path, monkeypatch):

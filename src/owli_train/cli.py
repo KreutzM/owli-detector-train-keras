@@ -406,6 +406,7 @@ def eval_efficientdet_tflite_cli(
     model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
     limit_images: Annotated[int | None, typer.Option("--limit-images")] = None,
     score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
+    noise_thresholds: Annotated[str | None, typer.Option("--noise-thresholds")] = None,
     max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
     category_map: Annotated[
         Path | None, typer.Option("--category-map", exists=True, readable=True)
@@ -426,6 +427,8 @@ def eval_efficientdet_tflite_cli(
         "--max-detections-per-image",
         str(max_detections_per_image),
     ]
+    if noise_thresholds is not None:
+        delegate_args.extend(["--noise-thresholds", noise_thresholds])
     if limit_images is not None:
         delegate_args.extend(["--limit-images", str(limit_images)])
     if category_map is not None:
@@ -437,6 +440,19 @@ def eval_efficientdet_tflite_cli(
     if delegated is not None:
         raise typer.Exit(code=delegated)
 
+    parsed_noise_thresholds: list[float] | None = None
+    if noise_thresholds is not None:
+        parsed_noise_thresholds = []
+        for value in noise_thresholds.split(","):
+            raw = value.strip()
+            if not raw:
+                continue
+            try:
+                parsed_noise_thresholds.append(float(raw))
+            except ValueError as exc:
+                print("[red]ERROR[/red] --noise-thresholds expects comma-separated numeric values.")
+                raise typer.Exit(code=1) from exc
+
     try:
         cfg = build_eval_efficientdet_tflite_config(
             coco_path=coco,
@@ -444,6 +460,7 @@ def eval_efficientdet_tflite_cli(
             model_path=model,
             limit_images=limit_images,
             score_threshold=score_threshold,
+            noise_thresholds=parsed_noise_thresholds,
             max_detections_per_image=max_detections_per_image,
             out_path=out,
             category_map_path=category_map,

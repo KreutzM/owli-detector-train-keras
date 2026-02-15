@@ -69,6 +69,7 @@ def test_eval_handles_empty_detections_without_pycoco_loadres(tmp_path: Path, mo
         model_path=tmp_path / "model.tflite",
         limit_images=1,
         score_threshold=0.3,
+        noise_thresholds=[0.05, 0.1, 0.3],
         max_detections_per_image=100,
         out_path=tmp_path / "eval.json",
         category_map_path=None,
@@ -80,4 +81,5 @@ def test_eval_handles_empty_detections_without_pycoco_loadres(tmp_path: Path, mo
     assert report["num_detections"] == 0
     assert report["metrics"]["AP"] == 0.0
     assert report["noise_metric"]["fp_per_100_images"] == 0.0
+    assert [item["score_threshold"] for item in report["noise_metrics"]] == [0.05, 0.1, 0.3]
     assert artifacts.markdown_report_path.is_file()

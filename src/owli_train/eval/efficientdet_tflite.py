@@ -38,6 +38,7 @@ class EvalEfficientDetTFLiteConfig:
     model_path: Path
     limit_images: int | None
     score_threshold: float
+    noise_thresholds: tuple[float, ...]
     max_detections_per_image: int
     out_path: Path | None
     category_map_path: Path | None
@@ -57,6 +58,7 @@ def build_eval_efficientdet_tflite_config(
     model_path: Path,
     limit_images: int | None,
     score_threshold: float,
+    noise_thresholds: list[float] | tuple[float, ...] | None,
     max_detections_per_image: int,
     out_path: Path | None,
     category_map_path: Path | None,
@@ -67,6 +69,9 @@ def build_eval_efficientdet_tflite_config(
         raise EfficientDetTFLiteEvalConfigError("--limit-images must be > 0 when provided.")
     if score_threshold < 0.0 or score_threshold > 1.0:
         raise EfficientDetTFLiteEvalConfigError("--score-threshold must be in [0.0, 1.0].")
+    resolved_noise_thresholds = _normalize_noise_thresholds(
+        noise_thresholds if noise_thresholds is not None else [score_threshold]
+    )
     if max_detections_per_image <= 0:
         raise EfficientDetTFLiteEvalConfigError("--max-detections-per-image must be > 0.")
 
@@ -76,10 +81,28 @@ def build_eval_efficientdet_tflite_config(
         model_path=Path(model_path),
         limit_images=limit_images,
         score_threshold=score_threshold,
+        noise_thresholds=resolved_noise_thresholds,
         max_detections_per_image=max_detections_per_image,
         out_path=Path(out_path) if out_path is not None else None,
         category_map_path=Path(category_map_path) if category_map_path is not None else None,
     )
+
+
+def _normalize_noise_thresholds(values: list[float] | tuple[float, ...]) -> tuple[float, ...]:
+    cleaned: list[float] = []
+    seen: set[float] = set()
+    for raw in values:
+        value = float(raw)
+        if value < 0.0 or value > 1.0:
+            raise EfficientDetTFLiteEvalConfigError(
+                "--noise-thresholds values must be in [0.0, 1.0]."
+            )
+        if value not in seen:
+            seen.add(value)
+            cleaned.append(value)
+    if not cleaned:
+        raise EfficientDetTFLiteEvalConfigError("--noise-thresholds must not be empty.")
+    return tuple(cleaned)
 
 
 def _ensure_eval_dependencies() -> tuple[Any, Any, Any, Any]:
@@ -364,6 +387,7 @@ def _zero_metrics() -> dict[str, float]:
 def _write_markdown(path: Path, report: dict[str, Any]) -> None:
     metrics = report["metrics"]
     noise = report["noise_metric"]
+    noise_metrics = report.get("noise_metrics") or []
     counts = report["summary_counts"]
     lines = [
         "# EfficientDet TFLite Evaluation Summary",
@@ -376,26 +400,43 @@ def _write_markdown(path: Path, report: dict[str, Any]) -> None:
         "",
         "## COCO Metrics",
         "",
+        "- Evaluated with detections from `score >= 0.0` (all available model outputs).",
         f"- AP: `{metrics['AP']:.4f}`",
         f"- AP50: `{metrics['AP50']:.4f}`",
         f"- AP75: `{metrics['AP75']:.4f}`",
         f"- AR100: `{metrics['AR100']:.4f}`",
         "",
-        "## Noise Metric",
+        "## Noise Metrics",
         "",
-        f"- Score threshold: `{noise['score_threshold']:.3f}`",
-        f"- False positives: `{noise['false_positives']}`",
-        f"- FP per 100 images: `{noise['fp_per_100_images']:.3f}`",
-        "",
-        "## Per-Class Aggregate",
-        "",
-        f"- TP: `{counts['tp']}`",
-        f"- FP: `{counts['fp']}`",
-        f"- FN: `{counts['fn']}`",
-        f"- Precision: `{counts['precision']:.4f}`",
-        f"- Recall: `{counts['recall']:.4f}`",
-        "",
+        f"- Primary score threshold (per-class aggregate): `{report['score_threshold']:.3f}`",
     ]
+    for item in noise_metrics:
+        lines.extend(
+            [
+                f"- Threshold `{item['score_threshold']:.3f}`: "
+                f"FP `{item['false_positives']}`, FP/100 `{item['fp_per_100_images']:.3f}`",
+            ]
+        )
+    if not noise_metrics:
+        lines.extend(
+            [
+                f"- Threshold `{noise['score_threshold']:.3f}`: FP `{noise['false_positives']}`, "
+                f"FP/100 `{noise['fp_per_100_images']:.3f}`",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "## Per-Class Aggregate",
+            "",
+            f"- TP: `{counts['tp']}`",
+            f"- FP: `{counts['fp']}`",
+            f"- FN: `{counts['fn']}`",
+            f"- Precision: `{counts['precision']:.4f}`",
+            f"- Recall: `{counts['recall']:.4f}`",
+            "",
+        ]
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -426,6 +467,8 @@ def evaluate_efficientdet_tflite(
         eval_images = eval_images[: cfg.limit_images]
     eval_image_ids = {int(item["id"]) for item in eval_images}
 
+    # Keep all model outputs for mAP; threshold-specific summaries are derived afterward.
+    map_inference_threshold = 0.0
     detections: list[dict[str, Any]] = []
     for image in eval_images:
         image_id = int(image["id"])
@@ -433,7 +476,7 @@ def evaluate_efficientdet_tflite(
         predicted, _ = run_tflite_detection(
             runtime=runtime,
             image_path=image_path,
-            score_threshold=cfg.score_threshold,
+            score_threshold=map_inference_threshold,
             max_detections=cfg.max_detections_per_image,
         )
 
@@ -476,11 +519,39 @@ def evaluate_efficientdet_tflite(
     )
 
     num_images = len(eval_images)
-    fp_per_100 = float(totals["fp"] * 100.0 / num_images) if num_images > 0 else 0.0
+    noise_metrics: list[dict[str, Any]] = []
+    for threshold in cfg.noise_thresholds:
+        _, threshold_totals = _compute_per_class_counts(
+            eval_images=eval_images,
+            detections=detections,
+            annotations=eval_annotations,
+            score_threshold=threshold,
+            categories=eval_coco["categories"],
+        )
+        fp_per_100 = float(threshold_totals["fp"] * 100.0 / num_images) if num_images > 0 else 0.0
+        noise_metrics.append(
+            {
+                "score_threshold": float(threshold),
+                "false_positives": int(threshold_totals["fp"]),
+                "fp_per_100_images": fp_per_100,
+            }
+        )
+
+    primary_noise = next(
+        (item for item in noise_metrics if item["score_threshold"] == float(cfg.score_threshold)),
+        None,
+    )
+    if primary_noise is None:
+        fp_per_100 = float(totals["fp"] * 100.0 / num_images) if num_images > 0 else 0.0
+        primary_noise = {
+            "score_threshold": cfg.score_threshold,
+            "false_positives": totals["fp"],
+            "fp_per_100_images": fp_per_100,
+        }
     noise_metric = {
-        "score_threshold": cfg.score_threshold,
-        "false_positives": totals["fp"],
-        "fp_per_100_images": fp_per_100,
+        "score_threshold": float(primary_noise["score_threshold"]),
+        "false_positives": int(primary_noise["false_positives"]),
+        "fp_per_100_images": float(primary_noise["fp_per_100_images"]),
     }
 
     report = {
@@ -490,6 +561,8 @@ def evaluate_efficientdet_tflite(
         "images_dir": str(cfg.images_dir),
         "limit_images": cfg.limit_images,
         "score_threshold": cfg.score_threshold,
+        "map_score_threshold": map_inference_threshold,
+        "noise_thresholds": list(cfg.noise_thresholds),
         "max_detections_per_image": cfg.max_detections_per_image,
         "num_eval_images": num_images,
         "num_detections": len(detections),
@@ -497,6 +570,7 @@ def evaluate_efficientdet_tflite(
         "summary_counts": totals,
         "per_class": per_class,
         "noise_metric": noise_metric,
+        "noise_metrics": noise_metrics,
         "mapping": {
             "source": mapping_source,
             "label_source": label_map.source,
