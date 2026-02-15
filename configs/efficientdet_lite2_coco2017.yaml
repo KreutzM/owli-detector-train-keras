@@ -1,0 +1,16 @@
+model:
+  variant: lite2
+
+data:
+  csv: work/datasets/coco2017/modelmaker_train2017.csv
+  images_dir: data/coco2017/images/train2017
+  label_map_json: work/datasets/coco2017/modelmaker_train2017.class_names.json
+
+train:
+  epochs: 20
+  batch_size: 8
+  train_whole_model: false
+
+outputs:
+  work_dir: work
+  out_dir: outputs
