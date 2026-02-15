@@ -46,6 +46,26 @@ Notes:
   `.venv-modelmaker/bin/python -c "import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices('GPU'))"`
 - Use `--require-gpu` with `train efficientdet` to fail fast if training would run on CPU.
 
+## Docker GPU fallback (legacy Model Maker)
+
+If the local Model Maker venv cannot initialize CUDA (`tf.config.list_physical_devices('GPU') == []`), run EfficientDet through the project Docker image.
+
+WSL/bash:
+
+```bash
+bash scripts/modelmaker_gpu_docker.sh build
+bash scripts/modelmaker_gpu_docker.sh gpu-check
+bash scripts/modelmaker_gpu_docker.sh run -- train efficientdet configs/efficientdet_lite2_coco2017.yaml --max-steps 500 --subset-seed 1337 --require-gpu
+```
+
+PowerShell:
+
+```powershell
+.\scripts\modelmaker_gpu_docker.ps1 build
+.\scripts\modelmaker_gpu_docker.ps1 gpu-check
+.\scripts\modelmaker_gpu_docker.ps1 run train efficientdet configs\efficientdet_lite2_coco2017.yaml --max-steps 500 --subset-seed 1337 --require-gpu
+```
+
 ## TensorFlow GPU note
 
 For TensorFlow `>=2.11`, GPU-enabled workflows are typically run through WSL2 on Windows. Native Windows TensorFlow installs are commonly CPU-only for these versions.

@@ -186,6 +186,22 @@ Require GPU (fail fast if TensorFlow cannot see a GPU in the active Model Maker 
 python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco128.yaml --max-steps 500 --subset-seed 1337 --require-gpu
 ```
 
+Docker GPU fallback for legacy Model Maker stack (recommended when local Model Maker venv cannot see GPU):
+
+```powershell
+.\scripts\modelmaker_gpu_docker.ps1 build
+.\scripts\modelmaker_gpu_docker.ps1 gpu-check
+.\scripts\modelmaker_gpu_docker.ps1 run train efficientdet configs\efficientdet_lite2_coco2017.yaml --max-steps 500 --subset-seed 1337 --require-gpu
+```
+
+WSL/bash equivalent:
+
+```bash
+bash scripts/modelmaker_gpu_docker.sh build
+bash scripts/modelmaker_gpu_docker.sh gpu-check
+bash scripts/modelmaker_gpu_docker.sh run -- train efficientdet configs/efficientdet_lite2_coco2017.yaml --max-steps 500 --subset-seed 1337 --require-gpu
+```
+
 Use `--subset-seed` to make `--max-steps` subset selection deterministic:
 
 ```powershell
