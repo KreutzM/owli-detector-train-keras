@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -470,7 +471,11 @@ def evaluate_efficientdet_tflite(
     # Keep all model outputs for mAP; threshold-specific summaries are derived afterward.
     map_inference_threshold = 0.0
     detections: list[dict[str, Any]] = []
-    for image in eval_images:
+    total_images = len(eval_images)
+    progress_every = 100
+    start_time = time.perf_counter()
+
+    for index, image in enumerate(eval_images, start=1):
         image_id = int(image["id"])
         image_path = cfg.images_dir / str(image["file_name"])
         predicted, _ = run_tflite_detection(
@@ -490,6 +495,13 @@ def evaluate_efficientdet_tflite(
                     "bbox": [float(v) for v in item.bbox_xywh],
                     "score": float(item.score),
                 }
+            )
+        if index == 1 or index % progress_every == 0 or index == total_images:
+            elapsed = time.perf_counter() - start_time
+            rate = float(index / elapsed) if elapsed > 0 else 0.0
+            print(
+                f"[eval] processed {index}/{total_images} images ({rate:.2f} img/s)",
+                flush=True,
             )
 
     if detections:

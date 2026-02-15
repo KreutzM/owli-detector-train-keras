@@ -57,6 +57,9 @@ extend-exclude = [
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"src/owli_train/cli.py" = ["UP045"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

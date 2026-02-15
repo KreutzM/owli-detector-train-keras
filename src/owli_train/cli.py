@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 from rich import print
@@ -91,7 +91,7 @@ app.add_typer(inspect_app, name="inspect")
 app.add_typer(golden_app, name="golden")
 
 
-def _delegate_to_modelmaker_python(args: list[str]) -> int | None:
+def _delegate_to_modelmaker_python(args: list[str]) -> Optional[int]:
     requested = os.environ.get("MODELMAKER_PYTHON_EXE")
     if not requested:
         return None
@@ -123,7 +123,7 @@ def _delegate_to_modelmaker_python(args: list[str]) -> int | None:
 def dataset_validate(
     coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
     images_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--images-dir",
             file_okay=False,
@@ -143,7 +143,7 @@ def dataset_normalize(
     coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
     out: Annotated[Path, typer.Option("--out")] = DEFAULT_NORMALIZED_OUT,
     images_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--images-dir",
             file_okay=False,
@@ -153,7 +153,7 @@ def dataset_normalize(
         ),
     ] = None,
     label_map: Annotated[
-        Path | None, typer.Option("--label-map", exists=True, readable=True)
+        Optional[Path], typer.Option("--label-map", exists=True, readable=True)
     ] = None,
 ):
     obj = load_coco(coco)
@@ -217,9 +217,9 @@ def dataset_import_yolo(
             dir_okay=True,
         ),
     ],
-    out: Annotated[Path | None, typer.Option("--out")] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
     data_yaml: Annotated[
-        Path | None, typer.Option("--data-yaml", exists=True, readable=True)
+        Optional[Path], typer.Option("--data-yaml", exists=True, readable=True)
     ] = None,
 ):
     out_path = (
@@ -258,9 +258,9 @@ def dataset_export_modelmaker_csv(
     ],
     out: Annotated[Path, typer.Option("--out")] = DEFAULT_MODELMAKER_CSV_OUT,
     splits_json: Annotated[
-        Path | None, typer.Option("--splits-json", exists=True, readable=True)
+        Optional[Path], typer.Option("--splits-json", exists=True, readable=True)
     ] = None,
-    class_names_out: Annotated[Path | None, typer.Option("--class-names-out")] = None,
+    class_names_out: Annotated[Optional[Path], typer.Option("--class-names-out")] = None,
 ):
     try:
         artifacts = export_coco_to_modelmaker_csv(
@@ -285,12 +285,12 @@ def dataset_export_modelmaker_csv(
 @train_app.command("detect")
 def train_detect(
     config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
-    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
-    arch: Annotated[str | None, typer.Option("--arch")] = None,
-    max_steps: Annotated[int | None, typer.Option("--max-steps")] = None,
-    limit_train_images: Annotated[int | None, typer.Option("--limit-train-images")] = None,
-    limit_val_images: Annotated[int | None, typer.Option("--limit-val-images")] = None,
-    resume: Annotated[Path | None, typer.Option("--resume", exists=True, readable=True)] = None,
+    run_name: Annotated[Optional[str], typer.Option("--run-name")] = None,
+    arch: Annotated[Optional[str], typer.Option("--arch")] = None,
+    max_steps: Annotated[Optional[int], typer.Option("--max-steps")] = None,
+    limit_train_images: Annotated[Optional[int], typer.Option("--limit-train-images")] = None,
+    limit_val_images: Annotated[Optional[int], typer.Option("--limit-val-images")] = None,
+    resume: Annotated[Optional[Path], typer.Option("--resume", exists=True, readable=True)] = None,
 ):
     try:
         artifacts = train_detector_from_config(
@@ -315,9 +315,9 @@ def train_detect(
 @train_app.command("efficientdet")
 def train_efficientdet(
     config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
-    variant: Annotated[str | None, typer.Option("--variant")] = None,
-    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
-    max_steps: Annotated[int | None, typer.Option("--max-steps")] = None,
+    variant: Annotated[Optional[str], typer.Option("--variant")] = None,
+    run_name: Annotated[Optional[str], typer.Option("--run-name")] = None,
+    max_steps: Annotated[Optional[int], typer.Option("--max-steps")] = None,
 ):
     try:
         artifacts = train_efficientdet_from_config(
@@ -350,7 +350,7 @@ def eval_detect_cli(
         ),
     ],
     run_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--run-dir",
             exists=True,
@@ -359,14 +359,14 @@ def eval_detect_cli(
             dir_okay=True,
         ),
     ] = None,
-    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
-    limit_images: Annotated[int | None, typer.Option("--limit-images")] = None,
+    model: Annotated[Optional[Path], typer.Option("--model", exists=True, readable=True)] = None,
+    limit_images: Annotated[Optional[int], typer.Option("--limit-images")] = None,
     score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.25,
     max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
     category_map: Annotated[
-        Path | None, typer.Option("--category-map", exists=True, readable=True)
+        Optional[Path], typer.Option("--category-map", exists=True, readable=True)
     ] = None,
-    out: Annotated[Path | None, typer.Option("--out")] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
 ):
     try:
         cfg = build_eval_detect_config(
@@ -404,14 +404,14 @@ def eval_efficientdet_tflite_cli(
         ),
     ],
     model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
-    limit_images: Annotated[int | None, typer.Option("--limit-images")] = None,
+    limit_images: Annotated[Optional[int], typer.Option("--limit-images")] = None,
     score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
-    noise_thresholds: Annotated[str | None, typer.Option("--noise-thresholds")] = None,
+    noise_thresholds: Annotated[Optional[str], typer.Option("--noise-thresholds")] = None,
     max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
     category_map: Annotated[
-        Path | None, typer.Option("--category-map", exists=True, readable=True)
+        Optional[Path], typer.Option("--category-map", exists=True, readable=True)
     ] = None,
-    out: Annotated[Path | None, typer.Option("--out")] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
 ):
     delegate_args = [
         "eval",
@@ -440,7 +440,7 @@ def eval_efficientdet_tflite_cli(
     if delegated is not None:
         raise typer.Exit(code=delegated)
 
-    parsed_noise_thresholds: list[float] | None = None
+    parsed_noise_thresholds: Optional[list[float]] = None
     if noise_thresholds is not None:
         parsed_noise_thresholds = []
         for value in noise_thresholds.split(","):
@@ -481,7 +481,7 @@ def eval_efficientdet_tflite_cli(
 @export_app.command("tflite")
 def export_tflite(
     run_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--run-dir",
             exists=True,
@@ -491,7 +491,7 @@ def export_tflite(
         ),
     ] = None,
     saved_model: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--saved-model",
             exists=True,
@@ -500,12 +500,14 @@ def export_tflite(
             dir_okay=True,
         ),
     ] = None,
-    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
-    out: Annotated[Path | None, typer.Option("--out")] = None,
+    model: Annotated[Optional[Path], typer.Option("--model", exists=True, readable=True)] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
     quant: Annotated[str, typer.Option("--quant")] = "none",
-    rep_coco: Annotated[Path | None, typer.Option("--rep-coco", exists=True, readable=True)] = None,
+    rep_coco: Annotated[
+        Optional[Path], typer.Option("--rep-coco", exists=True, readable=True)
+    ] = None,
     rep_images_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--rep-images-dir",
             exists=True,
@@ -544,7 +546,7 @@ def export_tflite(
 @bench_app.command("tflite")
 def bench_tflite_cli(
     run_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--run-dir",
             exists=True,
@@ -553,9 +555,9 @@ def bench_tflite_cli(
             dir_okay=True,
         ),
     ] = None,
-    model: Annotated[Path | None, typer.Option("--model", exists=True, readable=True)] = None,
+    model: Annotated[Optional[Path], typer.Option("--model", exists=True, readable=True)] = None,
     images_dir: Annotated[
-        Path | None,
+        Optional[Path],
         typer.Option(
             "--images-dir",
             exists=True,
@@ -567,7 +569,7 @@ def bench_tflite_cli(
     limit_images: Annotated[int, typer.Option("--limit-images")] = 16,
     warmup_runs: Annotated[int, typer.Option("--warmup-runs")] = 3,
     runs: Annotated[int, typer.Option("--runs")] = 16,
-    out: Annotated[Path | None, typer.Option("--out")] = None,
+    out: Annotated[Optional[Path], typer.Option("--out")] = None,
 ):
     try:
         cfg = build_bench_tflite_config(
