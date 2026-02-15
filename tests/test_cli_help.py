@@ -51,6 +51,7 @@ def test_train_efficientdet_help_lists_flags():
     assert "--variant" in r.stdout
     assert "--max-steps" in r.stdout
     assert "--subset-seed" in r.stdout
+    assert "--require-gpu" in r.stdout
 
 
 def test_eval_detect_help_lists_eval_flags():

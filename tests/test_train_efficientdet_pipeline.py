@@ -9,9 +9,11 @@ import pytest
 from owli_train.training.modelmaker_efficientdet import (
     EfficientDetTrainingError,
     _canonicalize_csv_by_class_order,
+    _gpu_missing_error_message,
     _load_label_map_spec,
     _subset_csv_for_max_steps,
     _validate_resolved_label_order,
+    _visible_gpu_count,
 )
 
 
@@ -126,3 +128,26 @@ def test_load_label_map_spec_validates_schema(tmp_path: Path) -> None:
 def test_validate_resolved_label_order_raises_on_mismatch() -> None:
     with pytest.raises(EfficientDetTrainingError, match="class index order mismatch"):
         _validate_resolved_label_order(expected=["person", "car"], actual=["car", "person"])
+
+
+def test_visible_gpu_count_reads_tf_config() -> None:
+    class _Config:
+        @staticmethod
+        def list_physical_devices(kind: str):
+            assert kind == "GPU"
+            return ["GPU:0", "GPU:1"]
+
+    class _TF:
+        config = _Config()
+
+    assert _visible_gpu_count(_TF()) == 2
+
+
+def test_gpu_missing_error_message_includes_actionable_hints() -> None:
+    class _TF:
+        __version__ = "2.8.4"
+
+    message = _gpu_missing_error_message(_TF())
+    assert "No TensorFlow GPU device detected" in message
+    assert "tensorflow=2.8.4" in message
+    assert "MODELMAKER_PYTHON_EXE" in message

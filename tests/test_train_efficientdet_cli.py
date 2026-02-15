@@ -63,6 +63,7 @@ def test_train_efficientdet_cli_wires_flags(tmp_path: Path, monkeypatch):
             "1",
             "--subset-seed",
             "2026",
+            "--require-gpu",
         ],
     )
 
@@ -73,6 +74,7 @@ def test_train_efficientdet_cli_wires_flags(tmp_path: Path, monkeypatch):
     assert captured["run_name"] == "smoke"
     assert captured["max_steps"] == 1
     assert captured["subset_seed"] == 2026
+    assert captured["require_gpu"] is True
 
 
 def test_train_efficientdet_cli_dependency_message(tmp_path: Path, monkeypatch):
