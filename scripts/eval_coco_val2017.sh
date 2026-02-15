@@ -19,7 +19,7 @@ MAX_DETECTIONS=100
 NUM_THREADS=""
 SCORE_THRESHOLD=0.3
 NOISE_THRESHOLDS="0.05,0.1,0.3"
-OUT_MD="docs/COCO2017_Val_Eval_Report.md"
+OUT_MD="work/reports/val2017_compare/COCO2017_Val_Eval_Report.md"
 OUT_JSON=""
 CATEGORY_MAP=""
 DOWNLOAD_COCO_IF_MISSING=0
@@ -40,8 +40,8 @@ Usage:
     [--download-coco-if-missing] \
     [--download-baseline-if-missing] \
     [--category-map <path/to/map.yaml>] \
-    [--out-md docs/COCO2017_Val_Eval_Report.md] \
-    [--out-json docs/COCO2017_Val_Eval_Report.json]
+    [--out-md work/reports/val2017_compare/COCO2017_Val_Eval_Report.md] \
+    [--out-json work/reports/val2017_compare/COCO2017_Val_Eval_Report.json]
 
 Notes:
   - Baseline model is user-supplied via --baseline-model.
@@ -119,6 +119,10 @@ if [[ -z "$FINE_TUNED_MODEL" || -z "$BASELINE_MODEL" ]]; then
   echo "[ERROR] --fine-tuned-model and --baseline-model are required."
   usage
   exit 1
+fi
+
+if [[ -z "$OUT_MD" ]]; then
+  OUT_MD="work/reports/val2017_compare/COCO2017_Val_Eval_Report.md"
 fi
 
 if [[ -z "$OUT_JSON" ]]; then

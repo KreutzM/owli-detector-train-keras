@@ -381,11 +381,15 @@ bash scripts/eval_coco_val2017.sh \
 ```
 
 Outputs:
-- Combined Markdown: `docs/COCO2017_Val_Eval_Report.md`
-- Combined JSON: `docs/COCO2017_Val_Eval_Report.json`
+- Combined Markdown: `work/reports/val2017_compare/COCO2017_Val_Eval_Report.md`
+- Combined JSON: `work/reports/val2017_compare/COCO2017_Val_Eval_Report.json`
 - Raw per-model eval JSON:
   - `work/reports/val2017_compare/fine_tuned_eval.json`
   - `work/reports/val2017_compare/baseline_eval.json`
+
+Optional committed docs snapshot:
+- `--out-md docs/COCO2017_Val_Eval_Report.md`
+- `--out-json docs/COCO2017_Val_Eval_Report.json`
 
 Notes:
 - The script requires a user-supplied baseline TFLite path (`--baseline-model`).
