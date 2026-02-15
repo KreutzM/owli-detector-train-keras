@@ -17,6 +17,7 @@ def test_dataset_help_lists_normalize():
     assert "normalize" in r.stdout
     assert "import" in r.stdout
     assert "export" in r.stdout
+    assert "pseudo-label" in r.stdout
 
 
 def test_dataset_import_yolo_help_lists_flags():
