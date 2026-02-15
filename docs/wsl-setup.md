@@ -42,6 +42,9 @@ Notes:
 - Model Maker currently targets a legacy stack. Use Python 3.9 for `.venv-modelmaker`.
 - The smoke script supports split interpreters via `MODELMAKER_PYTHON_EXE`:
   `MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python bash scripts/e2e_coco128_smoke.sh`
+- Before long runs, verify GPU visibility in that interpreter:
+  `.venv-modelmaker/bin/python -c "import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices('GPU'))"`
+- Use `--require-gpu` with `train efficientdet` to fail fast if training would run on CPU.
 
 ## TensorFlow GPU note
 

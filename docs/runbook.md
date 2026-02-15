@@ -180,6 +180,12 @@ Train EfficientDet-Lite2 with config:
 python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco128.yaml --max-steps 1
 ```
 
+Require GPU (fail fast if TensorFlow cannot see a GPU in the active Model Maker interpreter):
+
+```powershell
+python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco128.yaml --max-steps 500 --subset-seed 1337 --require-gpu
+```
+
 Use `--subset-seed` to make `--max-steps` subset selection deterministic:
 
 ```powershell
