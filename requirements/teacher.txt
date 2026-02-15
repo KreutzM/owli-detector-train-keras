@@ -1,0 +1,6 @@
+-r base.txt
+
+# TF2 GPU-capable teacher stack for pseudo-labeling (WSL2/Linux).
+tensorflow>=2.15,<2.18
+tensorflow-hub>=0.16
+
