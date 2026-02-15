@@ -4,7 +4,12 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Optional
+
+try:
+    from typing import Annotated
+except ImportError:  # Python < 3.9
+    from typing_extensions import Annotated  # noqa: UP035
 
 import typer
 from rich import print
