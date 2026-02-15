@@ -11,6 +11,7 @@ Status: Template (to be populated by `scripts/eval_coco_val2017.sh`)
 - COCO images dir: `data/coco2017/val2017`
 - Evaluated images: `5000`
 - Max detections per image: `100`
+- Num threads: `TBD`
 - Noise thresholds: `0.05, 0.1, 0.3`
 
 ## Models

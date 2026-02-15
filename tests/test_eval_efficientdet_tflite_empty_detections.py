@@ -43,6 +43,7 @@ def test_eval_handles_empty_detections_without_pycoco_loadres(tmp_path: Path, mo
     )
     runtime = SimpleNamespace(
         preprocess=preprocess,
+        num_threads=None,
         builtin_ops_only=True,
         operator_names=["TFLite_Detection_PostProcess"],
         inspect_inputs=[{"name": "input", "shape": [1, 8, 8, 3], "dtype": "uint8"}],

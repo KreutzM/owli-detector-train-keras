@@ -37,6 +37,7 @@ class TFLiteRuntime:
     interpreter: Any
     input_index: int
     output_indices: list[int]
+    num_threads: int | None
     input_dtype: Any
     input_quantization: tuple[float, int]
     preprocess: TFLitePreprocessSpec
@@ -132,12 +133,18 @@ def create_tflite_runtime(
     *,
     model_path: Path,
     tf: Any | None = None,
+    num_threads: int | None = None,
 ) -> TFLiteRuntime:
+    if num_threads is not None and int(num_threads) <= 0:
+        raise TFLiteDetectError("num_threads must be > 0 when provided.")
     resolved_tf = tf if tf is not None else ensure_tflite_runtime_dependencies()
     inspect_artifacts = inspect_tflite(build_inspect_tflite_config(model_path=model_path))
     metadata = load_tflite_metadata(model_path)
 
-    interpreter = resolved_tf.lite.Interpreter(model_path=str(model_path))
+    interpreter_kwargs: dict[str, Any] = {"model_path": str(model_path)}
+    if num_threads is not None:
+        interpreter_kwargs["num_threads"] = int(num_threads)
+    interpreter = resolved_tf.lite.Interpreter(**interpreter_kwargs)
     input_details = interpreter.get_input_details()
     if not input_details:
         raise TFLiteDetectError("TFLite model has no input tensor.")
@@ -195,6 +202,7 @@ def create_tflite_runtime(
         interpreter=interpreter,
         input_index=int(refreshed_input["index"]),
         output_indices=output_indices,
+        num_threads=int(num_threads) if num_threads is not None else None,
         input_dtype=dtype,
         input_quantization=(q_scale, q_zero),
         preprocess=preprocess,

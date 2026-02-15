@@ -15,6 +15,7 @@ BASE = {
     "score_threshold": 0.3,
     "noise_thresholds": None,
     "max_detections_per_image": 100,
+    "num_threads": None,
     "out_path": None,
     "category_map_path": None,
 }
@@ -25,6 +26,7 @@ def test_eval_efficientdet_tflite_config_accepts_valid_input():
     assert cfg.model_path.suffix == ".tflite"
     assert cfg.score_threshold == 0.3
     assert cfg.noise_thresholds == (0.3,)
+    assert cfg.num_threads is None
 
 
 def test_eval_efficientdet_tflite_config_rejects_non_tflite():
@@ -54,6 +56,11 @@ def test_eval_efficientdet_tflite_config_validates_numeric_bounds():
     bad_max["max_detections_per_image"] = 0
     with pytest.raises(EfficientDetTFLiteEvalConfigError, match="max-detections-per-image"):
         build_eval_efficientdet_tflite_config(**bad_max)
+
+    bad_threads = dict(BASE)
+    bad_threads["num_threads"] = 0
+    with pytest.raises(EfficientDetTFLiteEvalConfigError, match="num-threads"):
+        build_eval_efficientdet_tflite_config(**bad_threads)
 
 
 def test_eval_efficientdet_tflite_config_deduplicates_noise_thresholds():

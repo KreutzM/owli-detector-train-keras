@@ -41,6 +41,7 @@ class EvalEfficientDetTFLiteConfig:
     score_threshold: float
     noise_thresholds: tuple[float, ...]
     max_detections_per_image: int
+    num_threads: int | None
     out_path: Path | None
     category_map_path: Path | None
 
@@ -61,8 +62,9 @@ def build_eval_efficientdet_tflite_config(
     score_threshold: float,
     noise_thresholds: list[float] | tuple[float, ...] | None,
     max_detections_per_image: int,
-    out_path: Path | None,
-    category_map_path: Path | None,
+    num_threads: int | None = None,
+    out_path: Path | None = None,
+    category_map_path: Path | None = None,
 ) -> EvalEfficientDetTFLiteConfig:
     if Path(model_path).suffix.lower() != ".tflite":
         raise EfficientDetTFLiteEvalConfigError("--model must point to a .tflite file.")
@@ -75,6 +77,8 @@ def build_eval_efficientdet_tflite_config(
     )
     if max_detections_per_image <= 0:
         raise EfficientDetTFLiteEvalConfigError("--max-detections-per-image must be > 0.")
+    if num_threads is not None and int(num_threads) <= 0:
+        raise EfficientDetTFLiteEvalConfigError("--num-threads must be > 0 when provided.")
 
     return EvalEfficientDetTFLiteConfig(
         coco_path=Path(coco_path),
@@ -84,6 +88,7 @@ def build_eval_efficientdet_tflite_config(
         score_threshold=score_threshold,
         noise_thresholds=resolved_noise_thresholds,
         max_detections_per_image=max_detections_per_image,
+        num_threads=int(num_threads) if num_threads is not None else None,
         out_path=Path(out_path) if out_path is not None else None,
         category_map_path=Path(category_map_path) if category_map_path is not None else None,
     )
@@ -461,7 +466,7 @@ def evaluate_efficientdet_tflite(
         category_map_path=cfg.category_map_path,
     )
 
-    runtime = create_tflite_runtime(model_path=cfg.model_path, tf=tf)
+    runtime = create_tflite_runtime(model_path=cfg.model_path, tf=tf, num_threads=cfg.num_threads)
 
     eval_images = sorted(eval_coco["images"], key=lambda item: int(item["id"]))
     if cfg.limit_images is not None:
@@ -576,6 +581,7 @@ def evaluate_efficientdet_tflite(
         "map_score_threshold": map_inference_threshold,
         "noise_thresholds": list(cfg.noise_thresholds),
         "max_detections_per_image": cfg.max_detections_per_image,
+        "num_threads": cfg.num_threads,
         "num_eval_images": num_images,
         "num_detections": len(detections),
         "metrics": metrics,
@@ -589,6 +595,7 @@ def evaluate_efficientdet_tflite(
             "class_count": len(label_map.class_names),
         },
         "tflite_io": {
+            "num_threads": runtime.num_threads,
             "builtin_ops_only": runtime.builtin_ops_only,
             "operator_names": runtime.operator_names,
             "inputs": runtime.inspect_inputs,

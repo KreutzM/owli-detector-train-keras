@@ -408,6 +408,7 @@ def eval_efficientdet_tflite_cli(
     score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
     noise_thresholds: Annotated[Optional[str], typer.Option("--noise-thresholds")] = None,
     max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
+    num_threads: Annotated[Optional[int], typer.Option("--num-threads")] = None,
     category_map: Annotated[
         Optional[Path], typer.Option("--category-map", exists=True, readable=True)
     ] = None,
@@ -416,11 +417,8 @@ def eval_efficientdet_tflite_cli(
     delegate_args = [
         "eval",
         "efficientdet-tflite",
-        "--coco",
         str(coco),
-        "--images-dir",
         str(images_dir),
-        "--model",
         str(model),
         "--score-threshold",
         str(score_threshold),
@@ -429,6 +427,8 @@ def eval_efficientdet_tflite_cli(
     ]
     if noise_thresholds is not None:
         delegate_args.extend(["--noise-thresholds", noise_thresholds])
+    if num_threads is not None:
+        delegate_args.extend(["--num-threads", str(num_threads)])
     if limit_images is not None:
         delegate_args.extend(["--limit-images", str(limit_images)])
     if category_map is not None:
@@ -462,6 +462,7 @@ def eval_efficientdet_tflite_cli(
             score_threshold=score_threshold,
             noise_thresholds=parsed_noise_thresholds,
             max_detections_per_image=max_detections_per_image,
+            num_threads=num_threads,
             out_path=out,
             category_map_path=category_map,
         )
@@ -625,11 +626,8 @@ def golden_detect_cli(
     delegate_args = [
         "golden",
         "detect",
-        "--model",
         str(model),
-        "--image",
         str(image),
-        "--out",
         str(out),
         "--score-threshold",
         str(score_threshold),

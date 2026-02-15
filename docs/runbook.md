@@ -300,6 +300,7 @@ bash scripts/eval_coco_val2017.sh \
   --baseline-model work/models/efficientdet_lite2_baseline.tflite \
   --limit-images 5000 \
   --max-detections 100 \
+  --num-threads 8 \
   --noise-thresholds 0.05,0.1,0.3
 ```
 
@@ -324,6 +325,7 @@ Outputs:
 
 Notes:
 - The script requires a user-supplied baseline TFLite path (`--baseline-model`).
+- `--num-threads` is optional. When omitted, TFLite uses its runtime default.
 - mAP is computed from detections with `score >= 0.0` (all model outputs retained by postprocess + max detections cap).
 - Noise metrics are reported side-by-side at thresholds `0.05`, `0.1`, and `0.3`.
 

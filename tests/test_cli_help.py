@@ -67,6 +67,7 @@ def test_eval_efficientdet_tflite_help_lists_eval_flags():
     assert "--images-dir" in r.stdout
     assert "--model" in r.stdout
     assert "--noise-thresholds" in r.stdout
+    assert "--num-threads" in r.stdout
     assert "--category-map" in r.stdout
 
 

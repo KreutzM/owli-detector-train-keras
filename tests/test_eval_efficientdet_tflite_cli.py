@@ -64,6 +64,8 @@ def test_eval_efficientdet_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
             "0.05,0.1,0.3",
             "--max-detections-per-image",
             "50",
+            "--num-threads",
+            "4",
             "--category-map",
             str(category_map),
         ],
@@ -78,6 +80,7 @@ def test_eval_efficientdet_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
     assert captured_cfg["score_threshold"] == 0.4
     assert captured_cfg["noise_thresholds"] == [0.05, 0.1, 0.3]
     assert captured_cfg["max_detections_per_image"] == 50
+    assert captured_cfg["num_threads"] == 4
     assert captured_cfg["category_map_path"] == category_map
 
 

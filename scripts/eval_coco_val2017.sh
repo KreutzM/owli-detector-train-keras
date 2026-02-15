@@ -16,6 +16,7 @@ FINE_TUNED_MODEL=""
 BASELINE_MODEL=""
 LIMIT_IMAGES=5000
 MAX_DETECTIONS=100
+NUM_THREADS=""
 SCORE_THRESHOLD=0.3
 NOISE_THRESHOLDS="0.05,0.1,0.3"
 OUT_MD="docs/COCO2017_Val_Eval_Report.md"
@@ -33,6 +34,7 @@ Usage:
     [--coco-root data/coco2017] \
     [--limit-images 5000] \
     [--max-detections 100] \
+    [--num-threads <int>] \
     [--score-threshold 0.3] \
     [--noise-thresholds 0.05,0.1,0.3] \
     [--download-coco-if-missing] \
@@ -67,6 +69,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --max-detections)
       MAX_DETECTIONS="$2"
+      shift 2
+      ;;
+    --num-threads)
+      NUM_THREADS="$2"
       shift 2
       ;;
     --score-threshold)
@@ -166,7 +172,7 @@ run_eval() {
 
   echo ">> Evaluating model: $model_path"
   "$MODELMAKER_PYTHON_EXE" - "$COCO_JSON" "$IMAGES_DIR" "$model_path" "$out_path" \
-    "$LIMIT_IMAGES" "$SCORE_THRESHOLD" "$NOISE_THRESHOLDS" "$MAX_DETECTIONS" "$CATEGORY_MAP" <<'PY'
+    "$LIMIT_IMAGES" "$SCORE_THRESHOLD" "$NOISE_THRESHOLDS" "$MAX_DETECTIONS" "$NUM_THREADS" "$CATEGORY_MAP" <<'PY'
 from pathlib import Path
 import sys
 
@@ -185,8 +191,10 @@ limit_images = int(sys.argv[5])
 score_threshold = float(sys.argv[6])
 noise_thresholds_raw = sys.argv[7]
 max_detections = int(sys.argv[8])
-category_map_arg = sys.argv[9].strip()
+num_threads_raw = sys.argv[9].strip()
+category_map_arg = sys.argv[10].strip()
 category_map_path = Path(category_map_arg) if category_map_arg else None
+num_threads = int(num_threads_raw) if num_threads_raw else None
 noise_thresholds = [float(item.strip()) for item in noise_thresholds_raw.split(",") if item.strip()]
 
 try:
@@ -198,6 +206,7 @@ try:
         score_threshold=score_threshold,
         noise_thresholds=noise_thresholds,
         max_detections_per_image=max_detections,
+        num_threads=num_threads,
         out_path=out_path,
         category_map_path=category_map_path,
     )
@@ -219,7 +228,7 @@ run_eval "$BASELINE_MODEL" "$BASELINE_JSON"
 
 echo ">> Building merged compare report"
 "$PYTHON_EXE" - "$FINE_JSON" "$BASELINE_JSON" "$OUT_JSON" "$OUT_MD" "$COCO_JSON" "$IMAGES_DIR" \
-  "$FINE_TUNED_MODEL" "$BASELINE_MODEL" "$LIMIT_IMAGES" "$MAX_DETECTIONS" "$SCORE_THRESHOLD" "$NOISE_THRESHOLDS" <<'PY'
+  "$FINE_TUNED_MODEL" "$BASELINE_MODEL" "$LIMIT_IMAGES" "$MAX_DETECTIONS" "$NUM_THREADS" "$SCORE_THRESHOLD" "$NOISE_THRESHOLDS" <<'PY'
 from __future__ import annotations
 
 import json
@@ -262,8 +271,10 @@ fine_model = sys.argv[7]
 baseline_model = sys.argv[8]
 limit_images = int(sys.argv[9])
 max_detections = int(sys.argv[10])
-score_threshold = float(sys.argv[11])
-noise_thresholds = [float(item.strip()) for item in sys.argv[12].split(",") if item.strip()]
+num_threads_raw = sys.argv[11].strip()
+score_threshold = float(sys.argv[12])
+noise_thresholds = [float(item.strip()) for item in sys.argv[13].split(",") if item.strip()]
+num_threads = int(num_threads_raw) if num_threads_raw else None
 
 fine = load_json(fine_path)
 baseline = load_json(baseline_path)
@@ -280,6 +291,7 @@ payload = {
         "images_dir": images_dir,
         "limit_images": limit_images,
         "max_detections_per_image": max_detections,
+        "num_threads": num_threads,
         "score_threshold": score_threshold,
         "noise_thresholds": noise_thresholds,
         "fine_tuned_model": fine_model,
@@ -301,6 +313,7 @@ lines = [
     f"- COCO images dir: `{images_dir}`",
     f"- Evaluated images: `{limit_images}`",
     f"- Max detections per image: `{max_detections}`",
+    f"- Num threads: `{num_threads if num_threads is not None else 'default'}`",
     f"- Noise thresholds: `{', '.join(f'{t:.2f}' for t in noise_thresholds)}`",
     "",
     "## Models",
