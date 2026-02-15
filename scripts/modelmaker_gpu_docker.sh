@@ -6,9 +6,16 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
 
 IMAGE_TAG="${MODELMAKER_DOCKER_IMAGE:-owli-modelmaker-gpu:tf2.8.4}"
-PYTHON_EXE="${MODELMAKER_DOCKER_PYTHON_EXE:-python3}"
 EXTRA_MOUNTS="${MODELMAKER_DOCKER_EXTRA_MOUNTS:-}"
 DOCKERFILE_PATH="docker/modelmaker-gpu/Dockerfile"
+
+DEFAULT_PYTHON_EXE="python3"
+HOST_PYTHON_EXE=""
+if [[ -x "${REPO_ROOT}/.venv-modelmaker-py39/bin/python" ]]; then
+  DEFAULT_PYTHON_EXE="/workspace/.venv-modelmaker-py39/bin/python"
+  HOST_PYTHON_EXE="${REPO_ROOT}/.venv-modelmaker-py39/bin/python"
+fi
+PYTHON_EXE="${MODELMAKER_DOCKER_PYTHON_EXE:-$DEFAULT_PYTHON_EXE}"
 
 usage() {
   cat <<'USAGE'
@@ -72,6 +79,21 @@ if [[ -n "$EXTRA_MOUNTS" ]]; then
     [[ -z "$mount_spec" ]] && continue
     DOCKER_RUN_BASE+=(-v "$mount_spec")
   done
+fi
+
+if [[ -z "$HOST_PYTHON_EXE" && "$PYTHON_EXE" == /workspace/* ]]; then
+  candidate="${REPO_ROOT}${PYTHON_EXE#/workspace}"
+  if [[ -e "$candidate" ]]; then
+    HOST_PYTHON_EXE="$candidate"
+  fi
+fi
+
+if [[ -n "$HOST_PYTHON_EXE" ]]; then
+  uv_root="${HOME}/.local/share/uv"
+  resolved_python="$(readlink -f "$HOST_PYTHON_EXE" || true)"
+  if [[ -d "$uv_root" && "$resolved_python" == "$uv_root/"* ]]; then
+    DOCKER_RUN_BASE+=(-v "${uv_root}:${uv_root}:ro")
+  fi
 fi
 
 if command -v id >/dev/null 2>&1; then
