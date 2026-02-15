@@ -202,6 +202,8 @@ bash scripts/modelmaker_gpu_docker.sh gpu-check
 bash scripts/modelmaker_gpu_docker.sh run -- train efficientdet configs/efficientdet_lite2_coco2017.yaml --max-steps 500 --subset-seed 1337 --require-gpu
 ```
 
+The bash runner auto-detects `.venv-modelmaker-py39/bin/python` when present.
+
 If you want to run with a mounted external Model Maker venv Python inside the container:
 
 ```bash
