@@ -2,16 +2,6 @@
 
 ## 1) Create dedicated teacher venv
 
-WSL:
-
-```bash
-python3 -m venv .venv-teacher
-source .venv-teacher/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements/teacher.txt
-export TEACHER_PYTHON_EXE=.venv-teacher/bin/python
-```
-
 PowerShell:
 
 ```powershell
@@ -20,6 +10,16 @@ python -m venv .venv-teacher
 python -m pip install --upgrade pip
 pip install -r requirements\teacher.txt
 $env:TEACHER_PYTHON_EXE=".\.venv-teacher\Scripts\python.exe"
+```
+
+WSL:
+
+```bash
+python3 -m venv .venv-teacher
+source .venv-teacher/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements/teacher.txt
+export TEACHER_PYTHON_EXE=.venv-teacher/bin/python
 ```
 
 ## 2) GPU check (teacher env)
