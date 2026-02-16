@@ -1,0 +1,16 @@
+model:
+  variant: lite2
+
+data:
+  csv: work/datasets/obstacle4/modelmaker.csv
+  images_dir: data/raw/obstacle4/extracted
+  label_map_json: work/datasets/obstacle4/modelmaker.class_names.json
+
+train:
+  epochs: 20
+  batch_size: 16
+  train_whole_model: false
+
+outputs:
+  work_dir: work
+  out_dir: outputs

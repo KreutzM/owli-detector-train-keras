@@ -1,0 +1,14 @@
+map:
+  pole: obstacle_pole
+  fence: obstacle_fence
+  bump: obstacle_bump
+  hole: obstacle_hole
+
+# Reserved BA category-id policy for downstream tooling/documentation.
+# The current normalize step remaps IDs contiguously; this map keeps the
+# intended stable assignment for integration layers that need fixed IDs.
+target_category_ids:
+  obstacle_pole: 1001
+  obstacle_fence: 1002
+  obstacle_bump: 1003
+  obstacle_hole: 1004

@@ -1,0 +1,16 @@
+sources:
+  - name: obstacle4_gt
+    coco: ../work/datasets/obstacle4/instances_gt.json
+    images_dir: ../data/raw/obstacle4/extracted
+    pseudo: false
+
+  - name: coco_critical_pseudo
+    coco: ../work/datasets/obstacle4/pseudo_coco_critical.json
+    images_dir: ../data/raw/obstacle4/extracted
+    pseudo: true
+    score_threshold: 0.6
+
+settings:
+  same_class_iou: 0.75
+  pseudo_block_iou: 0.6
+  allow_duplicate_file_names: false

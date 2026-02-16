@@ -447,6 +447,11 @@ def generate_teacher_pseudo_labels(cfg: TeacherPseudoLabelConfig) -> TeacherPseu
 
     category_ids = [int(item["id"]) for item in categories]
     category_id_set = set(category_ids)
+    selected_categories = (
+        categories
+        if allowed_categories is None
+        else [item for item in categories if int(item["id"]) in allowed_categories]
+    )
 
     image_records: list[dict[str, Any]] = []
     detections: list[dict[str, Any]] = []
@@ -530,11 +535,13 @@ def generate_teacher_pseudo_labels(cfg: TeacherPseudoLabelConfig) -> TeacherPseu
                     break
     elapsed = time.perf_counter() - start
 
-    coco = build_pseudo_coco(images=image_records, detections=detections, categories=categories)
+    coco = build_pseudo_coco(
+        images=image_records, detections=detections, categories=selected_categories
+    )
     report = build_pseudo_report(
         num_images=len(image_records),
         detections=detections,
-        categories=categories,
+        categories=selected_categories,
         total_seconds=elapsed,
         teacher_source=teacher.source,
         batch_size=cfg.batch_size,
@@ -548,7 +555,7 @@ def generate_teacher_pseudo_labels(cfg: TeacherPseudoLabelConfig) -> TeacherPseu
             images_dir=cfg.images_dir,
             image_records=image_records,
             detections=detections,
-            categories=categories,
+            categories=selected_categories,
             out_dir=cfg.viz_out_dir,
             max_images=cfg.viz_max_images,
         )

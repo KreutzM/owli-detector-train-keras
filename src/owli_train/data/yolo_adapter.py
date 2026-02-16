@@ -68,11 +68,49 @@ def _resolve_data_yaml(yolo_dir: Path, data_yaml: Path | None) -> Path:
 
 def _resolve_image_path(images_dir: Path, rel_label_path: Path) -> Path:
     stem = images_dir / rel_label_path.with_suffix("")
-    for suffix in (".jpg", ".jpeg", ".png", ".bmp", ".webp"):
-        candidate = stem.with_suffix(suffix)
-        if candidate.is_file():
-            return candidate
+    allowed_suffixes = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
+    for suffix in allowed_suffixes:
+        for variant in (suffix, suffix.upper()):
+            candidate = stem.with_suffix(variant)
+            if candidate.is_file():
+                return candidate
+
+    parent = stem.parent
+    if parent.is_dir():
+        target_stem = stem.name.lower()
+        allowed = set(allowed_suffixes)
+        for candidate in parent.iterdir():
+            if not candidate.is_file():
+                continue
+            if candidate.stem.lower() != target_stem:
+                continue
+            if candidate.suffix.lower() in allowed:
+                return candidate
+
     raise ValueError(f"No image file found for label file: {rel_label_path}")
+
+
+def _resolve_image_label_pairs(yolo_root: Path) -> tuple[list[tuple[Path, Path]], Path]:
+    images_dir = yolo_root / "images"
+    labels_dir = yolo_root / "labels"
+    if images_dir.is_dir() and labels_dir.is_dir():
+        return [(images_dir, labels_dir)], images_dir
+
+    pairs: list[tuple[Path, Path]] = []
+    for candidate_labels_dir in sorted(yolo_root.rglob("labels")):
+        if not candidate_labels_dir.is_dir():
+            continue
+        candidate_images_dir = candidate_labels_dir.parent / "images"
+        if candidate_images_dir.is_dir():
+            pairs.append((candidate_images_dir, candidate_labels_dir))
+
+    if pairs:
+        return pairs, yolo_root
+
+    raise ValueError(
+        "Could not resolve YOLO images/labels layout. Expected either "
+        "<root>/images + <root>/labels or split folders like <root>/train/images + <root>/train/labels."
+    )
 
 
 def _parse_label_line(
@@ -103,12 +141,7 @@ def import_yolo_to_coco(
     if not yolo_root.is_dir():
         raise ValueError(f"--yolo-dir was not found: {yolo_root}")
 
-    images_dir = yolo_root / "images"
-    labels_dir = yolo_root / "labels"
-    if not images_dir.is_dir():
-        raise ValueError(f"Expected images directory: {images_dir}")
-    if not labels_dir.is_dir():
-        raise ValueError(f"Expected labels directory: {labels_dir}")
+    image_label_pairs, images_root = _resolve_image_label_pairs(yolo_root)
 
     data_yaml_path = _resolve_data_yaml(yolo_root, data_yaml)
     class_names = _load_class_names(data_yaml_path)
@@ -121,14 +154,24 @@ def import_yolo_to_coco(
 
     annotation_id = 1
     image_id = 1
-    label_files = sorted(path for path in labels_dir.rglob("*.txt") if path.is_file())
-    if not label_files:
-        raise ValueError(f"No YOLO label files found under: {labels_dir}")
+    label_sources: list[tuple[Path, Path, Path]] = []
+    for images_dir, labels_dir in image_label_pairs:
+        pair_label_files = sorted(path for path in labels_dir.rglob("*.txt") if path.is_file())
+        for label_file in pair_label_files:
+            label_sources.append((images_dir, labels_dir, label_file))
 
-    for label_file in label_files:
+    if not label_sources:
+        raise ValueError("No YOLO label files found in resolved labels directories.")
+
+    seen_file_names: set[str] = set()
+    for images_dir, labels_dir, label_file in label_sources:
         rel_label_path = label_file.relative_to(labels_dir)
         image_path = _resolve_image_path(images_dir, rel_label_path)
-        rel_image_path = image_path.relative_to(images_dir)
+        rel_image_path = image_path.relative_to(images_root)
+        file_name = rel_image_path.as_posix()
+        if file_name in seen_file_names:
+            raise ValueError(f"Duplicate image file_name resolved from labels: {file_name}")
+        seen_file_names.add(file_name)
 
         with Image.open(image_path) as img:
             width, height = img.size
@@ -138,7 +181,7 @@ def import_yolo_to_coco(
         image_entries.append(
             {
                 "id": image_id,
-                "file_name": rel_image_path.as_posix(),
+                "file_name": file_name,
                 "width": width,
                 "height": height,
             }
@@ -189,7 +232,7 @@ def import_yolo_to_coco(
         "annotations": annotation_entries,
         "categories": categories,
     }
-    validate_coco(coco, images_dir=images_dir)
+    validate_coco(coco, images_dir=images_root)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(coco, indent=2), encoding="utf-8")
