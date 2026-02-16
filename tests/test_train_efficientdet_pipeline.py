@@ -35,6 +35,24 @@ def _read_train_images(path: Path) -> set[str]:
     return selected
 
 
+def _read_rows(path: Path) -> list[list[str]]:
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        return list(csv.reader(handle))
+
+
+def _train_label_sequence(rows: list[list[str]]) -> list[str]:
+    labels: list[str] = []
+    for row in rows:
+        if len(row) < 3:
+            continue
+        if not row[0].strip().upper().startswith("TRAIN"):
+            continue
+        label = row[2].strip()
+        if label:
+            labels.append(label)
+    return labels
+
+
 def test_subset_csv_for_max_steps_is_deterministic_with_seed(tmp_path: Path) -> None:
     source = tmp_path / "source.csv"
     rows = [["TRAIN", f"img_{idx}.jpg", "person", "0", "0", "", "", "1", "1"] for idx in range(10)]
@@ -73,16 +91,16 @@ def test_subset_csv_for_max_steps_is_deterministic_with_seed(tmp_path: Path) -> 
     assert _read_train_images(out_a) != _read_train_images(out_c)
 
 
-def test_canonicalize_csv_by_class_order_reorders_rows(tmp_path: Path) -> None:
+def test_canonicalize_csv_by_class_order_anchors_first_seen_labels(tmp_path: Path) -> None:
     source = tmp_path / "source.csv"
-    _write_csv(
-        source,
-        [
-            ["TRAIN", "a.jpg", "car", "0", "0", "", "", "1", "1"],
-            ["TRAIN", "b.jpg", "person", "0", "0", "", "", "1", "1"],
-            ["VAL", "c.jpg", "car", "0", "0", "", "", "1", "1"],
-        ],
-    )
+    source_rows = [
+        ["TRAIN", "a.jpg", "car", "0", "0", "", "", "1", "1"],
+        ["TRAIN", "b.jpg", "person", "0", "0", "", "", "1", "1"],
+        ["TRAIN", "d.jpg", "car", "0", "0", "", "", "1", "1"],
+        ["TRAIN", "e.jpg", "person", "0", "0", "", "", "1", "1"],
+        ["VAL", "c.jpg", "car", "0", "0", "", "", "1", "1"],
+    ]
+    _write_csv(source, source_rows)
 
     result = _canonicalize_csv_by_class_order(
         source_csv=source,
@@ -93,17 +111,46 @@ def test_canonicalize_csv_by_class_order_reorders_rows(tmp_path: Path) -> None:
     assert result.present_class_names == ["person", "car"]
     assert result.missing_class_names == ["dog"]
 
+    canonical_rows = _read_rows(result.path)
+    assert len(canonical_rows) == len(source_rows)
+
     first_seen: list[str] = []
-    with result.path.open("r", encoding="utf-8", newline="") as handle:
-        seen: set[str] = set()
-        for row in csv.reader(handle):
-            if len(row) < 3:
-                continue
-            label = row[2].strip()
-            if label and label not in seen:
-                seen.add(label)
-                first_seen.append(label)
+    seen: set[str] = set()
+    for row in canonical_rows:
+        if len(row) < 3:
+            continue
+        label = row[2].strip()
+        if label and label not in seen:
+            seen.add(label)
+            first_seen.append(label)
     assert first_seen == ["person", "car"]
+
+    # Keep all non-anchor rows in original order to avoid long class blocks.
+    assert canonical_rows[2:] == source_rows[2:]
+
+    train_labels = _train_label_sequence(canonical_rows)
+    transitions = sum(
+        1 for idx in range(1, len(train_labels)) if train_labels[idx] != train_labels[idx - 1]
+    )
+    assert transitions >= 2
+
+
+def test_canonicalize_csv_by_class_order_rejects_unexpected_labels(tmp_path: Path) -> None:
+    source = tmp_path / "source.csv"
+    _write_csv(
+        source,
+        [
+            ["TRAIN", "a.jpg", "car", "0", "0", "", "", "1", "1"],
+            ["TRAIN", "b.jpg", "dog", "0", "0", "", "", "1", "1"],
+        ],
+    )
+
+    with pytest.raises(EfficientDetTrainingError, match="not present in data.label_map_json"):
+        _canonicalize_csv_by_class_order(
+            source_csv=source,
+            out_csv=tmp_path / "canonical.csv",
+            expected_class_names=["person", "car"],
+        )
 
 
 def test_load_label_map_spec_validates_schema(tmp_path: Path) -> None:

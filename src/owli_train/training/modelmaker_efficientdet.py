@@ -314,21 +314,19 @@ def _canonicalize_csv_by_class_order(
     with source_csv.open("r", encoding="utf-8", newline="") as handle:
         rows = list(csv.reader(handle))
 
-    rows_by_class: dict[str, list[list[str]]] = {}
-    passthrough_rows: list[list[str]] = []
+    expected_set = set(expected_class_names)
+    first_row_index_by_class: dict[str, int] = {}
     observed_set: set[str] = set()
-    for row in rows:
+    for idx, row in enumerate(rows):
         if len(row) < 3:
-            passthrough_rows.append(row)
             continue
         class_name = row[2].strip()
         if not class_name:
-            passthrough_rows.append(row)
             continue
         observed_set.add(class_name)
-        rows_by_class.setdefault(class_name, []).append(row)
+        if class_name in expected_set and class_name not in first_row_index_by_class:
+            first_row_index_by_class[class_name] = idx
 
-    expected_set = set(expected_class_names)
     unexpected = sorted(observed_set - expected_set)
     if unexpected:
         preview = ", ".join(unexpected[:8])
@@ -337,17 +335,26 @@ def _canonicalize_csv_by_class_order(
             f"CSV contains classes not present in data.label_map_json: {preview}{suffix}"
         )
 
-    canonical_rows: list[list[str]] = []
-    present_class_names: list[str] = []
-    missing_class_names: list[str] = []
-    for class_name in expected_class_names:
-        class_rows = rows_by_class.get(class_name, [])
-        if class_rows:
-            present_class_names.append(class_name)
-            canonical_rows.extend(class_rows)
-        else:
-            missing_class_names.append(class_name)
-    canonical_rows.extend(passthrough_rows)
+    present_class_names = [
+        class_name for class_name in expected_class_names if class_name in first_row_index_by_class
+    ]
+    missing_class_names = [
+        class_name
+        for class_name in expected_class_names
+        if class_name not in first_row_index_by_class
+    ]
+
+    # Model Maker assigns label IDs by first-seen class while scanning CSV rows.
+    # Move only one anchor row per class to the front to fix label order without
+    # turning the full training CSV into large per-class blocks.
+    anchor_indices = {first_row_index_by_class[class_name] for class_name in present_class_names}
+    canonical_rows = [
+        rows[first_row_index_by_class[class_name]] for class_name in present_class_names
+    ]
+    for idx, row in enumerate(rows):
+        if idx in anchor_indices:
+            continue
+        canonical_rows.append(row)
 
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     with out_csv.open("w", encoding="utf-8", newline="") as handle:
