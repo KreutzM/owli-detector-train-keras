@@ -633,3 +633,31 @@ Remove-Item -Path work\runs\<run_id> -Recurse -Force
 rm -rf data/coco128 data/coco128_extract work/datasets/coco128
 rm -rf work/runs/<run_id>
 ```
+
+## Obstacle4 (DS1) quick recipe
+
+Dataset:
+- Mendeley DOI: `10.17632/xwhnp82rhk.1`
+- Expected layout after extraction: `train/images`, `train/labels`, `valid/images`, `valid/labels`, `data.yaml`
+
+Core files used by the DS1 pipeline:
+- Label map: `configs/label_maps/obstacle4_to_ba.yaml`
+- Merge manifest: `configs/merge_obstacle4_gt_pseudo.yaml`
+- Training config: `configs/efficientdet_lite2_obstacle4.yaml`
+- Result summary: `docs/Obstacle4_E2E_Results.md`
+
+WSL example flow:
+
+```bash
+python -m owli_train dataset import yolo --yolo-dir data/raw/obstacle4/extracted --out work/datasets/obstacle4/instances_raw.json
+python -m owli_train dataset normalize --coco work/datasets/obstacle4/instances_raw.json --images-dir data/raw/obstacle4/extracted --label-map configs/label_maps/obstacle4_to_ba.yaml --out work/datasets/obstacle4/instances_gt.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train dataset pseudo-label coco \
+  data/raw/obstacle4/extracted work/datasets/obstacle4/pseudo_coco_critical.json \
+  --classes person,bicycle,motorcycle,car,bus,truck --score-threshold 0.6 --batch-size 1
+
+python -m owli_train dataset merge coco --manifest configs/merge_obstacle4_gt_pseudo.yaml --out work/datasets/obstacle4/instances_combined.json
+python -m owli_train dataset export modelmaker-csv --coco work/datasets/obstacle4/instances_combined.json --images-dir data/raw/obstacle4/extracted --splits-json work/splits/obstacle4/splits.json --out work/datasets/obstacle4/modelmaker.csv
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet configs/efficientdet_lite2_obstacle4.yaml --require-gpu
+```
