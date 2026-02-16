@@ -37,6 +37,47 @@ With image checks and label mapping:
 python -m owli_train dataset normalize --coco data\instances.json --images-dir data\images --label-map configs\label_map.yaml --out work\normalized\instances.json
 ```
 
+## Merge COCO sources (GT + pseudo labels)
+
+Merge multiple COCO files via a manifest. This is useful to combine:
+- hand-labeled GT datasets
+- COCO80 pseudo labels from `dataset pseudo-label coco`
+- per-source label mappings into one canonical taxonomy
+
+Example manifest (`configs\merge_coco.yaml`):
+
+```yaml
+sources:
+  - name: custom_gt
+    coco: work/datasets/custom/instances.json
+    images_dir: data/custom/images
+    label_map: configs/custom_to_canonical.yaml
+  - name: custom_pseudo_coco80
+    coco: work/pseudo/custom_pseudo_coco80.json
+    images_dir: data/custom/images
+    pseudo: true
+    score_threshold: 0.6
+settings:
+  same_class_iou: 0.75
+  pseudo_block_iou: 0.6
+  allow_duplicate_file_names: false
+```
+
+Run merge:
+
+```powershell
+python -m owli_train dataset merge coco --manifest configs\merge_coco.yaml --out work\datasets\merged\instances.json
+```
+
+Outputs:
+- merged COCO: `--out`
+- merge report JSON: `--report-out` or default `<out>.report.json`
+
+Notes:
+- GT has priority over pseudo labels in overlapping regions.
+- Pseudo labels below `score_threshold` are dropped per pseudo source.
+- Duplicate `file_name` across different source namespaces is rejected by default to avoid accidental collisions. Use per-source `file_name_prefix` in manifest when needed.
+
 ## Split COCO (train/val/test)
 
 Writes `splits.json` deterministically by seed:

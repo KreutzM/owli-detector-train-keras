@@ -17,6 +17,7 @@ def test_dataset_help_lists_normalize():
     assert "normalize" in r.stdout
     assert "import" in r.stdout
     assert "export" in r.stdout
+    assert "merge" in r.stdout
     assert "pseudo-label" in r.stdout
 
 
@@ -33,6 +34,14 @@ def test_dataset_export_modelmaker_csv_help_lists_flags():
     assert "--coco" in r.stdout
     assert "--images-dir" in r.stdout
     assert "--out" in r.stdout
+
+
+def test_dataset_merge_coco_help_lists_flags():
+    r = runner.invoke(app, ["dataset", "merge", "coco", "--help"])
+    assert r.exit_code == 0
+    assert "--manifest" in r.stdout
+    assert "--out" in r.stdout
+    assert "--report-out" in r.stdout
 
 
 def test_train_detect_help_lists_smoke_flags():

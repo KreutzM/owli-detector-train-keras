@@ -21,6 +21,10 @@ from owli_train.data.coco import (
     validate_coco,
     write_coco,
 )
+from owli_train.data.merge_coco import (
+    CocoMergeError,
+    merge_coco_from_manifest,
+)
 from owli_train.data.modelmaker_csv import export_coco_to_modelmaker_csv
 from owli_train.data.split import split_coco_image_ids, write_split_coco_files, write_splits
 from owli_train.data.yolo_adapter import import_yolo_to_coco
@@ -80,11 +84,13 @@ from owli_train.training.modelmaker_efficientdet import (
 DEFAULT_NORMALIZED_OUT = Path("work/normalized/instances.json")
 DEFAULT_SPLITS_OUT_DIR = Path("work/splits")
 DEFAULT_MODELMAKER_CSV_OUT = Path("work/datasets/modelmaker/dataset.csv")
+DEFAULT_MERGED_COCO_OUT = Path("work/datasets/merged/instances.json")
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 dataset_app = typer.Typer(no_args_is_help=True)
 dataset_import_app = typer.Typer(no_args_is_help=True)
 dataset_export_app = typer.Typer(no_args_is_help=True)
+dataset_merge_app = typer.Typer(no_args_is_help=True)
 dataset_pseudo_label_app = typer.Typer(no_args_is_help=True)
 train_app = typer.Typer(no_args_is_help=True)
 eval_app = typer.Typer(no_args_is_help=True)
@@ -96,6 +102,7 @@ golden_app = typer.Typer(no_args_is_help=True)
 app.add_typer(dataset_app, name="dataset")
 dataset_app.add_typer(dataset_import_app, name="import")
 dataset_app.add_typer(dataset_export_app, name="export")
+dataset_app.add_typer(dataset_merge_app, name="merge")
 dataset_app.add_typer(dataset_pseudo_label_app, name="pseudo-label")
 app.add_typer(train_app, name="train")
 app.add_typer(eval_app, name="eval")
@@ -321,6 +328,30 @@ def dataset_export_modelmaker_csv(
     print(
         "summary: "
         f"rows={artifacts.rows}, images={artifacts.images}, annotations={artifacts.annotations}"
+    )
+
+
+@dataset_merge_app.command("coco")
+def dataset_merge_coco(
+    manifest: Annotated[Path, typer.Option("--manifest", exists=True, readable=True)],
+    out: Annotated[Path, typer.Option("--out")] = DEFAULT_MERGED_COCO_OUT,
+    report_out: Annotated[Optional[Path], typer.Option("--report-out")] = None,
+):
+    try:
+        artifacts = merge_coco_from_manifest(
+            manifest_path=manifest,
+            out_path=out,
+            report_out_path=report_out,
+        )
+    except CocoMergeError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote merged COCO: {artifacts.coco_path}")
+    print(f"report_json: {artifacts.report_path}")
+    print(
+        "summary: "
+        f"images={artifacts.images}, annotations={artifacts.annotations}, categories={artifacts.categories}"
     )
 
 
