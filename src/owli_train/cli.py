@@ -21,6 +21,10 @@ from owli_train.data.coco import (
     validate_coco,
     write_coco,
 )
+from owli_train.data.materialize_images import (
+    MaterializeImagesError,
+    materialize_coco_images,
+)
 from owli_train.data.merge_coco import (
     CocoMergeError,
     merge_coco_from_manifest,
@@ -85,6 +89,8 @@ DEFAULT_NORMALIZED_OUT = Path("work/normalized/instances.json")
 DEFAULT_SPLITS_OUT_DIR = Path("work/splits")
 DEFAULT_MODELMAKER_CSV_OUT = Path("work/datasets/modelmaker/dataset.csv")
 DEFAULT_MERGED_COCO_OUT = Path("work/datasets/merged/instances.json")
+DEFAULT_MATERIALIZED_COCO_OUT = Path("work/datasets/merged/instances.materialized.json")
+DEFAULT_MATERIALIZED_IMAGES_DIR = Path("work/datasets/merged/images")
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 dataset_app = typer.Typer(no_args_is_help=True)
@@ -352,6 +358,52 @@ def dataset_merge_coco(
     print(
         "summary: "
         f"images={artifacts.images}, annotations={artifacts.annotations}, categories={artifacts.categories}"
+    )
+
+
+@dataset_app.command("materialize-images")
+def dataset_materialize_images(
+    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    out_images_dir: Annotated[
+        Path, typer.Option("--out-images-dir")
+    ] = DEFAULT_MATERIALIZED_IMAGES_DIR,
+    out_coco: Annotated[Path, typer.Option("--out-coco")] = DEFAULT_MATERIALIZED_COCO_OUT,
+    merge_manifest: Annotated[
+        Optional[Path], typer.Option("--merge-manifest", exists=True, readable=True)
+    ] = None,
+    source_images_dir: Annotated[
+        Optional[list[Path]],
+        typer.Option(
+            "--source-images-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    mode: Annotated[str, typer.Option("--mode")] = "auto",
+    overwrite: Annotated[bool, typer.Option("--overwrite")] = False,
+):
+    try:
+        artifacts = materialize_coco_images(
+            coco_path=coco,
+            out_images_dir=out_images_dir,
+            out_coco_path=out_coco,
+            merge_manifest_path=merge_manifest,
+            source_images_dirs=list(source_images_dir or []),
+            mode=mode,
+            overwrite=overwrite,
+        )
+    except (MaterializeImagesError, CocoMergeError) as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote materialized images: {artifacts.out_images_dir}")
+    print(f"materialized_coco: {artifacts.out_coco_path}")
+    print(
+        "summary: "
+        f"images_total={artifacts.images_total}, written={artifacts.images_written}, "
+        f"skipped={artifacts.images_skipped}, copied={artifacts.copied}, symlinked={artifacts.symlinked}"
     )
 
 

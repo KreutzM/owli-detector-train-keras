@@ -78,6 +78,32 @@ Notes:
 - Pseudo labels below `score_threshold` are dropped per pseudo source.
 - Duplicate `file_name` across different source namespaces is rejected by default to avoid accidental collisions. Use per-source `file_name_prefix` in manifest when needed.
 
+## Materialize merged images into one root
+
+After merge, materialize all referenced images into a single directory so downstream
+commands can use one `--images-dir`.
+
+Using the same merge manifest (recommended):
+
+```powershell
+python -m owli_train dataset materialize-images --coco work\datasets\merged\instances.json --merge-manifest configs\merge_coco.yaml --out-images-dir work\datasets\merged\images --out-coco work\datasets\merged\instances.materialized.json --mode auto
+```
+
+Alternative without manifest (explicit source roots):
+
+```powershell
+python -m owli_train dataset materialize-images --coco work\datasets\merged\instances.json --source-images-dir data\setA\images --source-images-dir data\setB\images --out-images-dir work\datasets\merged\images --out-coco work\datasets\merged\instances.materialized.json --mode copy
+```
+
+Modes:
+- `auto`: try symlink first, fallback to copy.
+- `symlink`: symlink only (fail on symlink errors).
+- `copy`: copy files.
+
+Outputs:
+- materialized image tree: `--out-images-dir`
+- COCO with normalized relative file names: `--out-coco`
+
 ## Split COCO (train/val/test)
 
 Writes `splits.json` deterministically by seed:
