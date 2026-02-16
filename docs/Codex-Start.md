@@ -26,6 +26,13 @@ python -m owli_train dataset normalize --coco tests\data\coco_min.json --out wor
 python -m owli_train dataset split --coco tests\data\coco_min.json --out-dir work\splits --seed 1337
 ```
 
+## Merge + materialize smoke
+
+```powershell
+python -m owli_train dataset merge coco --manifest configs\merge_coco.yaml --out work\datasets\merged\instances.json
+python -m owli_train dataset materialize-images --coco work\datasets\merged\instances.json --merge-manifest configs\merge_coco.yaml --out-images-dir work\datasets\merged\images --out-coco work\datasets\merged\instances.materialized.json
+```
+
 ## Milestone 2 training smoke
 
 ```powershell
