@@ -81,6 +81,10 @@ PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
   --max-results 20
 ```
 
+Current gate status on repo HEAD:
+- `work/datasets/obstacle4/modelmaker.csv` currently has no `bus` examples in `TRAIN` rows.
+- The EfficientDet training preflight now fails fast for this config until the split/export is fixed or `train.allow_missing_train_classes: true` is set intentionally for a non-product override.
+
 ## Artifacts
 - Run directory: `work/runs/20260216-192857`
 - Trained TFLite model: `work/runs/20260216-192857/artifacts/model.tflite`

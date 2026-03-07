@@ -37,6 +37,7 @@ class EfficientDetTrainConfig:
     epochs: int = 20
     batch_size: int = 8
     train_whole_model: bool = False
+    allow_missing_train_classes: bool = False
 
 
 @dataclass(frozen=True)
@@ -72,6 +73,12 @@ class LabelMapSpec:
 @dataclass(frozen=True)
 class CanonicalizedCSV:
     path: Path
+    present_class_names: list[str]
+    missing_class_names: list[str]
+
+
+@dataclass(frozen=True)
+class TrainSplitClassCoverage:
     present_class_names: list[str]
     missing_class_names: list[str]
 
@@ -115,6 +122,7 @@ def load_efficientdet_config(path: Path) -> EfficientDetConfig:
         epochs=int(train_raw.get("epochs", 20)),
         batch_size=int(train_raw.get("batch_size", 8)),
         train_whole_model=bool(train_raw.get("train_whole_model", False)),
+        allow_missing_train_classes=bool(train_raw.get("allow_missing_train_classes", False)),
     )
     if train.epochs <= 0:
         raise ValueError("train.epochs must be > 0.")
@@ -302,6 +310,82 @@ def _load_label_map_spec(path: Path) -> LabelMapSpec:
     return LabelMapSpec(class_names=class_names, category_ids=category_ids)
 
 
+def _collect_train_split_class_coverage(
+    *,
+    source_csv: Path,
+    expected_class_names: list[str],
+) -> TrainSplitClassCoverage:
+    if not expected_class_names:
+        raise EfficientDetTrainingError("Expected class order must not be empty.")
+
+    with source_csv.open("r", encoding="utf-8", newline="") as handle:
+        rows = list(csv.reader(handle))
+
+    expected_set = set(expected_class_names)
+    observed_train_labels: set[str] = set()
+    saw_train_row = False
+    for row in rows:
+        if len(row) < 3:
+            continue
+        set_name = row[0].strip().upper()
+        if not set_name.startswith("TRAIN"):
+            continue
+        saw_train_row = True
+        class_name = row[2].strip()
+        if class_name:
+            observed_train_labels.add(class_name)
+
+    if not saw_train_row:
+        raise EfficientDetTrainingError("Model Maker CSV did not contain TRAIN rows.")
+
+    unexpected = sorted(observed_train_labels - expected_set)
+    if unexpected:
+        preview = ", ".join(unexpected[:8])
+        suffix = "" if len(unexpected) <= 8 else ", ..."
+        raise EfficientDetTrainingError(
+            "TRAIN rows in data.csv contain classes not present in data.label_map_json: "
+            f"{preview}{suffix}"
+        )
+
+    present_class_names = [
+        class_name for class_name in expected_class_names if class_name in observed_train_labels
+    ]
+    missing_class_names = [
+        class_name for class_name in expected_class_names if class_name not in observed_train_labels
+    ]
+    return TrainSplitClassCoverage(
+        present_class_names=present_class_names,
+        missing_class_names=missing_class_names,
+    )
+
+
+def _enforce_train_split_class_contract(
+    *,
+    source_csv: Path,
+    expected_class_names: list[str],
+    allow_missing_train_classes: bool,
+) -> TrainSplitClassCoverage:
+    coverage = _collect_train_split_class_coverage(
+        source_csv=source_csv,
+        expected_class_names=expected_class_names,
+    )
+    if not coverage.missing_class_names or allow_missing_train_classes:
+        return coverage
+
+    preview = ", ".join(coverage.missing_class_names[:8])
+    suffix = "" if len(coverage.missing_class_names) <= 8 else ", ..."
+    raise EfficientDetTrainingError(
+        "Expected classes from data.label_map_json are missing from TRAIN rows in data.csv: "
+        f"{preview}{suffix}. "
+        f"csv={source_csv}. "
+        "Model Maker derives the final EfficientDet/TFLite label set from classes seen in TRAIN "
+        "data, so these classes would disappear from labels.txt/class_names.json and break the "
+        "downstream label contract. Fix the split/merge/export so TRAIN contains at least one "
+        "example for each expected class, or set train.allow_missing_train_classes=true to "
+        "override intentionally."
+    )
+
+
 def _canonicalize_csv_by_class_order(
     *,
     source_csv: Path,
@@ -417,6 +501,16 @@ def train_efficientdet_from_config(
     if cfg.data.label_map_json is not None:
         _ensure_file(cfg.data.label_map_json, "data.label_map_json")
 
+    label_map_spec: LabelMapSpec | None = None
+    train_split_coverage: TrainSplitClassCoverage | None = None
+    if cfg.data.label_map_json is not None:
+        label_map_spec = _load_label_map_spec(cfg.data.label_map_json)
+        train_split_coverage = _enforce_train_split_class_contract(
+            source_csv=cfg.data.csv_path,
+            expected_class_names=label_map_spec.class_names,
+            allow_missing_train_classes=cfg.train.allow_missing_train_classes,
+        )
+
     tf_module, object_detector = ensure_modelmaker_dependencies()
     if require_gpu and _visible_gpu_count(tf_module) <= 0:
         raise EfficientDetTrainingError(_gpu_missing_error_message(tf_module))
@@ -443,10 +537,8 @@ def train_efficientdet_from_config(
             seed=subset_seed,
         )
 
-    label_map_spec: LabelMapSpec | None = None
     canonical_csv: CanonicalizedCSV | None = None
-    if cfg.data.label_map_json is not None:
-        label_map_spec = _load_label_map_spec(cfg.data.label_map_json)
+    if label_map_spec is not None:
         canonical_csv = _canonicalize_csv_by_class_order(
             source_csv=data_csv_path,
             out_csv=artifacts_dir / "train_canonicalized.csv",
@@ -537,6 +629,10 @@ def train_efficientdet_from_config(
         "label_alignment": {
             "source": "label_map_json" if label_map_spec is not None else "train_data.label_map",
             "class_count": len(labels),
+            "allow_missing_train_classes": cfg.train.allow_missing_train_classes,
+            "missing_classes_from_train_split": (
+                train_split_coverage.missing_class_names if train_split_coverage is not None else []
+            ),
             "missing_classes_from_training": (
                 canonical_csv.missing_class_names if canonical_csv is not None else []
             ),

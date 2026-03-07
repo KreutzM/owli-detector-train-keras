@@ -19,6 +19,7 @@ train:
   epochs: 3
   batch_size: 2
   train_whole_model: true
+  allow_missing_train_classes: true
 outputs:
   work_dir: work
   out_dir: outputs
@@ -32,6 +33,7 @@ outputs:
     assert cfg.train.epochs == 3
     assert cfg.train.batch_size == 2
     assert cfg.train.train_whole_model is True
+    assert cfg.train.allow_missing_train_classes is True
 
 
 def test_load_efficientdet_config_validates_batch_size(tmp_path: Path):

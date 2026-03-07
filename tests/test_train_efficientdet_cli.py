@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -30,6 +31,18 @@ train:
 def test_train_efficientdet_cli_wires_flags(tmp_path: Path, monkeypatch):
     cfg = tmp_path / "effdet.yaml"
     _write_min_config(cfg)
+    mapping_path = tmp_path / "mapping.json"
+    mapping_path.write_text(
+        json.dumps(
+            {
+                "label_alignment": {
+                    "missing_classes_from_train_split": ["bus"],
+                    "missing_classes_from_training": ["bus", "truck"],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
 
     captured: dict[str, object] = {}
 
@@ -41,7 +54,7 @@ def test_train_efficientdet_cli_wires_flags(tmp_path: Path, monkeypatch):
             tflite_path=Path("work/runs/run-123/artifacts/model.tflite"),
             labels_path=Path("work/runs/run-123/artifacts/labels.txt"),
             config_snapshot_path=Path("work/runs/run-123/config.yaml"),
-            mapping_snapshot_path=Path("work/runs/run-123/mapping_files.json"),
+            mapping_snapshot_path=mapping_path,
         )
 
     monkeypatch.setattr(
@@ -69,6 +82,8 @@ def test_train_efficientdet_cli_wires_flags(tmp_path: Path, monkeypatch):
 
     assert result.exit_code == 0
     assert "run=run-123" in result.stdout
+    assert "expected classes missing from TRAIN split: bus" in result.stdout
+    assert "classes missing from training rows: bus, truck" in result.stdout
     assert captured["config_path"] == cfg
     assert captured["variant"] == "lite3"
     assert captured["run_name"] == "smoke"

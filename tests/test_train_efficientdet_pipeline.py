@@ -9,6 +9,8 @@ import pytest
 from owli_train.training.modelmaker_efficientdet import (
     EfficientDetTrainingError,
     _canonicalize_csv_by_class_order,
+    _collect_train_split_class_coverage,
+    _enforce_train_split_class_contract,
     _gpu_missing_error_message,
     _load_label_map_spec,
     _subset_csv_for_max_steps,
@@ -151,6 +153,93 @@ def test_canonicalize_csv_by_class_order_rejects_unexpected_labels(tmp_path: Pat
             out_csv=tmp_path / "canonical.csv",
             expected_class_names=["person", "car"],
         )
+
+
+def test_collect_train_split_class_coverage_uses_train_rows_only(tmp_path: Path) -> None:
+    source = tmp_path / "source.csv"
+    _write_csv(
+        source,
+        [
+            ["TRAIN", "a.jpg", "person", "0", "0", "", "", "1", "1"],
+            ["VAL", "b.jpg", "bus", "0", "0", "", "", "1", "1"],
+            ["TEST", "c.jpg", "car", "0", "0", "", "", "1", "1"],
+        ],
+    )
+
+    coverage = _collect_train_split_class_coverage(
+        source_csv=source,
+        expected_class_names=["person", "bus", "car"],
+    )
+
+    assert coverage.present_class_names == ["person"]
+    assert coverage.missing_class_names == ["bus", "car"]
+
+
+def test_enforce_train_split_class_contract_allows_complete_train_split(tmp_path: Path) -> None:
+    source = tmp_path / "source.csv"
+    _write_csv(
+        source,
+        [
+            ["TRAIN", "a.jpg", "person", "0", "0", "", "", "1", "1"],
+            ["TRAIN", "b.jpg", "car", "0", "0", "", "", "1", "1"],
+            ["TRAIN", "c.jpg", "bus", "0", "0", "", "", "1", "1"],
+        ],
+    )
+
+    coverage = _enforce_train_split_class_contract(
+        source_csv=source,
+        expected_class_names=["person", "car", "bus"],
+        allow_missing_train_classes=False,
+    )
+
+    assert coverage.present_class_names == ["person", "car", "bus"]
+    assert coverage.missing_class_names == []
+
+
+def test_enforce_train_split_class_contract_raises_for_missing_expected_class(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.csv"
+    _write_csv(
+        source,
+        [
+            ["TRAIN", "a.jpg", "person", "0", "0", "", "", "1", "1"],
+            ["TRAIN", "b.jpg", "car", "0", "0", "", "", "1", "1"],
+        ],
+    )
+
+    with pytest.raises(EfficientDetTrainingError) as exc_info:
+        _enforce_train_split_class_contract(
+            source_csv=source,
+            expected_class_names=["person", "car", "bus"],
+            allow_missing_train_classes=False,
+        )
+    message = str(exc_info.value)
+    assert "missing from TRAIN rows in data.csv" in message
+    assert "bus" in message
+    assert "data.label_map_json" in message
+    assert "labels.txt/class_names.json" in message
+    assert "train.allow_missing_train_classes=true" in message
+
+
+def test_enforce_train_split_class_contract_allows_explicit_override(tmp_path: Path) -> None:
+    source = tmp_path / "source.csv"
+    _write_csv(
+        source,
+        [
+            ["TRAIN", "a.jpg", "person", "0", "0", "", "", "1", "1"],
+            ["TRAIN", "b.jpg", "car", "0", "0", "", "", "1", "1"],
+        ],
+    )
+
+    coverage = _enforce_train_split_class_contract(
+        source_csv=source,
+        expected_class_names=["person", "car", "bus"],
+        allow_missing_train_classes=True,
+    )
+
+    assert coverage.present_class_names == ["person", "car"]
+    assert coverage.missing_class_names == ["bus"]
 
 
 def test_load_label_map_spec_validates_schema(tmp_path: Path) -> None:

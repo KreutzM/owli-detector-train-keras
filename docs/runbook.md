@@ -295,6 +295,8 @@ python -m owli_train train efficientdet --config configs\efficientdet_lite2_coco
 Class-order invariant for pretrained Lite models:
 - Keep `data.label_map_json` aligned to the canonical dataset class order.
 - The training pipeline canonicalizes class first-occurrence order from `label_map_json` before Model Maker load (without globally grouping rows by class).
+- Training now fails fast if a class from `data.label_map_json` is missing from `TRAIN` rows in `data.csv`, because Model Maker would otherwise drop that class from the exported Lite label set.
+- For intentional non-product runs with a reduced TRAIN class set, set `train.allow_missing_train_classes: true` in the EfficientDet config.
 - If loaded class indices still mismatch, training aborts with a clear error to prevent corrupted fine-tuning.
 
 Run artifacts:

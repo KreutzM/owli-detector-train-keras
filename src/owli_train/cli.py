@@ -584,13 +584,25 @@ def train_efficientdet(
         mapping_payload = json.loads(artifacts.mapping_snapshot_path.read_text(encoding="utf-8"))
     except Exception:
         mapping_payload = None
+    missing_train_split_classes = []
     missing_classes = []
     if isinstance(mapping_payload, dict):
         label_alignment = mapping_payload.get("label_alignment")
         if isinstance(label_alignment, dict):
+            raw_train_split_missing = label_alignment.get("missing_classes_from_train_split") or []
+            if isinstance(raw_train_split_missing, list):
+                missing_train_split_classes = [
+                    str(item) for item in raw_train_split_missing if str(item).strip()
+                ]
             raw_missing = label_alignment.get("missing_classes_from_training") or []
             if isinstance(raw_missing, list):
                 missing_classes = [str(item) for item in raw_missing if str(item).strip()]
+    if missing_train_split_classes:
+        print(
+            "[yellow]WARN[/yellow] expected classes missing from TRAIN split: "
+            f"{', '.join(missing_train_split_classes)}"
+        )
+        print(f"mapping_json: {artifacts.mapping_snapshot_path}")
     if missing_classes:
         print(
             "[yellow]WARN[/yellow] classes missing from training rows: "
