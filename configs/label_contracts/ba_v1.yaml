@@ -1,0 +1,66 @@
+version: ba_v1
+purpose: >
+  Canonical BA-v1 detector label contract for the current Android/TFLite path.
+  The order is fixed and must be preserved in labels.txt, class_names.json, eval,
+  golden detect, and Android rendering for BA-v1 runs.
+class_names:
+  - obstacle_bump
+  - obstacle_fence
+  - obstacle_hole
+  - obstacle_pole
+  - bicycle
+  - bus
+  - car
+  - motorcycle
+  - person
+  - truck
+roles:
+  ba_core:
+    - obstacle_bump
+    - obstacle_fence
+    - obstacle_hole
+    - obstacle_pole
+  rehearsal:
+    - bicycle
+    - bus
+    - car
+    - motorcycle
+    - person
+    - truck
+classes:
+  - name: obstacle_bump
+    role: ba_core
+    rationale: Ground-level obstacle class from the verified Obstacle4 GT path.
+  - name: obstacle_fence
+    role: ba_core
+    rationale: Structural barrier class from the verified Obstacle4 GT path.
+  - name: obstacle_hole
+    role: ba_core
+    rationale: Ground opening / drop hazard class from the verified Obstacle4 GT path.
+  - name: obstacle_pole
+    role: ba_core
+    rationale: Vertical obstacle class from the verified Obstacle4 GT path.
+  - name: bicycle
+    role: rehearsal
+    rationale: Keep as a mobile street-object rehearsal class; current baseline evidence is weak.
+  - name: bus
+    role: rehearsal
+    rationale: Keep as a large-vehicle rehearsal class; current baseline evidence is weak.
+  - name: car
+    role: rehearsal
+    rationale: Keep as a high-value moving-object rehearsal class; current baseline detects it best.
+  - name: motorcycle
+    role: rehearsal
+    rationale: Keep as a mobile street-object rehearsal class; current baseline evidence is weak.
+  - name: person
+    role: rehearsal
+    rationale: Keep as a safety-critical moving-object rehearsal class; current baseline evidence is weak.
+  - name: truck
+    role: rehearsal
+    rationale: Keep as a large-vehicle rehearsal class; current baseline evidence is weak.
+out_of_scope:
+  - Full COCO-80 coverage.
+  - Fine-grained subclasses such as sedan vs. van or adult vs. child.
+  - Traffic-sign, traffic-light, and lane semantics.
+  - Indoor inventory categories that are not yet tied to the BA-v1 product goal.
+  - New obstacle subclasses without a verified dataset and mapping plan.

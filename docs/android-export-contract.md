@@ -2,6 +2,9 @@
 
 This document defines the runtime contract expected by exported detector `.tflite` models from this repository.
 
+For the current BA-v1 detector path, the canonical class order is tracked in
+`configs/label_contracts/ba_v1.yaml` and explained in `docs/BA_v1_Labelset.md`.
+
 ## 1) Input tensor contract
 
 - Tensor rank: 4D NHWC
@@ -39,6 +42,8 @@ Where:
 - Class index `i` maps to `class_names[i]` in:
   - `work\runs\<run_id>\label_map_snapshot.json`
   - `work\runs\<run_id>\artifacts\detector.tflite.meta.json`
+  - for the BA-v1 path, the exported `labels.txt` / `class_names.json` order is expected to match
+    `configs/label_contracts/ba_v1.yaml`
 
 This mapping must be kept in sync on Android when rendering labels.
 

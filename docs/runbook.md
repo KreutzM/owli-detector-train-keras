@@ -650,7 +650,9 @@ Core files used by the DS1 pipeline:
 - Label map: `configs/label_maps/obstacle4_to_ba.yaml`
 - Merge manifest: `configs/merge_obstacle4_gt_pseudo.yaml`
 - Training config: `configs/efficientdet_lite2_obstacle4.yaml`
+- BA-v1 contract: `configs/label_contracts/ba_v1.yaml`
 - Result summary: `docs/Obstacle4_E2E_Results.md`
+- Product labelset summary: `docs/BA_v1_Labelset.md`
 
 WSL example flow:
 
