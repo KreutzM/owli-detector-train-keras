@@ -675,13 +675,14 @@ PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-
   --coco work/datasets/obstacle4/instances_combined.json \
   --images-dir data/raw/obstacle4/extracted \
   --model work/runs/<run_id>/artifacts/model.tflite \
-  --limit-images 50 --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3
+  --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 \
+  --out work/runs/<run_id>/reports/eval_efficientdet_tflite.json
 
 PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
   --model work/runs/<run_id>/artifacts/model.tflite \
   --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
   --out work/runs/<run_id>/reports/golden_obstacle4.json \
-  --score-threshold 0.1 --max-results 20
+  --score-threshold 0.1 --max-results 20 --num-threads 8
 ```
 
 For Obstacle4, build `splits.json` from `instances_combined.json`, not GT-only COCO.
