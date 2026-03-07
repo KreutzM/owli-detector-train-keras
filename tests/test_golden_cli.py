@@ -51,6 +51,8 @@ def test_golden_detect_cli_wires_flags(tmp_path: Path, monkeypatch):
             "0.45",
             "--max-results",
             "9",
+            "--num-threads",
+            "8",
         ],
     )
 
@@ -61,6 +63,7 @@ def test_golden_detect_cli_wires_flags(tmp_path: Path, monkeypatch):
     assert captured_cfg["out_path"] == out
     assert captured_cfg["score_threshold"] == 0.45
     assert captured_cfg["max_results"] == 9
+    assert captured_cfg["num_threads"] == 8
 
 
 def test_golden_detect_cli_delegates_with_required_flags(tmp_path: Path, monkeypatch):
@@ -107,6 +110,41 @@ def test_golden_detect_cli_delegates_with_required_flags(tmp_path: Path, monkeyp
         "--max-results",
         "20",
     ]
+
+
+def test_golden_detect_cli_delegates_num_threads(tmp_path: Path, monkeypatch):
+    model = tmp_path / "model.tflite"
+    model.write_bytes(b"fake")
+    image = tmp_path / "image.jpg"
+    image.write_bytes(b"fake")
+    out = tmp_path / "golden.json"
+    captured: dict[str, object] = {}
+
+    def fake_delegate(args):
+        captured["args"] = args
+        return 0
+
+    monkeypatch.setenv("MODELMAKER_PYTHON_EXE", "/tmp/fake-modelmaker-python")
+    monkeypatch.setattr("owli_train.cli._delegate_to_modelmaker_python", fake_delegate)
+
+    result = runner.invoke(
+        app,
+        [
+            "golden",
+            "detect",
+            "--model",
+            str(model),
+            "--image",
+            str(image),
+            "--out",
+            str(out),
+            "--num-threads",
+            "12",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["args"][-2:] == ["--num-threads", "12"]
 
 
 def test_golden_detect_cli_dependency_message(tmp_path: Path, monkeypatch):

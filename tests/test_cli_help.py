@@ -129,3 +129,4 @@ def test_golden_detect_help_lists_flags():
     assert "--image" in r.stdout
     assert "--out" in r.stdout
     assert "--max-results" in r.stdout
+    assert "--num-threads" in r.stdout

@@ -892,6 +892,7 @@ def golden_detect_cli(
     out: Path = REQUIRED_OUT_OPTION,
     score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
     max_results: Annotated[int, typer.Option("--max-results")] = 20,
+    num_threads: Annotated[Optional[int], typer.Option("--num-threads")] = None,
 ):
     delegate_args = [
         "golden",
@@ -907,6 +908,8 @@ def golden_detect_cli(
         "--max-results",
         str(max_results),
     ]
+    if num_threads is not None:
+        delegate_args.extend(["--num-threads", str(num_threads)])
     delegated = _delegate_to_modelmaker_python(delegate_args)
     if delegated is not None:
         raise typer.Exit(code=delegated)
@@ -918,6 +921,7 @@ def golden_detect_cli(
             out_path=out,
             score_threshold=score_threshold,
             max_results=max_results,
+            num_threads=num_threads,
         )
         artifacts = generate_golden_detect(cfg)
     except (GoldenDetectConfigError, MissingGoldenDependenciesError) as exc:

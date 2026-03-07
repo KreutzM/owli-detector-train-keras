@@ -56,6 +56,10 @@ Defaults:
 - `golden detect`: `--score-threshold 0.3`, `--max-results 20`
 - `eval efficientdet-tflite`: `--score-threshold 0.3`, `--max-detections-per-image 100`
 
+Performance note:
+- `golden detect` and `eval efficientdet-tflite` both accept `--num-threads <N>` to pass an explicit
+  CPU thread count into the TensorFlow Lite interpreter when CPU inference throughput matters.
+
 ## Golden Sample Contract
 
 Generate:

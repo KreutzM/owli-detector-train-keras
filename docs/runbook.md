@@ -590,7 +590,7 @@ With split-venv delegation:
 
 ```powershell
 $env:MODELMAKER_PYTHON_EXE=".\.venv-modelmaker-py39\Scripts\python.exe"
-python -m owli_train golden detect --model work\runs\<run_id>\artifacts\model.tflite --image data\coco128\images\train2017\000000000009.jpg --out work\golden\sample.json --score-threshold 0.3 --max-results 20
+python -m owli_train golden detect --model work\runs\<run_id>\artifacts\model.tflite --image data\coco128\images\train2017\000000000009.jpg --out work\golden\sample.json --score-threshold 0.3 --max-results 20 --num-threads 8
 ```
 
 Golden JSON contains:

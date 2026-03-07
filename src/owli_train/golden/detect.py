@@ -36,6 +36,7 @@ class GoldenDetectConfig:
     out_path: Path
     score_threshold: float
     max_results: int
+    num_threads: int | None
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,7 @@ def build_golden_detect_config(
     out_path: Path,
     score_threshold: float,
     max_results: int,
+    num_threads: int | None = None,
 ) -> GoldenDetectConfig:
     if Path(model_path).suffix.lower() != ".tflite":
         raise GoldenDetectConfigError("--model must point to a .tflite file.")
@@ -58,6 +60,8 @@ def build_golden_detect_config(
         raise GoldenDetectConfigError("--score-threshold must be in [0.0, 1.0].")
     if max_results <= 0:
         raise GoldenDetectConfigError("--max-results must be > 0.")
+    if num_threads is not None and int(num_threads) <= 0:
+        raise GoldenDetectConfigError("--num-threads must be > 0 when provided.")
 
     return GoldenDetectConfig(
         model_path=Path(model_path),
@@ -65,6 +69,7 @@ def build_golden_detect_config(
         out_path=Path(out_path),
         score_threshold=score_threshold,
         max_results=max_results,
+        num_threads=int(num_threads) if num_threads is not None else None,
     )
 
 
@@ -130,7 +135,7 @@ def generate_golden_detect(cfg: GoldenDetectConfig) -> GoldenDetectArtifacts:
             "pip install -r requirements\\modelmaker.txt"
         ) from exc
 
-    runtime = create_tflite_runtime(model_path=cfg.model_path, tf=tf)
+    runtime = create_tflite_runtime(model_path=cfg.model_path, tf=tf, num_threads=cfg.num_threads)
     model_metadata = load_tflite_metadata(cfg.model_path)
     labels = load_tflite_label_map(cfg.model_path, model_metadata)
     detections, _ = run_tflite_detection(
