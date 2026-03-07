@@ -7,6 +7,7 @@ Prepare COCO-format datasets, train Keras-based vision models (detector now, opt
 - Tests must be offline (no network), lightweight, and GPU-free.
 - Do not commit datasets/checkpoints/large artifacts.
 - PowerShell-first docs/scripts on Windows; provide WSL/bash equivalents where relevant.
+- For every non-trivial task, create or update `docs/reviews/Codex-Task-Report_last.md` from `docs/review-templates/Codex-Task-Report.md` and keep the exact template section structure.
 - After meaningful changes run:
   - python -m ruff format .
   - python -m ruff check .
