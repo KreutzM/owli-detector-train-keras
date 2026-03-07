@@ -8,7 +8,7 @@ sources:
     coco: ../work/datasets/obstacle4/pseudo_coco_critical.json
     images_dir: ../data/raw/obstacle4/extracted
     pseudo: true
-    score_threshold: 0.6
+    score_threshold: 0.45
 
 settings:
   same_class_iou: 0.75

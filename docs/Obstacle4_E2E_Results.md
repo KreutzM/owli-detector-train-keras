@@ -32,19 +32,21 @@ PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train dataset pseudo-lab
   --images-dir data/raw/obstacle4/extracted \
   --out work/datasets/obstacle4/pseudo_coco_critical.json \
   --classes person,bicycle,motorcycle,car,bus,truck \
-  --score-threshold 0.6 \
+  --score-threshold 0.45 \
   --batch-size 1
 
-# 5) Deterministic split file used by Model Maker CSV export
-python -m owli_train dataset split \
-  --coco work/datasets/obstacle4/instances_gt.json \
-  --out-dir work/splits/obstacle4 \
-  --seed 1337
-
-# 6) Merge GT + pseudo
+# 5) Merge GT + pseudo
 python -m owli_train dataset merge coco \
   --manifest configs/merge_obstacle4_gt_pseudo.yaml \
   --out work/datasets/obstacle4/instances_combined.json
+
+# 6) Deterministic split file used by Model Maker CSV export
+#    Build the split from the merged COCO so pseudo-only classes are visible.
+python -m owli_train dataset split \
+  --coco work/datasets/obstacle4/instances_combined.json \
+  --out-dir work/splits/obstacle4 \
+  --seed 1337 \
+  --ensure-train-class-coverage
 
 # 7) Export Model Maker CSV (official split preserved: train/valid)
 python -m owli_train dataset export modelmaker-csv \
@@ -82,8 +84,9 @@ PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
 ```
 
 Current gate status on repo HEAD:
-- `work/datasets/obstacle4/modelmaker.csv` currently has no `bus` examples in `TRAIN` rows.
-- The EfficientDet training preflight now fails fast for this config until the split/export is fixed or `train.allow_missing_train_classes: true` is set intentionally for a non-product override.
+- The previous `score-threshold 0.6` pseudo-label recipe produced `0` `bus` detections, so `bus` disappeared before the split step and the EfficientDet gate correctly failed.
+- A verified threshold sweep on repo HEAD showed that `score-threshold 0.45` keeps `4` `bus` detections, with `2` already landing in `TRAIN` under seed `1337`.
+- The current recommended path therefore uses `score-threshold 0.45` plus `dataset split --ensure-train-class-coverage` on `instances_combined.json`.
 
 ## Artifacts
 - Run directory: `work/runs/20260216-192857`
@@ -93,18 +96,17 @@ Current gate status on repo HEAD:
 - Eval report: `work/runs/20260216-192857/reports/eval_efficientdet_tflite_50_noise.json`
 - Golden sample: `work/runs/20260216-192857/reports/golden_obstacle4.json`
 
-## Pseudo-Label QC Summary
-- Source report: `work/datasets/obstacle4/pseudo_coco_critical.report.json`
+## Pseudo-Label Threshold Check
+- Verified source run: `work/datasets/obstacle4/pseudo_coco_critical_t03.json`
 - Images processed: `1250`
-- Detections kept: `154`
-- Throughput: `5.60 images/s` (batch size `1`, total `223.27s`)
-- Per class:
-  - `person`: 22
-  - `bicycle`: 5
-  - `motorcycle`: 3
-  - `car`: 120
-  - `bus`: 0
-  - `truck`: 4
+- Detections kept at `score-threshold 0.3`: `530`
+- Filtered class counts at the production threshold `0.45`:
+  - `person`: `46`
+  - `bicycle`: `10`
+  - `motorcycle`: `7`
+  - `car`: `209`
+  - `bus`: `4`
+  - `truck`: `12`
 
 ## Merge Summary
 - Images: `1250`

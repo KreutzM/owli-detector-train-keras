@@ -276,11 +276,21 @@ def dataset_split(
     seed: Annotated[int, typer.Option("--seed")] = 1337,
     train_frac: Annotated[float, typer.Option("--train-frac")] = 0.8,
     val_frac: Annotated[float, typer.Option("--val-frac")] = 0.1,
+    ensure_train_class_coverage: Annotated[
+        bool,
+        typer.Option("--ensure-train-class-coverage/--no-ensure-train-class-coverage"),
+    ] = False,
     write_coco_files: Annotated[bool, typer.Option("--write-coco")] = False,
 ):
     obj = load_coco(coco)
     _ = validate_coco(obj)
-    splits = split_coco_image_ids(obj, seed=seed, train_frac=train_frac, val_frac=val_frac)
+    splits = split_coco_image_ids(
+        obj,
+        seed=seed,
+        train_frac=train_frac,
+        val_frac=val_frac,
+        ensure_train_class_coverage=ensure_train_class_coverage,
+    )
     out = write_splits(out_dir, splits)
 
     if write_coco_files:

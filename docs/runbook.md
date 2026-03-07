@@ -657,14 +657,14 @@ WSL example flow:
 ```bash
 python -m owli_train dataset import yolo --yolo-dir data/raw/obstacle4/extracted --out work/datasets/obstacle4/instances_raw.json
 python -m owli_train dataset normalize --coco work/datasets/obstacle4/instances_raw.json --images-dir data/raw/obstacle4/extracted --label-map configs/label_maps/obstacle4_to_ba.yaml --out work/datasets/obstacle4/instances_gt.json
-python -m owli_train dataset split --coco work/datasets/obstacle4/instances_gt.json --out-dir work/splits/obstacle4 --seed 1337
 
 PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train dataset pseudo-label coco \
   --images-dir data/raw/obstacle4/extracted \
   --out work/datasets/obstacle4/pseudo_coco_critical.json \
-  --classes person,bicycle,motorcycle,car,bus,truck --score-threshold 0.6 --batch-size 1
+  --classes person,bicycle,motorcycle,car,bus,truck --score-threshold 0.45 --batch-size 1
 
 python -m owli_train dataset merge coco --manifest configs/merge_obstacle4_gt_pseudo.yaml --out work/datasets/obstacle4/instances_combined.json
+python -m owli_train dataset split --coco work/datasets/obstacle4/instances_combined.json --out-dir work/splits/obstacle4 --seed 1337 --ensure-train-class-coverage
 python -m owli_train dataset export modelmaker-csv --coco work/datasets/obstacle4/instances_combined.json --images-dir data/raw/obstacle4/extracted --splits-json work/splits/obstacle4/splits.json --out work/datasets/obstacle4/modelmaker.csv
 
 PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet --config configs/efficientdet_lite2_obstacle4.yaml --require-gpu
@@ -683,3 +683,8 @@ PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
   --out work/runs/<run_id>/reports/golden_obstacle4.json \
   --score-threshold 0.1 --max-results 20
 ```
+
+For Obstacle4, build `splits.json` from `instances_combined.json`, not GT-only COCO.
+The pseudo-label classes (`person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck`) are part of the
+product label contract, so `--ensure-train-class-coverage` is the safest way to keep rare merged
+classes from falling out of `TRAIN` when they are present in the data.
