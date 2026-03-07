@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -92,6 +93,38 @@ DEFAULT_MERGED_COCO_OUT = Path("work/datasets/merged/instances.json")
 DEFAULT_MATERIALIZED_COCO_OUT = Path("work/datasets/merged/instances.materialized.json")
 DEFAULT_MATERIALIZED_IMAGES_DIR = Path("work/datasets/merged/images")
 
+REQUIRED_COCO_OPTION = typer.Option(..., "--coco", exists=True, readable=True)
+REQUIRED_IMAGES_DIR_OPTION = typer.Option(
+    ...,
+    "--images-dir",
+    exists=True,
+    readable=True,
+    file_okay=False,
+    dir_okay=True,
+)
+REQUIRED_PSEUDO_IMAGES_DIR_OPTION = typer.Option(
+    ...,
+    "--images-dir",
+    file_okay=False,
+    dir_okay=True,
+    writable=False,
+    readable=True,
+    resolve_path=False,
+)
+REQUIRED_CONFIG_OPTION = typer.Option(..., "--config", exists=True, readable=True)
+REQUIRED_MANIFEST_OPTION = typer.Option(..., "--manifest", exists=True, readable=True)
+REQUIRED_MODEL_OPTION = typer.Option(..., "--model", exists=True, readable=True)
+REQUIRED_IMAGE_OPTION = typer.Option(..., "--image", exists=True, readable=True)
+REQUIRED_OUT_OPTION = typer.Option(..., "--out")
+REQUIRED_YOLO_DIR_OPTION = typer.Option(
+    ...,
+    "--yolo-dir",
+    exists=True,
+    readable=True,
+    file_okay=False,
+    dir_okay=True,
+)
+
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 dataset_app = typer.Typer(no_args_is_help=True)
 dataset_import_app = typer.Typer(no_args_is_help=True)
@@ -176,7 +209,7 @@ def _delegate_to_teacher_python(args: list[str]) -> Optional[int]:
 
 @dataset_app.command("validate")
 def dataset_validate(
-    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    coco: Path = REQUIRED_COCO_OPTION,
     images_dir: Annotated[
         Optional[Path],
         typer.Option(
@@ -195,7 +228,7 @@ def dataset_validate(
 
 @dataset_app.command("normalize")
 def dataset_normalize(
-    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    coco: Path = REQUIRED_COCO_OPTION,
     out: Annotated[Path, typer.Option("--out")] = DEFAULT_NORMALIZED_OUT,
     images_dir: Annotated[
         Optional[Path],
@@ -224,7 +257,7 @@ def dataset_normalize(
 
 @dataset_app.command("summarize")
 def dataset_summarize(
-    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    coco: Path = REQUIRED_COCO_OPTION,
 ):
     obj = load_coco(coco)
     s = validate_coco(obj)
@@ -238,7 +271,7 @@ def dataset_summarize(
 
 @dataset_app.command("split")
 def dataset_split(
-    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    coco: Path = REQUIRED_COCO_OPTION,
     out_dir: Annotated[Path, typer.Option("--out-dir")] = DEFAULT_SPLITS_OUT_DIR,
     seed: Annotated[int, typer.Option("--seed")] = 1337,
     train_frac: Annotated[float, typer.Option("--train-frac")] = 0.8,
@@ -262,16 +295,7 @@ def dataset_split(
 
 @dataset_import_app.command("yolo")
 def dataset_import_yolo(
-    yolo_dir: Annotated[
-        Path,
-        typer.Option(
-            "--yolo-dir",
-            exists=True,
-            readable=True,
-            file_okay=False,
-            dir_okay=True,
-        ),
-    ],
+    yolo_dir: Path = REQUIRED_YOLO_DIR_OPTION,
     out: Annotated[Optional[Path], typer.Option("--out")] = None,
     data_yaml: Annotated[
         Optional[Path], typer.Option("--data-yaml", exists=True, readable=True)
@@ -300,17 +324,8 @@ def dataset_import_yolo(
 
 @dataset_export_app.command("modelmaker-csv")
 def dataset_export_modelmaker_csv(
-    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
-    images_dir: Annotated[
-        Path,
-        typer.Option(
-            "--images-dir",
-            exists=True,
-            readable=True,
-            file_okay=False,
-            dir_okay=True,
-        ),
-    ],
+    coco: Path = REQUIRED_COCO_OPTION,
+    images_dir: Path = REQUIRED_IMAGES_DIR_OPTION,
     out: Annotated[Path, typer.Option("--out")] = DEFAULT_MODELMAKER_CSV_OUT,
     splits_json: Annotated[
         Optional[Path], typer.Option("--splits-json", exists=True, readable=True)
@@ -339,7 +354,7 @@ def dataset_export_modelmaker_csv(
 
 @dataset_merge_app.command("coco")
 def dataset_merge_coco(
-    manifest: Annotated[Path, typer.Option("--manifest", exists=True, readable=True)],
+    manifest: Path = REQUIRED_MANIFEST_OPTION,
     out: Annotated[Path, typer.Option("--out")] = DEFAULT_MERGED_COCO_OUT,
     report_out: Annotated[Optional[Path], typer.Option("--report-out")] = None,
 ):
@@ -363,7 +378,7 @@ def dataset_merge_coco(
 
 @dataset_app.command("materialize-images")
 def dataset_materialize_images(
-    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
+    coco: Path = REQUIRED_COCO_OPTION,
     out_images_dir: Annotated[
         Path, typer.Option("--out-images-dir")
     ] = DEFAULT_MATERIALIZED_IMAGES_DIR,
@@ -409,18 +424,8 @@ def dataset_materialize_images(
 
 @dataset_pseudo_label_app.command("coco")
 def dataset_pseudo_label_coco(
-    images_dir: Annotated[
-        Path,
-        typer.Option(
-            "--images-dir",
-            file_okay=False,
-            dir_okay=True,
-            writable=False,
-            readable=True,
-            resolve_path=False,
-        ),
-    ],
-    out: Annotated[Path, typer.Option("--out")],
+    images_dir: Path = REQUIRED_PSEUDO_IMAGES_DIR_OPTION,
+    out: Path = REQUIRED_OUT_OPTION,
     teacher: Annotated[str, typer.Option("--teacher")] = DEFAULT_TFHUB_TEACHER,
     teacher_savedmodel: Annotated[Optional[Path], typer.Option("--teacher-savedmodel")] = None,
     batch_size: Annotated[int, typer.Option("--batch-size")] = 16,
@@ -521,7 +526,7 @@ def dataset_pseudo_label_coco(
 
 @train_app.command("detect")
 def train_detect(
-    config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
+    config: Path = REQUIRED_CONFIG_OPTION,
     run_name: Annotated[Optional[str], typer.Option("--run-name")] = None,
     arch: Annotated[Optional[str], typer.Option("--arch")] = None,
     max_steps: Annotated[Optional[int], typer.Option("--max-steps")] = None,
@@ -551,7 +556,7 @@ def train_detect(
 
 @train_app.command("efficientdet")
 def train_efficientdet(
-    config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
+    config: Path = REQUIRED_CONFIG_OPTION,
     variant: Annotated[Optional[str], typer.Option("--variant")] = None,
     run_name: Annotated[Optional[str], typer.Option("--run-name")] = None,
     max_steps: Annotated[Optional[int], typer.Option("--max-steps")] = None,
@@ -575,21 +580,29 @@ def train_efficientdet(
     print(f"run_dir: {artifacts.run_dir}")
     print(f"tflite: {artifacts.tflite_path}")
     print(f"labels: {artifacts.labels_path}")
+    try:
+        mapping_payload = json.loads(artifacts.mapping_snapshot_path.read_text(encoding="utf-8"))
+    except Exception:
+        mapping_payload = None
+    missing_classes = []
+    if isinstance(mapping_payload, dict):
+        label_alignment = mapping_payload.get("label_alignment")
+        if isinstance(label_alignment, dict):
+            raw_missing = label_alignment.get("missing_classes_from_training") or []
+            if isinstance(raw_missing, list):
+                missing_classes = [str(item) for item in raw_missing if str(item).strip()]
+    if missing_classes:
+        print(
+            "[yellow]WARN[/yellow] classes missing from training rows: "
+            f"{', '.join(missing_classes)}"
+        )
+        print(f"mapping_json: {artifacts.mapping_snapshot_path}")
 
 
 @eval_app.command("detect")
 def eval_detect_cli(
-    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
-    images_dir: Annotated[
-        Path,
-        typer.Option(
-            "--images-dir",
-            exists=True,
-            readable=True,
-            file_okay=False,
-            dir_okay=True,
-        ),
-    ],
+    coco: Path = REQUIRED_COCO_OPTION,
+    images_dir: Path = REQUIRED_IMAGES_DIR_OPTION,
     run_dir: Annotated[
         Optional[Path],
         typer.Option(
@@ -633,18 +646,9 @@ def eval_detect_cli(
 
 @eval_app.command("efficientdet-tflite")
 def eval_efficientdet_tflite_cli(
-    coco: Annotated[Path, typer.Option("--coco", exists=True, readable=True)],
-    images_dir: Annotated[
-        Path,
-        typer.Option(
-            "--images-dir",
-            exists=True,
-            readable=True,
-            file_okay=False,
-            dir_okay=True,
-        ),
-    ],
-    model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
+    coco: Path = REQUIRED_COCO_OPTION,
+    images_dir: Path = REQUIRED_IMAGES_DIR_OPTION,
+    model: Path = REQUIRED_MODEL_OPTION,
     limit_images: Annotated[Optional[int], typer.Option("--limit-images")] = None,
     score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
     noise_thresholds: Annotated[Optional[str], typer.Option("--noise-thresholds")] = None,
@@ -658,8 +662,11 @@ def eval_efficientdet_tflite_cli(
     delegate_args = [
         "eval",
         "efficientdet-tflite",
+        "--coco",
         str(coco),
+        "--images-dir",
         str(images_dir),
+        "--model",
         str(model),
         "--score-threshold",
         str(score_threshold),
@@ -834,7 +841,7 @@ def bench_tflite_cli(
 
 @inspect_app.command("tflite")
 def inspect_tflite_cli(
-    model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
+    model: Path = REQUIRED_MODEL_OPTION,
 ):
     try:
         cfg = build_inspect_tflite_config(model_path=model)
@@ -858,17 +865,20 @@ def inspect_tflite_cli(
 
 @golden_app.command("detect")
 def golden_detect_cli(
-    model: Annotated[Path, typer.Option("--model", exists=True, readable=True)],
-    image: Annotated[Path, typer.Option("--image", exists=True, readable=True)],
-    out: Annotated[Path, typer.Option("--out")],
+    model: Path = REQUIRED_MODEL_OPTION,
+    image: Path = REQUIRED_IMAGE_OPTION,
+    out: Path = REQUIRED_OUT_OPTION,
     score_threshold: Annotated[float, typer.Option("--score-threshold")] = 0.3,
     max_results: Annotated[int, typer.Option("--max-results")] = 20,
 ):
     delegate_args = [
         "golden",
         "detect",
+        "--model",
         str(model),
+        "--image",
         str(image),
+        "--out",
         str(out),
         "--score-threshold",
         str(score_threshold),

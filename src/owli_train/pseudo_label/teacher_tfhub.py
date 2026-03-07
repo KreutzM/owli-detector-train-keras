@@ -69,6 +69,7 @@ class TeacherModel:
     source: str
     input_dtype_name: str
     signature_name: str
+    input_batch_size: int | None
 
 
 def _ensure_teacher_dependencies() -> tuple[Any, Any]:
@@ -177,6 +178,38 @@ def _find_input_dtype_name(signature: Any) -> str:
     return "uint8"
 
 
+def _find_input_batch_size(signature: Any) -> int | None:
+    try:
+        _, kwargs = signature.structured_input_signature
+    except Exception:
+        return None
+    for spec in kwargs.values():
+        shape = getattr(spec, "shape", None)
+        if shape is None or len(shape) <= 0:
+            continue
+        batch_dim = shape[0]
+        if batch_dim is None:
+            return None
+        try:
+            return int(batch_dim)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _resolve_effective_batch_size(*, teacher: TeacherModel, requested_batch_size: int) -> int:
+    fixed_batch_size = teacher.input_batch_size
+    if fixed_batch_size is None or fixed_batch_size <= 0:
+        return requested_batch_size
+    if fixed_batch_size == requested_batch_size:
+        return requested_batch_size
+    print(
+        "[pseudo-label] teacher signature exposes fixed batch_size="
+        f"{fixed_batch_size}; overriding requested batch_size={requested_batch_size}."
+    )
+    return fixed_batch_size
+
+
 def load_teacher(model_handle_or_path: str) -> TeacherModel:
     tf, hub = _ensure_teacher_dependencies()
     model_path = Path(model_handle_or_path)
@@ -207,6 +240,7 @@ def load_teacher(model_handle_or_path: str) -> TeacherModel:
         source=source,
         input_dtype_name=_find_input_dtype_name(runner),
         signature_name=signature_name,
+        input_batch_size=_find_input_batch_size(runner),
     )
 
 
@@ -418,6 +452,10 @@ def generate_teacher_pseudo_labels(cfg: TeacherPseudoLabelConfig) -> TeacherPseu
         str(cfg.teacher_savedmodel) if cfg.teacher_savedmodel is not None else cfg.teacher
     )
     teacher = load_teacher(teacher_source)
+    effective_batch_size = _resolve_effective_batch_size(
+        teacher=teacher,
+        requested_batch_size=cfg.batch_size,
+    )
     categories = load_coco80_categories()
     allowed_categories = parse_classes_filter(cfg.classes_filter, categories=categories)
 
@@ -439,7 +477,7 @@ def generate_teacher_pseudo_labels(cfg: TeacherPseudoLabelConfig) -> TeacherPseu
         image_paths=image_paths,
         rel_names=rel_names,
         input_size=cfg.input_size,
-        batch_size=cfg.batch_size,
+        batch_size=effective_batch_size,
         num_parallel_calls=cfg.num_parallel_calls,
         prefetch_buffer=cfg.prefetch_buffer,
         input_dtype_name=teacher.input_dtype_name,
@@ -460,7 +498,18 @@ def generate_teacher_pseudo_labels(cfg: TeacherPseudoLabelConfig) -> TeacherPseu
 
     start = time.perf_counter()
     for batch in dataset:
-        outputs = teacher.runner(batch["image"])
+        try:
+            outputs = teacher.runner(batch["image"])
+        except Exception as exc:
+            if effective_batch_size > 1:
+                raise TeacherPseudoLabelError(
+                    "Teacher inference failed for a multi-image batch. "
+                    f"Requested batch_size={cfg.batch_size}, effective batch_size={effective_batch_size}. "
+                    "This teacher may require batch_size=1 or another fixed batch dimension. "
+                    "Retry with --batch-size 1 or provide a batch-compatible SavedModel. "
+                    f"Original error: {exc}"
+                ) from exc
+            raise
         output_dict = _resolve_output(outputs)
         if cfg.debug_io and not debug_printed:
             _print_debug_io_once(teacher=teacher, output_dict=output_dict)
@@ -544,11 +593,15 @@ def generate_teacher_pseudo_labels(cfg: TeacherPseudoLabelConfig) -> TeacherPseu
         categories=selected_categories,
         total_seconds=elapsed,
         teacher_source=teacher.source,
-        batch_size=cfg.batch_size,
+        batch_size=effective_batch_size,
         input_size=cfg.input_size,
         score_threshold=cfg.score_threshold,
         max_detections_per_image=cfg.max_detections_per_image,
     )
+    if effective_batch_size != cfg.batch_size:
+        report["runtime"]["requested_batch_size"] = int(cfg.batch_size)
+        report["runtime"]["effective_batch_size"] = int(effective_batch_size)
+        report["runtime"]["batch_size_auto_adjusted"] = True
 
     if cfg.viz_out_dir is not None:
         written = _write_visual_samples(

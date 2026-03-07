@@ -357,6 +357,10 @@ Useful options:
 - `--debug-io` (print teacher output signature + tensor shapes)
 - `--viz-out-dir <dir>` (optional visual sample export; disabled by default)
 
+Batch-size note:
+- If the teacher signature exposes a fixed batch dimension (for example `1`), the CLI now auto-adjusts to that batch size and records the effective batch size in the report.
+- If a multi-image batch still fails at inference time, rerun with `--batch-size 1`.
+
 ## Evaluate detector (COCO mAP)
 
 Install evaluation deps:
@@ -651,13 +655,29 @@ WSL example flow:
 ```bash
 python -m owli_train dataset import yolo --yolo-dir data/raw/obstacle4/extracted --out work/datasets/obstacle4/instances_raw.json
 python -m owli_train dataset normalize --coco work/datasets/obstacle4/instances_raw.json --images-dir data/raw/obstacle4/extracted --label-map configs/label_maps/obstacle4_to_ba.yaml --out work/datasets/obstacle4/instances_gt.json
+python -m owli_train dataset split --coco work/datasets/obstacle4/instances_gt.json --out-dir work/splits/obstacle4 --seed 1337
 
 PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train dataset pseudo-label coco \
-  data/raw/obstacle4/extracted work/datasets/obstacle4/pseudo_coco_critical.json \
+  --images-dir data/raw/obstacle4/extracted \
+  --out work/datasets/obstacle4/pseudo_coco_critical.json \
   --classes person,bicycle,motorcycle,car,bus,truck --score-threshold 0.6 --batch-size 1
 
 python -m owli_train dataset merge coco --manifest configs/merge_obstacle4_gt_pseudo.yaml --out work/datasets/obstacle4/instances_combined.json
 python -m owli_train dataset export modelmaker-csv --coco work/datasets/obstacle4/instances_combined.json --images-dir data/raw/obstacle4/extracted --splits-json work/splits/obstacle4/splits.json --out work/datasets/obstacle4/modelmaker.csv
 
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet configs/efficientdet_lite2_obstacle4.yaml --require-gpu
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet --config configs/efficientdet_lite2_obstacle4.yaml --require-gpu
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite --model work/runs/<run_id>/artifacts/model.tflite
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/datasets/obstacle4/instances_combined.json \
+  --images-dir data/raw/obstacle4/extracted \
+  --model work/runs/<run_id>/artifacts/model.tflite \
+  --limit-images 50 --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/<run_id>/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/<run_id>/reports/golden_obstacle4.json \
+  --score-threshold 0.1 --max-results 20
 ```

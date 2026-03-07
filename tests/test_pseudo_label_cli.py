@@ -24,6 +24,66 @@ def test_dataset_pseudo_label_coco_help_lists_flags() -> None:
     assert "--score-threshold" in result.stdout
 
 
+def test_dataset_pseudo_label_coco_delegates_with_required_flags(
+    tmp_path: Path, monkeypatch
+) -> None:
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    out = tmp_path / "pseudo.json"
+    captured: dict[str, object] = {}
+
+    def fake_delegate(args):
+        captured["args"] = args
+        return 0
+
+    monkeypatch.setenv("TEACHER_PYTHON_EXE", "/tmp/fake-teacher-python")
+    monkeypatch.setattr("owli_train.cli._delegate_to_teacher_python", fake_delegate)
+
+    result = runner.invoke(
+        app,
+        [
+            "dataset",
+            "pseudo-label",
+            "coco",
+            "--images-dir",
+            str(images_dir),
+            "--out",
+            str(out),
+            "--batch-size",
+            "4",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["args"] == [
+        "dataset",
+        "pseudo-label",
+        "coco",
+        "--images-dir",
+        str(images_dir),
+        "--out",
+        str(out),
+        "--teacher",
+        "https://tfhub.dev/tensorflow/efficientdet/d2/1",
+        "--batch-size",
+        "4",
+        "--input-size",
+        "640",
+        "--score-threshold",
+        "0.6",
+        "--max-detections-per-image",
+        "50",
+        "--seed",
+        "1337",
+        "--num-parallel-calls",
+        "4",
+        "--prefetch-buffer",
+        "2",
+        "--viz-max-images",
+        "25",
+    ]
+
+
 def test_dataset_pseudo_label_coco_missing_images_dir_is_friendly(
     tmp_path: Path, monkeypatch
 ) -> None:

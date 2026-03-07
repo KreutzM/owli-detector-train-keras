@@ -63,6 +63,52 @@ def test_golden_detect_cli_wires_flags(tmp_path: Path, monkeypatch):
     assert captured_cfg["max_results"] == 9
 
 
+def test_golden_detect_cli_delegates_with_required_flags(tmp_path: Path, monkeypatch):
+    model = tmp_path / "model.tflite"
+    model.write_bytes(b"fake")
+    image = tmp_path / "image.jpg"
+    image.write_bytes(b"fake")
+    out = tmp_path / "golden.json"
+    captured: dict[str, object] = {}
+
+    def fake_delegate(args):
+        captured["args"] = args
+        return 0
+
+    monkeypatch.setenv("MODELMAKER_PYTHON_EXE", "/tmp/fake-modelmaker-python")
+    monkeypatch.setattr("owli_train.cli._delegate_to_modelmaker_python", fake_delegate)
+
+    result = runner.invoke(
+        app,
+        [
+            "golden",
+            "detect",
+            "--model",
+            str(model),
+            "--image",
+            str(image),
+            "--out",
+            str(out),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["args"] == [
+        "golden",
+        "detect",
+        "--model",
+        str(model),
+        "--image",
+        str(image),
+        "--out",
+        str(out),
+        "--score-threshold",
+        "0.3",
+        "--max-results",
+        "20",
+    ]
+
+
 def test_golden_detect_cli_dependency_message(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("MODELMAKER_PYTHON_EXE", raising=False)
     model = tmp_path / "model.tflite"

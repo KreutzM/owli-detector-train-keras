@@ -84,6 +84,60 @@ def test_eval_efficientdet_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
     assert captured_cfg["category_map_path"] == category_map
 
 
+def test_eval_efficientdet_tflite_cli_delegates_with_required_flags(tmp_path: Path, monkeypatch):
+    coco = tmp_path / "eval.json"
+    coco.write_text(
+        '{"images": [], "annotations": [], "categories": [{"id": 1, "name": "person"}]}',
+        encoding="utf-8",
+    )
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    model = tmp_path / "model.tflite"
+    model.write_bytes(b"fake")
+    captured: dict[str, object] = {}
+
+    def fake_delegate(args):
+        captured["args"] = args
+        return 0
+
+    monkeypatch.setenv("MODELMAKER_PYTHON_EXE", "/tmp/fake-modelmaker-python")
+    monkeypatch.setattr("owli_train.cli._delegate_to_modelmaker_python", fake_delegate)
+
+    result = runner.invoke(
+        app,
+        [
+            "eval",
+            "efficientdet-tflite",
+            "--coco",
+            str(coco),
+            "--images-dir",
+            str(images_dir),
+            "--model",
+            str(model),
+            "--limit-images",
+            "3",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["args"] == [
+        "eval",
+        "efficientdet-tflite",
+        "--coco",
+        str(coco),
+        "--images-dir",
+        str(images_dir),
+        "--model",
+        str(model),
+        "--score-threshold",
+        "0.3",
+        "--max-detections-per-image",
+        "100",
+        "--limit-images",
+        "3",
+    ]
+
+
 def test_eval_efficientdet_tflite_cli_rejects_non_numeric_noise_thresholds(
     tmp_path: Path, monkeypatch
 ):
