@@ -9,7 +9,7 @@ Machine-readable source of truth for this contract:
 - `configs/label_contracts/ba_v1.yaml`
 
 Current evidence base:
-- The latest fully verified Obstacle4 Lite2 reference run in [Obstacle4_E2E_Results.md](/home/michael/src/train/docs/Obstacle4_E2E_Results.md)
+- The latest fully verified Obstacle4 Lite2 reference run in [Obstacle4_E2E_Results.md](./Obstacle4_E2E_Results.md)
 
 ## Canonical Class Order
 The BA-v1 order is fixed and intentional. Index order matters because TFLite labels are resolved positionally.
@@ -58,7 +58,7 @@ Everything outside the canonical ten-class list is out of scope for BA-v1 unless
 
 ## Current baseline evidence from the verified Obstacle4 Lite2 run
 Source:
-- [Obstacle4_E2E_Results.md](/home/michael/src/train/docs/Obstacle4_E2E_Results.md)
+- [Obstacle4_E2E_Results.md](./Obstacle4_E2E_Results.md)
 
 Practical reading of the latest full TFLite eval:
 - BA core classes are the current center of gravity.
