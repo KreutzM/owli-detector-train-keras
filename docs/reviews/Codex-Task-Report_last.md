@@ -1,50 +1,40 @@
 # Codex Task Report
 
 ## Ziel
-- Die erste echte Integration des naechsten BA-relevanten Datensatzes vorbereiten, mit Prioritaet auf das Obstacle-Dataset, und den Schritt sauber im bestehenden BA-v1-Trainingspfad verankern.
-- Falls lokal noch keine Rohdaten vorliegen, nur eine kleine, nicht-speklative Repo-Vorbereitung einchecken.
+- Das lokal verfuegbare Obstacle-Dataset real pruefen, Format/Taxonomie/Lizenzhinweise soweit lokal moeglich verifizieren und daraus einen ersten echten BA-v1-Integrationsschritt ableiten.
+- Wenn lokal kein verifizierbarer DS2-Rohdatensatz vorliegt, das klar benennen und keinen kuenstlichen Integrationsfortschritt vortaeuschen.
 
 ## Was wurde geändert?
-- Neue vorbereitete Mapping-Datei fuer das naechste Obstacle-Dataset angelegt: `configs/label_maps/obstacle_dataset_to_ba.yaml`.
-- Neue Integrationsdoku fuer den DS2-Vorbereitungspfad angelegt: `docs/Obstacle_Dataset_Integration.md`.
-- BA-v1-Doku knapp auf die neue DS2-Integrationsnotiz verlinkt: `docs/BA_v1_Labelset.md`.
-- Runbook um einen kurzen DS2-Prep-Hinweis ergaenzt: `docs/runbook.md`.
-- Kleinen Konsistenztest fuer die neue Mapping-Vorbereitung ergaenzt: `tests/test_obstacle_dataset_prep.py`.
-- Review-Datei auf diesen Taskstand aktualisiert: `docs/reviews/Codex-Task-Report_last.md`.
+- `docs/Obstacle_Dataset_Integration.md` auf den real erneut geprueften lokalen Nichtfund eines zweiten Obstacle-Datasets nachgeschaerft.
+- `docs/reviews/Codex-Task-Report_last.md` auf diesen Taskstand aktualisiert.
 
 ## Was wurde wirklich verifiziert?
 - Tatsächlich ausgeführte Kommandos:
-- `sed -n '1,240p' docs/BA_v1_Labelset.md`
-- `sed -n '1,260p' docs/Obstacle4_E2E_Results.md`
+- `sed -n '1,220p' docs/BA_v1_Labelset.md`
+- `sed -n '1,260p' docs/Obstacle_Dataset_Integration.md`
 - `sed -n '1,260p' docs/runbook.md`
-- `sed -n '1,260p' README.md`
-- `ls -R configs/label_maps configs/label_contracts`
+- `sed -n '1,220p' README.md`
 - `sed -n '1,240p' configs/label_contracts/ba_v1.yaml`
-- `sed -n '1,220p' configs/efficientdet_lite2_obstacle4.yaml`
-- `sed -n '1,220p' configs/merge_obstacle4_gt_pseudo.yaml`
-- `sed -n '1,260p' src/owli_train/data/split.py`
-- `sed -n '1,260p' src/owli_train/data/modelmaker_csv.py`
-- `sed -n '1,220p' src/owli_train/data/coco.py`
-- `sed -n '220,420p' src/owli_train/data/coco.py`
-- `sed -n '1,260p' tests/test_dataset_split.py`
-- `sed -n '1,240p' tests/test_dataset_export_modelmaker_csv.py`
-- `sed -n '1,260p' tests/test_dataset_merge_coco.py`
-- `find data -maxdepth 4 \( -iname '*obstacle*' -o -iname '*taco*' \) | sort`
-- `find . -maxdepth 4 \( -iname '*obstacle*' -o -iname '*taco*' \) | sort`
-- `find /home/michael -maxdepth 3 \( -iname '*obstacle*' -o -iname '*taco*' \) 2>/dev/null | sort | sed -n '1,200p'`
-- `rg -n "Obstacle-Dataset|Obstacle Dataset|obstacle dataset|obstacle4|TACO|Mendeley|BA-v1" docs configs src tests README.md -S`
-- `rg -n "obstacle|ensure-train-class-coverage|label_map_json|class_names|labels.txt|mapping_files" src/owli_train tests -S`
-- `rg -n '/home/|file://|vscode://' docs/Obstacle_Dataset_Integration.md docs/BA_v1_Labelset.md docs/runbook.md`
-- Ergebnis der lokalen Verfuegbarkeitspruefung: im Repo und in der naheliegenden WSL-Workspace-Umgebung wurde kein zweites materialisiertes Obstacle-Dataset gefunden; nur Obstacle4 ist real vorhanden.
+- `sed -n '1,240p' configs/label_maps/obstacle_dataset_to_ba.yaml`
+- `for f in src/owli_train/data/*.py; do ...; done`
+- `for f in tests/test_dataset_import_yolo.py tests/test_dataset_normalize.py tests/test_dataset_merge_coco.py tests/test_dataset_split.py tests/test_dataset_export_modelmaker_csv.py; do ...; done`
+- `find /home/michael -maxdepth 5 \( -iname '*obstacle*' -o -iname '*Obstacle*' \) 2>/dev/null | sort | sed -n '1,300p'`
+- `find /mnt/c/Users -maxdepth 5 \( -iname '*obstacle*' -o -iname '*Obstacle*' \) 2>/dev/null | sort | sed -n '1,300p'`
+- `find /home/michael -maxdepth 5 \( -iname '*taco*' -o -iname '*TACO*' \) 2>/dev/null | sort | sed -n '1,200p'`
+- `find /mnt/c/Users -maxdepth 5 \( -iname '*taco*' -o -iname '*TACO*' \) 2>/dev/null | sort | sed -n '1,200p'`
+- `find /mnt/c/Users/Admin/Downloads -maxdepth 4 \( -iname 'data.yaml' -o -iname '*.json' -o -iname 'README*' -o -iname 'LICENSE*' -o -iname '*.zip' \) 2>/dev/null | sort | sed -n '1,400p'`
+- `find /home/michael/Downloads -maxdepth 4 \( -iname 'data.yaml' -o -iname '*.json' -o -iname 'README*' -o -iname 'LICENSE*' -o -iname '*.zip' \) 2>/dev/null | sort | sed -n '1,300p'`
+- `find /mnt/c/Users/Admin/Desktop /mnt/c/Users/Admin/Documents -maxdepth 4 \( -iname 'data.yaml' -o -iname '*.json' -o -iname 'README*' -o -iname 'LICENSE*' -o -iname '*.zip' \) 2>/dev/null | sort | sed -n '1,300p'`
+- `find /mnt/c/Users/Admin -maxdepth 6 -iname 'data.yaml' 2>/dev/null | sort | sed -n '1,400p'`
+- `find /home/michael -maxdepth 6 -iname 'data.yaml' 2>/dev/null | sort | sed -n '1,300p'`
+- `rg -n "bump|hole|pole|fence|obstacle" /mnt/c/Users/Admin /home/michael -g 'data.yaml' -g '*.yaml' -g '*.yml' -S 2>/dev/null | sed -n '1,300p'`
+- Ergebnis der realen lokalen Suche: kein zweites verifizierbares Obstacle-Dataset gefunden. Lokal sichtbar sind nur der bestehende Obstacle4-Pfad und die bereits eingecheckten DS2-Vorbereitungsdateien.
+- Es wurde daher kein reales DS2-Import-/Normalize-/Validate-Kommando ausgefuehrt, weil dafuer keine lokale Rohdatenquelle mit belastbarer Taxonomie oder Lizenz-/Readme-Hinweisen vorlag.
 - Rein statisch geprueft:
-- Die neue DS2-Vorbereitung ist an bestehende Repo-Muster (`configs/label_maps`, BA-v1-Contract, Runbook, Obstacle4-Flow) angelehnt.
-- Es wurde kein echter neuer Datensatz importiert, normalisiert oder gemergt, weil lokal keine verifizierten DS2-Rohdaten vorlagen.
-- Es wurde kein Trainingslauf gestartet.
+- Die bestehende DS2-Vorbereitung bleibt repo-konsistent und konservativ auf BA-Core-Klassen begrenzt.
+- Kein BA-v1-Contract, keine Importlogik und kein Trainingspfad wurden in diesem Task veraendert.
 
 ## Tests
-- `python -m pytest tests/test_ba_v1_label_contract.py tests/test_obstacle_dataset_prep.py`
-- Exit-Code: `0`
-- Resultat: `5 passed in 0.05s`
 - `python -m ruff format .`
 - Exit-Code: `0`
 - Resultat: `58 files left unchanged`
@@ -53,11 +43,11 @@
 - Resultat: `All checks passed!`
 - `python -m pytest`
 - Exit-Code: `0`
-- Resultat: `121 passed, 5 skipped in 1.71s`
+- Resultat: `121 passed, 5 skipped`
 
 ## Relevante Run-Kommandos
-- Noch kein real verifizierter DS2-Importlauf, weil die lokalen Rohdaten fehlen.
-- Vorbereiteter naechster YOLO-Pfad nach lokaler DS2-Bereitstellung:
+- Kein realer DS2-Datensatzlauf war moeglich, weil lokal kein verifizierter Rohdatensatz gefunden wurde.
+- Weiterhin vorbereiteter naechster Schritt nach lokaler DS2-Bereitstellung:
 ```bash
 python -m owli_train dataset import yolo \
   --yolo-dir <verified_obstacle_dataset_root> \
@@ -75,10 +65,9 @@ python -m owli_train dataset validate \
 ```
 
 ## Offene Risiken
-- Das eigentliche Obstacle-Dataset ist lokal weiterhin nicht verifiziert vorhanden.
-- Die Quellen-Taxonomie, das Format und die Lizenz des naechsten DS2 sind im Repo noch nicht belegt.
-- Die eingecheckte Mapping-Datei ist bewusst nur eine Vorbereitung mit leerem `map`; sie ist noch kein lauffaehiger finaler Integrationsschritt.
-- Ob das naechste DS2 direkt ueber die bestehende YOLO/COCO-Unterstuetzung ingestiert werden kann oder einen kleinen Adapter braucht, ist offen.
+- Das eigentliche DS2-Obstacle-Dataset ist auf diesem lokalen Rechner weiterhin nicht verifizierbar vorhanden.
+- Ohne reale Rohdaten bleiben Taxonomie, Format, Layout und Lizenzstatus des naechsten Datensatzes offen.
+- Damit bleibt auch das konkrete BA-v1-Mapping in `configs/label_maps/obstacle_dataset_to_ba.yaml` bewusst leer.
 
 ## Nächster sinnvoller Schritt
-- Das reale Obstacle-Dataset lokal bereitstellen, seine Taxonomie/License verifizieren und dann `configs/label_maps/obstacle_dataset_to_ba.yaml` in einem kleinen Folge-PR mit einer echten BA-v1-Mappingtabelle fuellen.
+- Das reale Obstacle-Dataset lokal bereitstellen und dann in einem kleinen Folge-PR dessen echte Klassenliste, Format und Lizenzhinweise in `configs/label_maps/obstacle_dataset_to_ba.yaml` sowie `docs/Obstacle_Dataset_Integration.md` konkret verankern.

@@ -2,8 +2,9 @@
 
 ## Status on Current Repo HEAD
 - No second obstacle dataset is materialized in this repo beyond `data/raw/obstacle4`.
-- A local name search for `obstacle*` / `taco*` under the repo plus the surrounding WSL user workspace (depth-limited sanity check) found only the existing Obstacle4 artifacts.
+- A repeated local search across the repo, the surrounding WSL user workspace, and common Windows user roots found only the existing Obstacle4 artifacts.
 - This file therefore documents a prepared integration path, not a completed DS2 ingestion.
+- As of this local machine state, there is no verified DS2 raw path, taxonomy file, or license/readme artifact to map yet.
 
 ## Why this exists
 - BA-v1 is now explicit in `configs/label_contracts/ba_v1.yaml`.
