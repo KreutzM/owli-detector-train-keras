@@ -139,6 +139,17 @@ def _write_link_or_copy(*, src: Path, dst: Path, mode: str) -> tuple[int, int]:
     return 1, 0
 
 
+def _export_image_for_training(*, src: Path, dst: Path, mode: str) -> tuple[int, int]:
+    with Image.open(src) as image:
+        is_jpeg = image.format == "JPEG"
+        if not is_jpeg:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            image.convert("RGB").save(dst, format="JPEG", quality=95)
+            return 1, 0
+
+    return _write_link_or_copy(src=src, dst=dst, mode=mode)
+
+
 def _load_image_size(image_path: Path) -> tuple[int, int]:
     with Image.open(image_path) as image:
         width, height = image.size
@@ -355,7 +366,7 @@ def import_obstacle_dataset_to_coco(
             dest_path.parent.mkdir(parents=True, exist_ok=True)
             if dest_path.exists() or dest_path.is_symlink():
                 dest_path.unlink()
-            copied_delta, symlink_delta = _write_link_or_copy(
+            copied_delta, symlink_delta = _export_image_for_training(
                 src=source_image_path,
                 dst=dest_path,
                 mode=mode,

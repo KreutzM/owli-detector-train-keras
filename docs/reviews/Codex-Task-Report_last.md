@@ -1,175 +1,118 @@
 # Codex Task Report
 
 ## Ziel
-- Aus den real verfuegbaren BA-v1-Datenquellen `Obstacle4`, `Mapillary Vistas` und `OD` den ersten bewusst balancierten Multi-Source-MVP-Datensatz bauen.
-- Den Pfad bis direkt vor das Training repo-seitig reproduzierbar machen:
-  - balancierter `Mapillary`-Baustein
-  - Drei-Quellen-Merge
-  - Coverage-Split
-  - materialisierte Bilder
-  - `ModelMaker`-CSV
-- Keine neue Datenarchitektur bauen, sondern eine kleine feste Balancing-Heuristik fuer den aktuellen MVP-Stand verankern.
+- Den ersten echten `EfficientDet-Lite2`-Trainingslauf auf dem balancierten Multi-Source-Stage-3-Datensatz ausfuehren.
+- Den Run bis `TFLite`, `inspect`, `eval` und `golden detect` real verifizieren.
+- Die Resultate als neue Stage-3-Baseline dokumentieren, noch ohne `COCO replay`.
 
 ## Was wurde geändert?
-- Neuer kleiner COCO-Balancer:
-  - `src/owli_train/data/balance_coco.py`
-- Neues CLI-Subcommand:
-  - `python -m owli_train dataset balance-coco --config <yaml>`
-  - eingebunden in `src/owli_train/cli.py`
-- Neue feste Mapillary-Balance-Config:
-  - `configs/balance_ba_mvp_mapillary.yaml`
-- Neues Multi-Source-Merge-Manifest:
-  - `configs/merge_ba_mvp_stage3_balanced_multisource.yaml`
-- Neue gezielte Tests:
-  - `tests/test_dataset_balance_coco.py`
-- Aktualisierte Konsistenztests:
-  - `tests/test_cli_help.py`
-  - `tests/test_mvp_data_prep.py`
-- Doku auf den real verifizierten Multi-Source-MVP-Datensatz aktualisiert:
+- Neue dedizierte Stage-3-Trainingsconfig:
+  - `configs/efficientdet_lite2_ba_mvp_stage3.yaml`
+- Neue kanonische JSON-Label-Map fuer den ModelMaker-Pfad:
+  - `configs/label_contracts/ba_v1.class_names.json`
+- Kleiner produktionsrelevanter Fix im `OD`-Import:
+  - `src/owli_train/data/obstacle_dataset.py`
+  - Nicht-JPEG-Bildbytes mit `.jpg`-Dateinamen werden beim Export in echte JPEGs transkodiert.
+- Neuer Test fuer diesen Fix:
+  - `tests/test_dataset_import_obstacle_dataset.py`
+- Neue Ergebnisdoku fuer die verifizierte Multi-Source-Baseline:
+  - `docs/BA_MVP_Stage3_Baseline.md`
+- Aktualisierte Doku:
   - `docs/MVP_Training_Plan.md`
   - `docs/runbook.md`
-  - `docs/Mapillary_Vistas_Integration.md`
+  - `docs/Obstacle4_E2E_Results.md`
 - `docs/reviews/Codex-Task-Report_last.md` auf diesen Task aktualisiert
 
 ## Was wurde wirklich verifiziert?
-- Reale Eingangsquellen benutzt:
-  - `work/datasets/obstacle4/instances_combined.json`
-  - `work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json`
-  - `work/datasets/od_ba_v1/instances_ba_v1.coco.json`
-
-- Vor der Implementierung real bestaetigte Schieflage:
-  - `Obstacle4`
-    - `1250` Bilder
-    - `1912` Annotationen
-  - `Mapillary`
-    - `19962` Bilder
-    - `629801` Annotationen
-    - starke Dominanz bei `obstacle_pole` und `car`
-    - sehr viele kleine Boxen
-  - `OD`
-    - `1592` Bilder
-    - `8911` Annotationen
-
-- Gewaehlte feste erste Balancing-Heuristik:
-  - `Obstacle4` voll behalten
-  - `OD` voll behalten
-  - nur `Mapillary` gezielt reduzieren
-  - `Mapillary`-Regel:
-    - Annotationen mit `min_bbox_min_side < 16` verwerfen
-    - danach pro Zielklasse hoechstens `400` positive Bilder selektieren
-  - Begruendung:
-    - `Mapillary` dominiert sonst `obstacle_pole` und `car`
-    - `Obstacle4` bleibt die einzige verifizierte Quelle fuer `obstacle_bump`
-    - `OD` ist nuetzlich, aber auf der BA-Core-Seite schmal
-
-- Reale Balancing-Ausfuehrung:
+- GPU-Sichtbarkeit im ModelMaker-Interpreter:
 ```bash
-PYTHONPATH=src python -m owli_train dataset balance-coco \
-  --config configs/balance_ba_mvp_mapillary.yaml
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -c "import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices('GPU'))"
 ```
   - Exit-Code: `0`
-  - Erzeugte Artefakte:
-    - `work/datasets/mapillary_vistas_ba_v1_mvp_balanced/instances_ba_v1.coco.json`
-    - `work/datasets/mapillary_vistas_ba_v1_mvp_balanced/class_names.json`
-    - `work/datasets/mapillary_vistas_ba_v1_mvp_balanced/splits.json`
-    - `work/datasets/mapillary_vistas_ba_v1_mvp_balanced/qc_report.json`
   - Ergebnis:
-    - Bilder: `1224`
-    - Annotationen: `27597`
-    - Kategorien: `9`
-    - ausgewaehlte Original-Splits:
-      - `train`: `1106`
-      - `val`: `118`
-    - ausgewaehlte Bildanzahl je Zielklasse:
-      - `obstacle_fence`: `736`
-      - `obstacle_hole`: `254`
-      - `obstacle_pole`: `1186`
-      - `bicycle`: `456`
-      - `bus`: `424`
-      - `car`: `1155`
-      - `motorcycle`: `526`
-      - `person`: `847`
-      - `truck`: `400`
-    - gefilterte kleine `Mapillary`-Annotationen:
-      - `250432`
+    - `tensorflow=2.8.4`
+    - `GPU:0` sichtbar
 
-- Reale Validierung des balancierten `Mapillary`-Exports:
+- Reale Diagnose des ersten Stage-3-Trainingsfehlers:
 ```bash
-PYTHONPATH=src python -m owli_train dataset validate \
-  --coco work/datasets/mapillary_vistas_ba_v1_mvp_balanced/instances_ba_v1.coco.json \
-  --images-dir work/datasets/mapillary_vistas_ba_v1/images
+PYTHONPATH=src .venv-modelmaker-py39/bin/python - <<'PY'
+from tflite_model_maker import object_detector
+train_data, val_data, test_data = object_detector.DataLoader.from_csv(
+    filename='work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv',
+    images_dir='work/datasets/ba_mvp_stage3_balanced_multisource/images',
+)
+print('OK', train_data is not None, val_data is not None, test_data is not None)
+print(train_data.label_map)
+PY
 ```
-  - Exit-Code: `0`
-  - Ergebnis: `images=1224`, `ann=27597`, `cats=9`
+  - erster Lauf vor dem Fix:
+    - Exit-Code: `1`
+    - Fehler:
+      - `ValueError: Image format not JPEG`
+  - nach dem Fix:
+    - Exit-Code: `0`
+    - Ergebnis:
+      - `DataLoader.from_csv(...)` laedt den Stage-3-CSV-Pfad erfolgreich
 
-- Reale Drei-Quellen-Merge-Ausfuehrung:
+- Reale JPEG-Diagnose des materialisierten Stage-3-Datensatzes:
 ```bash
+python - <<'PY'
+import json
+from pathlib import Path
+from PIL import Image
+p = Path('work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json')
+obj = json.loads(p.read_text())
+root = Path('work/datasets/ba_mvp_stage3_balanced_multisource/images')
+bad = []
+for image in obj['images']:
+    with Image.open(root / image['file_name']) as im:
+        if im.format != 'JPEG':
+            bad.append((image['file_name'], im.format))
+print('bad_count', len(bad))
+print(bad[:10])
+PY
+```
+  - vor dem Fix:
+    - `bad_count=6`
+    - alle Ausreisser kamen aus `od_ba_v1`
+  - nach dem Fix und Neu-Materialisierung:
+    - `bad_count=0`
+
+- Reale Neu-Erzeugung der `OD`- und Stage-3-Artefakte nach dem JPEG-Fix:
+```bash
+PYTHONPATH=src python -m owli_train dataset import obstacle-dataset \
+  --dataset-dir 'data/DataSets/Obstacle Dataset' \
+  --out-dir work/datasets/od_ba_v1 \
+  --label-map configs/label_maps/obstacle_dataset_to_ba.yaml \
+  --mode auto
+
+PYTHONPATH=src python -m owli_train dataset validate \
+  --coco work/datasets/od_ba_v1/instances_ba_v1.coco.json \
+  --images-dir work/datasets/od_ba_v1/images
+
 PYTHONPATH=src python -m owli_train dataset merge coco \
   --manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
   --out work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json
-```
-  - Exit-Code: `0`
-  - Erzeugte Artefakte:
-    - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json`
-    - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.report.json`
-  - Ergebnis:
-    - Bilder: `4066`
-    - Annotationen: `38399`
-    - Kategorien: `10`
-  - Source-Mix:
-    - `obstacle4`: `1250` Bilder, `1912` Annotationen
-    - `mapillary_vistas`: `1224` Bilder, `27578` Annotationen
-    - `od_ba_v1`: `1592` Bilder, `8909` Annotationen
-  - Merge-Drops:
-    - `duplicate_gt_same_class=21`
 
-- Reale Split-Ausfuehrung mit Coverage-Gate:
-```bash
 PYTHONPATH=src python -m owli_train dataset split \
   --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
   --out-dir work/splits/ba_mvp_stage3_balanced_multisource \
   --seed 1337 \
   --ensure-train-class-coverage
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - `work/splits/ba_mvp_stage3_balanced_multisource/splits.json`
-    - Split-Groessen:
-      - `train=3252`
-      - `val=406`
-      - `test=408`
-    - `missing_train_classes=[]`
-    - alle `10` BA-v1-Klassen im `TRAIN` vorhanden
 
-- Reale Materialisierung des Drei-Quellen-Datensatzes:
-```bash
+rm -rf work/datasets/ba_mvp_stage3_balanced_multisource/images
+
 PYTHONPATH=src python -m owli_train dataset materialize-images \
   --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
   --merge-manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
   --out-images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
   --out-coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
   --mode auto
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - `work/datasets/ba_mvp_stage3_balanced_multisource/images`
-    - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json`
-    - `images_total=4066`
-    - `written=4066`
-    - `symlinked=4066`
-    - `copied=0`
 
-- Reale Validierung des materialisierten Merge-Datensatzes:
-```bash
 PYTHONPATH=src python -m owli_train dataset validate \
   --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
   --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images
-```
-  - Exit-Code: `0`
-  - Ergebnis: `images=4066`, `ann=38399`, `cats=10`
 
-- Reale `ModelMaker`-CSV-Ausfuehrung:
-```bash
 PYTHONPATH=src python -m owli_train dataset export modelmaker-csv \
   --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
   --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
@@ -177,127 +120,221 @@ PYTHONPATH=src python -m owli_train dataset export modelmaker-csv \
   --out work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv
 ```
   - Exit-Code: `0`
-  - Erzeugte Artefakte:
+  - Ergebnisse:
+    - `work/datasets/od_ba_v1/instances_ba_v1.coco.json`
+    - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json`
+    - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json`
     - `work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv`
-    - `work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.class_names.json`
-  - Ergebnis:
-    - Zeilen: `38399`
-    - Bilder: `4066`
-    - Annotationen: `38399`
-    - Zeilen je Set:
-      - `TRAIN=30616`
-      - `VAL=3909`
-      - `TEST=3874`
 
-- Reale Klassenverteilung des finalen Multi-Source-Merge-Datensatzes:
-  - `obstacle_bump`: `479`
-  - `obstacle_fence`: `1104`
-  - `obstacle_hole`: `673`
-  - `obstacle_pole`: `10878`
-  - `bicycle`: `2372`
-  - `bus`: `1482`
-  - `car`: `9726`
-  - `motorcycle`: `2594`
-  - `person`: `7521`
-  - `truck`: `1570`
-
-- Reale TRAIN-Verteilung des finalen Multi-Source-Merge-Datensatzes:
-  - `obstacle_bump`: `380`
-  - `obstacle_fence`: `864`
-  - `obstacle_hole`: `553`
-  - `obstacle_pole`: `8628`
-  - `bicycle`: `1853`
-  - `bus`: `1149`
-  - `car`: `7784`
-  - `motorcycle`: `2039`
-  - `person`: `6062`
-  - `truck`: `1304`
-
-- Nur statisch geprueft:
-  - In diesem Task wurde kein neuer Trainingslauf gestartet.
-  - `COCO replay` wurde bewusst nicht in den Multi-Source-MVP-Datensatz aufgenommen.
-  - `TACO` bleibt weiter ausserhalb dieses MVP-Schritts.
-
-## Tests
-- Gezielte neue/angepasste Tests:
+- Reale Trainingsausfuehrung:
 ```bash
-python -m pytest tests/test_dataset_balance_coco.py tests/test_mvp_data_prep.py tests/test_cli_help.py
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_mvp_stage3.yaml \
+  --run-name ba-mvp-stage3-20260308 \
+  --require-gpu
 ```
   - Exit-Code: `0`
-  - Resultat: `26 passed`
+  - erzeugte Artefakte:
+    - `work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite`
+    - `work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/labels.txt`
+    - `work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/class_names.json`
+    - `work/runs/20260308-183140-ba-mvp-stage3-20260308/mapping_files.json`
+  - reales Ergebnis:
+    - `20` Epochen abgeschlossen
+    - `val_det_loss=0.5496`
+    - `val_cls_loss=0.4129`
+    - `val_box_loss=0.0027`
+    - `val_loss=0.5569`
+    - `model.tflite` groesse: `7.1 MB`
 
-- Repo-Pflichtchecks:
+- Reale TFLite-Inspektion:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite
+```
+  - Exit-Code: `0`
+  - Ergebnis:
+    - `builtin_ops_only=true`
+    - BA-v1-Labels in kanonischer Reihenfolge in `labels.txt`
+
+- Reale Split-COCO-Erzeugung fuer den Stage-3-Eval:
+```bash
+PYTHONPATH=src python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
+  --out-dir work/splits/ba_mvp_stage3_balanced_multisource \
+  --seed 1337 \
+  --ensure-train-class-coverage \
+  --write-coco
+```
+  - Exit-Code: `0`
+  - erzeugte Artefakte:
+    - `work/splits/ba_mvp_stage3_balanced_multisource/instances_train.json`
+    - `work/splits/ba_mvp_stage3_balanced_multisource/instances_val.json`
+    - `work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json`
+
+- Reale Stage-3-Eval-Entscheidung:
+  - Ein Voll-Eval ueber `4066` Bilder wurde kurz gestartet, aber bewusst abgebrochen.
+  - Grund:
+    - Laufzeitprojektion fast `1h`
+    - enthaelt `TRAIN`-Bilder und ist damit fuer die Baseline weniger sauber
+  - Stattdessen wurde der gehaltene `TEST`-Split (`408` Bilder) als primaerer Stage-3-Eval verwendet.
+
+- Reale primaere Stage-3-Evaluation auf dem gehaltenen `TEST`-Split:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test.json
+```
+  - Exit-Code: `0`
+  - Report-Artefakte:
+    - `work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test.json`
+    - `work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test.md`
+  - Ergebnis:
+    - `AP=0.1307`
+    - `AP50=0.2325`
+    - `AP75=0.1270`
+    - `AR100=0.2170`
+    - `tp=1447`
+    - `fp=5612`
+    - `fn=2427`
+    - `precision=0.2050`
+    - `recall=0.3735`
+    - alle `10` BA-v1-Klassen mit nicht-null `tp`
+
+- Reale Vergleichsevaluation des neuen Stage-3-Modells auf `Obstacle4` full:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/datasets/obstacle4/instances_combined.json \
+  --images-dir data/raw/obstacle4/extracted \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 16 \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_obstacle4.json
+```
+  - Exit-Code: `0`
+  - Report-Artefakte:
+    - `work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_obstacle4.json`
+    - `work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_obstacle4.md`
+  - Ergebnis:
+    - `AP=0.2443`
+    - `AP50=0.3827`
+    - `AP75=0.2548`
+    - `AR100=0.3926`
+    - `tp=1118`
+    - `fp=12475`
+    - `fn=794`
+    - `precision=0.0822`
+    - `recall=0.5847`
+  - direkter Vergleich zur alten `Obstacle4`-Referenz:
+    - `AP`: `0.0952 -> 0.2443`
+    - `AP50`: `0.1897 -> 0.3827`
+    - `AP75`: `0.0886 -> 0.2548`
+    - `AR100`: `0.1899 -> 0.3926`
+    - vorher tote Klassen `person`, `bicycle`, `motorcycle`, `bus`, `truck` liefern jetzt echte Treffer
+
+- Reale Golden-Generierung:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/golden_obstacle4.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
+```
+  - Exit-Code: `0`
+  - erzeugtes Artefakt:
+    - `work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/golden_obstacle4.json`
+  - Ergebnis:
+    - `20` Detections
+    - Klassenmix:
+      - `obstacle_pole=8`
+      - `car=6`
+      - `obstacle_hole=4`
+      - `obstacle_fence=2`
+
+- Nur statisch geprueft:
+  - keine Android-/On-Device-Verifikation
+  - kein `COCO replay`
+  - kein zweiter kombinierter Trainingssweep
+
+## Tests
+- Gezielter Test fuer den neuen JPEG-Fix:
+```bash
+python -m pytest tests/test_dataset_import_obstacle_dataset.py
+```
+  - Exit-Code: `0`
+  - Resultat: `2 passed`
+
+- Repo-Pflichtchecks auf dem finalen Stand:
 ```bash
 python -m ruff format .
 python -m ruff check .
 python -m pytest
 ```
-  - erster Lauf:
-    - `python -m ruff format .`
-      - Exit-Code: `0`
-      - Resultat: `2 files reformatted, 60 files left unchanged`
-    - `python -m ruff check .`
-      - Exit-Code: `1`
-      - Grund: unsortierter Importblock in `src/owli_train/cli.py`
-  - direkter Fix:
-```bash
-python -m ruff check src/owli_train/cli.py --fix
-```
-    - Exit-Code: `0`
-  - finaler Pflichtlauf:
-    - `python -m ruff format .`
-      - Exit-Code: `0`
-      - Resultat: `62 files left unchanged`
-    - `python -m ruff check .`
-      - Exit-Code: `0`
-      - Resultat: `All checks passed!`
-    - `python -m pytest`
-      - Exit-Code: `0`
-      - Resultat: `138 passed, 5 skipped`
+  - Exit-Codes:
+    - `ruff format`: `0`
+    - `ruff check`: `0`
+    - `pytest`: `0`
+  - Resultate:
+    - `ruff format`: keine verbleibenden Formatierungsprobleme
+    - `ruff check`: alle Checks bestanden
+    - `pytest`: kompletter Testlauf bestanden
 
 ## Relevante Run-Kommandos
-```bash
-PYTHONPATH=src python -m owli_train dataset balance-coco \
-  --config configs/balance_ba_mvp_mapillary.yaml
-```
+- Stage-3-Trainingsconfig:
+  - `configs/efficientdet_lite2_ba_mvp_stage3.yaml`
+- Kanonische BA-v1-Label-Map fuer den Lite2-Lauf:
+  - `configs/label_contracts/ba_v1.class_names.json`
 
 ```bash
-PYTHONPATH=src python -m owli_train dataset merge coco \
-  --manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
-  --out work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json
-```
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_mvp_stage3.yaml \
+  --run-name ba-mvp-stage3-20260308 \
+  --require-gpu
 
-```bash
-PYTHONPATH=src python -m owli_train dataset split \
-  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
-  --out-dir work/splits/ba_mvp_stage3_balanced_multisource \
-  --seed 1337 \
-  --ensure-train-class-coverage
-```
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite
 
-```bash
-PYTHONPATH=src python -m owli_train dataset materialize-images \
-  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
-  --merge-manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
-  --out-images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
-  --out-coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
-  --mode auto
-```
-
-```bash
-PYTHONPATH=src python -m owli_train dataset export modelmaker-csv \
-  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
   --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
-  --splits-json work/splits/ba_mvp_stage3_balanced_multisource/splits.json \
-  --out work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/datasets/obstacle4/instances_combined.json \
+  --images-dir data/raw/obstacle4/extracted \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 16 \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_obstacle4.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/golden_obstacle4.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
 ```
 
 ## Offene Risiken
-- Der Datensatz ist deutlich kontrollierter als der volle `Mapillary`-Merge, aber `obstacle_pole` und `car` bleiben weiterhin dominante Klassen.
-- `obstacle_bump` kommt weiterhin nur aus `Obstacle4`.
-- `obstacle_hole` bleibt ueber alle drei Quellen hinweg schwach.
-- `COCO replay` ist in diesem ersten Multi-Source-MVP-Datensatz bewusst noch nicht enthalten; schwache Rehearsal-Klassen koennen im spaeteren Training weiter unter Druck geraten.
-- Die lokale `Mapillary`-Lizenz bleibt `CC BY-NC-SA` laut lokalem Lizenzfile.
+- `COCO replay` fehlt noch; die neue Baseline zeigt klar bessere Rehearsal-Signale, aber die Klassen bleiben nicht stabil genug.
+- Die False-Positive-Last bleibt hoch, besonders bei den BA-Core-Hindernisklassen.
+- `obstacle_pole` bleibt trotz viel Daten schwierig und verrauscht.
+- Die Vergleichsauswertung gegen `Obstacle4` full ist fuer Kontinuitaet nuetzlich, aber nicht identisch zum gehaltenen Stage-3-TEST-Protokoll.
+- Android-/On-Device-Verhalten wurde in diesem Task nicht verifiziert.
 
-## Genau ein nächster sinnvoller Schritt
-- Auf Basis dieses materialisierten Multi-Source-MVP-Datensatzes jetzt den ersten echten `EfficientDet-Lite2`-Trainingslauf ohne `COCO replay` als klare Stage-3-Baseline starten und danach erst entscheiden, wie gross ein spaeterer Replay-Baustein sein darf.
+## Nächster sinnvoller Schritt
+- Baue und merge ein kleines explizites `COCO replay`-Subset fuer `person`, `bicycle`, `motorcycle`, `car`, `bus` und `truck`, dann trainiere eine Stage-4-Baseline gegen denselben Stage-3-Evalrahmen.

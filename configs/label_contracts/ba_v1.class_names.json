@@ -1,0 +1,26 @@
+{
+  "class_names": [
+    "obstacle_bump",
+    "obstacle_fence",
+    "obstacle_hole",
+    "obstacle_pole",
+    "bicycle",
+    "bus",
+    "car",
+    "motorcycle",
+    "person",
+    "truck"
+  ],
+  "category_ids": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ]
+}

@@ -196,6 +196,13 @@ PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
   - `person`, `bicycle`, `motorcycle`, `bus`, and `truck` are effectively not learned in the final TFLite model under this data regime.
 - The run should therefore be treated as the current corrected reference baseline, not as a production-ready BA detector.
 
+## Relation To Newer Multi-Source Baseline
+- This file remains the canonical `Obstacle4`-only reference on current repo HEAD.
+- The first verified balanced multi-source Lite2 baseline now lives in:
+  - [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
+- Use this file when you specifically want the single-source `Obstacle4` reference path.
+- Use the Stage-3 file when you want the current multi-source MVP baseline before `COCO replay`.
+
 ## Historical Note
 - Older documentation referred to `work/runs/20260216-192857` plus a 50-image quick eval.
 - That older quick check remains useful as a historical comparison point, but the current file now treats `work/runs/20260307-222245-obstacle4-e2e-20260307` as the latest fully verified Obstacle4 Lite2 reference run on repo HEAD.

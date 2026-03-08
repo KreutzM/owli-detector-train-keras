@@ -11,6 +11,7 @@
 - Primary label contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
 - Labelset rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
 - Current verified baseline: [Obstacle4_E2E_Results.md](./Obstacle4_E2E_Results.md)
+- Current verified multi-source baseline: [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
 
 ## Primary MVP Sources
 The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified reference baseline, but the next training run is intended to be multi-source.
@@ -88,6 +89,23 @@ Current verified balancing rule for the first multi-source MVP dataset:
   - `Obstacle4` remains the only verified source of `obstacle_bump`
   - `OD` is useful but much smaller and narrower on the BA-core side
 
+Current verified Stage-3 training result on repo HEAD:
+- config:
+  - [`configs/efficientdet_lite2_ba_mvp_stage3.yaml`](../configs/efficientdet_lite2_ba_mvp_stage3.yaml)
+- run:
+  - `work/runs/20260308-183140-ba-mvp-stage3-20260308`
+- primary eval:
+  - held-out `TEST` split from `work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json`
+- primary result:
+  - AP `0.1307`
+  - AP50 `0.2325`
+  - AP75 `0.1270`
+  - all `10` BA-v1 classes produce non-zero true positives on the held-out Stage-3 test split
+- comparison result on full `Obstacle4` reference set:
+  - AP improves from `0.0952` to `0.2443`
+  - rehearsal classes no longer stay at zero
+  - false-positive pressure remains high
+
 ### Stage 3. Add small COCO replay
 Goal:
 - protect the BA-v1 rehearsal classes from disappearing or remaining completely untrained in the combined run
@@ -155,6 +173,7 @@ Current exception:
 
 ## Current Risks
 - The Obstacle4-only baseline is technically stable but not strong enough yet for product use.
+- The new Stage-3 multi-source baseline is materially better than the Obstacle4-only run, but still not product-ready because false positives remain high.
 - BA core improvements can still be undermined by weak or lossy mappings from new sources.
 - COCO replay can distort the class balance if it is not kept intentionally small.
 - The next combined run should be treated as an MVP integration milestone, not as a final product claim.
@@ -163,5 +182,6 @@ Current exception:
 - Treat `Obstacle4` as the verified reference baseline.
 - Treat `Mapillary Vistas` and `OD` as reviewed BA supplements with conservative mappings on current repo HEAD.
 - Use the checked-in balanced Mapillary subset for the first multi-source MVP run instead of the full raw Mapillary export.
+- Treat [`BA_MVP_Stage3_Baseline.md`](./BA_MVP_Stage3_Baseline.md) as the current verified multi-source reference before adding `COCO replay`.
 - Treat `TACO` as prep-only until its local taxonomy is verified.
 - Treat `COCO replay` as a narrow rehearsal mechanism, not as a return to general COCO training.

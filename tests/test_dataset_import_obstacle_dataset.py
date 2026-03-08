@@ -48,6 +48,11 @@ def _write_image(path: Path, *, width: int = 100, height: int = 80) -> None:
     Image.new("RGB", (width, height), color=(20, 40, 60)).save(path)
 
 
+def _write_png_bytes_with_jpg_name(path: Path, *, width: int = 100, height: int = 80) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (width, height), color=(90, 30, 15)).save(path, format="PNG")
+
+
 def _make_obstacle_dataset_stub(root: Path) -> None:
     for split in ("train", "val", "test"):
         (root / f"ann-{split}").mkdir(parents=True)
@@ -128,3 +133,30 @@ def test_import_obstacle_dataset_to_coco_uses_split_and_global_roots(tmp_path: P
     qc_report = json.loads(artifacts.qc_report_path.read_text(encoding="utf-8"))
     assert qc_report["splits"]["test"]["missing_image_samples"] == ["test_missing.jpg"]
     assert qc_report["splits"]["train"]["unmapped_source_class_counts"] == {"dog": 1}
+
+
+def test_import_obstacle_dataset_transcodes_non_jpeg_bytes(tmp_path: Path) -> None:
+    source_root = tmp_path / "Obstacle Dataset"
+    for split in ("train", "val", "test"):
+        (source_root / f"ann-{split}").mkdir(parents=True)
+        (source_root / f"img-{split}").mkdir(parents=True)
+
+    _write_png_bytes_with_jpg_name(source_root / "img-train" / "png_named_jpg.jpg")
+    _write_xml(
+        source_root / "ann-train" / "png_named_jpg.xml",
+        filename="png_named_jpg.jpg",
+        width=100,
+        height=80,
+        objects=[("person", (5, 5, 50, 60))],
+    )
+
+    artifacts = import_obstacle_dataset_to_coco(
+        dataset_dir=source_root,
+        out_dir=tmp_path / "out",
+        label_map_path=Path("configs/label_maps/obstacle_dataset_to_ba.yaml"),
+        mode="auto",
+    )
+
+    out_image = artifacts.images_dir / "train" / "png_named_jpg.jpg"
+    with Image.open(out_image) as image:
+        assert image.format == "JPEG"

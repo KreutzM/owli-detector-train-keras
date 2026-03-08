@@ -810,6 +810,10 @@ Current verified artifact targets:
 - merged materialized COCO: `work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json`
 - merged split file: `work/splits/ba_mvp_stage3_balanced_multisource/splits.json`
 - merged Model Maker CSV: `work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv`
+- verified Stage-3 training config:
+  - `configs/efficientdet_lite2_ba_mvp_stage3.yaml`
+- verified Stage-3 result doc:
+  - [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
 
 WSL example:
 ```bash
@@ -838,6 +842,38 @@ python -m owli_train dataset export modelmaker-csv \
   --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
   --splits-json work/splits/ba_mvp_stage3_balanced_multisource/splits.json \
   --out work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_mvp_stage3.yaml \
+  --run-name ba-mvp-stage3-20260308 \
+  --require-gpu
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite
+
+python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
+  --out-dir work/splits/ba_mvp_stage3_balanced_multisource \
+  --seed 1337 \
+  --ensure-train-class-coverage \
+  --write-coco
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/golden_obstacle4.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
 ```
 
 Current verified result on repo HEAD:
@@ -849,6 +885,8 @@ Current verified result on repo HEAD:
   - balanced `Mapillary`: `1224`
   - `OD`: `1592`
 - all `10` BA-v1 classes remain present in `TRAIN`
+- current verified Stage-3 Lite2 baseline:
+  - [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
 
 ## Mapillary Vistas -> BA COCO Detection
 

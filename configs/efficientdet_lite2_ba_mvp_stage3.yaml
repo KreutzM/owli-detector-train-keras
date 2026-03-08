@@ -1,0 +1,16 @@
+model:
+  variant: lite2
+
+data:
+  csv: work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv
+  images_dir: work/datasets/ba_mvp_stage3_balanced_multisource/images
+  label_map_json: configs/label_contracts/ba_v1.class_names.json
+
+train:
+  epochs: 20
+  batch_size: 16
+  train_whole_model: false
+
+outputs:
+  work_dir: work
+  out_dir: outputs
