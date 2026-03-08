@@ -1,0 +1,17 @@
+status: pending_source_review
+ba_contract: configs/label_contracts/ba_v1.yaml
+allowed_target_classes:
+  - obstacle_bump
+  - obstacle_fence
+  - obstacle_hole
+  - obstacle_pole
+
+drop_unmapped: true
+notes:
+  - Conservative BA-v1 prep file for the future Mapillary Vistas integration.
+  - Fill `map` only after the local source taxonomy and license/readme files are reviewed.
+  - Keep this source constrained to BA core targets until a later PR proves broader mappings are justified.
+  - Leave uncertain source classes unmapped instead of stretching the BA-v1 contract.
+
+map: {}
+

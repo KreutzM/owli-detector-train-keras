@@ -642,6 +642,9 @@ rm -rf work/runs/<run_id>
 
 ## Obstacle4 (DS1) quick recipe
 
+Obstacle4 is the current verified baseline, not the whole forward-looking MVP path.
+For the planned multi-source MVP assembly path, see [MVP_Training_Plan.md](./MVP_Training_Plan.md).
+
 Dataset:
 - Mendeley DOI: `10.17632/xwhnp82rhk.1`
 - Expected layout after extraction: `train/images`, `train/labels`, `valid/images`, `valid/labels`, `data.yaml`
@@ -699,3 +702,27 @@ classes from falling out of `TRAIN` when they are present in the data.
 - Integration notes: `docs/Obstacle_Dataset_Integration.md`
 - BA-v1 rule for DS2: keep this dataset constrained to the four BA core classes until the local
   source taxonomy is reviewed and explicitly mapped.
+
+## BA MVP multi-source prep
+
+- Primary plan: [MVP_Training_Plan.md](./MVP_Training_Plan.md)
+- Fixed class contract: `configs/label_contracts/ba_v1.yaml`
+- Verified baseline anchor: `Obstacle4`
+- Next BA supplemental sources to review locally after downloads complete:
+  - `Mapillary Vistas`
+  - `TACO`
+  - `Obstacle-Dataset / OD`
+- Narrow rehearsal-only source:
+  - `COCO replay` for `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck`
+
+Checked-in prep files:
+- `configs/label_maps/mapillary_vistas_to_ba.yaml`
+- `configs/label_maps/taco_to_ba.yaml`
+- `configs/label_maps/obstacle_dataset_to_ba.yaml`
+- `configs/label_maps/coco_replay_to_ba.yaml`
+
+Working rule:
+- Keep `Mapillary Vistas`, `TACO`, and `OD` conservative and BA-core-only until the local source
+  taxonomies are reviewed from real files.
+- Use COCO only as a small replay source for the six BA-v1 rehearsal classes, not as a return to
+  broad COCO-80 training.

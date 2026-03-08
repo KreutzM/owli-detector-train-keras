@@ -70,5 +70,6 @@ For COCO val2017 compare bootstrap (dataset + optional baseline model):
 See `docs/runbook.md` for end-to-end dataset operations.
 See `docs/wsl-setup.md` for WSL-specific setup and performance notes.
 See `docs/BA_v1_Labelset.md` for the current BA-v1 product label contract and dataset priorities.
+See `docs/MVP_Training_Plan.md` for the primary multi-source BA MVP training path.
 
 GPU note (RTX-3060 on Windows): TensorFlow GPU is generally smoothest in WSL2.

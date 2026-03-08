@@ -79,6 +79,8 @@ This is why BA-v1 keeps those classes as explicit rehearsal targets instead of s
 ## Next dataset integration priorities
 These are product-driven priorities, not completed integrations.
 
+The current primary multi-source MVP assembly plan is tracked in [MVP_Training_Plan.md](./MVP_Training_Plan.md).
+
 ### 1. Obstacle-Dataset
 - Integration prep on current repo HEAD: [Obstacle_Dataset_Integration.md](./Obstacle_Dataset_Integration.md)
 - Expected value:

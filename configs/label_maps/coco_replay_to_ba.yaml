@@ -1,0 +1,25 @@
+status: replay_subset_prep
+ba_contract: configs/label_contracts/ba_v1.yaml
+allowed_target_classes:
+  - bicycle
+  - bus
+  - car
+  - motorcycle
+  - person
+  - truck
+
+drop_unmapped: true
+notes:
+  - Narrow BA-v1 replay mapping for COCO-derived rehearsal data.
+  - This file is intentionally limited to the six BA-v1 rehearsal classes.
+  - Do not use it as a COCO-80 training map.
+  - Build a small replay subset first, then merge it into the BA MVP dataset.
+
+map:
+  bicycle: bicycle
+  bus: bus
+  car: car
+  motorcycle: motorcycle
+  person: person
+  truck: truck
+
