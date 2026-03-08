@@ -1,0 +1,29 @@
+sources:
+  - name: obstacle4_combined
+    coco: ../work/datasets/obstacle4/instances_combined.json
+    images_dir: ../data/raw/obstacle4/extracted
+    pseudo: false
+    file_name_prefix: obstacle4
+
+  - name: mapillary_vistas_ba_v1_mvp_balanced
+    coco: ../work/datasets/mapillary_vistas_ba_v1_mvp_balanced/instances_ba_v1.coco.json
+    images_dir: ../work/datasets/mapillary_vistas_ba_v1/images
+    pseudo: false
+    file_name_prefix: mapillary_vistas
+
+  - name: od_ba_v1
+    coco: ../work/datasets/od_ba_v1/instances_ba_v1.coco.json
+    images_dir: ../work/datasets/od_ba_v1/images
+    pseudo: false
+    file_name_prefix: od_ba_v1
+
+  - name: coco_replay_ba_v1_stage4
+    coco: ../work/datasets/coco_replay_ba_v1_stage4/instances_ba_v1.coco.json
+    images_dir: ../data/coco2017/images/train2017
+    pseudo: false
+    file_name_prefix: coco_replay
+
+settings:
+  same_class_iou: 0.75
+  pseudo_block_iou: 0.6
+  allow_duplicate_file_names: false

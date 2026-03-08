@@ -22,7 +22,7 @@ The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified referen
 | `Mapillary Vistas` | BA supplemental source | full local `v1.2` BA-filtered export verified; `Map2/v2.0` support exists; balanced MVP subset and Stage-3 multi-source merge hook verified | strengthen BA core classes and selected rehearsal classes from street-scene data without letting Mapillary dominate the first MVP run |
 | `TACO` | BA supplemental source | download / local source review pending | add BA-relevant clutter / hard-negative coverage where mappings are defensible |
 | `Obstacle-Dataset / OD` | BA supplemental source | local split-VOC raw source reviewed; BA-filtered COCO export and `Obstacle4` merge hook verified | strengthen `obstacle_pole` and selected exact-match rehearsal classes from an obstacle-focused source |
-| `COCO replay` | rehearsal-only replay | local COCO tree already exists; replay subset not assembled yet | preserve signal for `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck` without reverting to COCO-80 training |
+| `COCO replay` | rehearsal-only replay | local `train2017.clean` replay subset and Stage-4 merge hook verified | preserve signal for `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck` without reverting to COCO-80 training |
 
 Current concrete MVP merge hooks:
 - pairwise reference hooks:
@@ -123,12 +123,37 @@ Expected outcome:
 - avoid broad COCO-80 obligations
 - keep the combined dataset focused on BA-v1 instead of turning back into a generic detector run
 
+Current verified Stage-4 data path on repo HEAD:
+- replay config:
+  - [`configs/coco_replay_ba_mvp_stage4.yaml`](../configs/coco_replay_ba_mvp_stage4.yaml)
+- replay output:
+  - `work/datasets/coco_replay_ba_v1_stage4`
+  - `785` images
+  - `11646` annotations
+  - `6` categories
+- replay heuristic:
+  - start from `work/datasets/coco2017/instances_train2017.clean.json`
+  - keep only `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck`
+  - filter replay boxes with `min_bbox_min_side < 16`
+  - cap replay to `250` positive images per retained class
+- verified Stage-4 merge hook:
+  - [`configs/merge_ba_mvp_stage4_with_coco_replay.yaml`](../configs/merge_ba_mvp_stage4_with_coco_replay.yaml)
+- verified Stage-4 training input prep:
+  - merged COCO: `work/datasets/ba_mvp_stage4_with_coco_replay/instances_combined.json`
+  - materialized COCO: `work/datasets/ba_mvp_stage4_with_coco_replay/instances_materialized.json`
+  - split file: `work/splits/ba_mvp_stage4_with_coco_replay/splits.json`
+  - Model Maker CSV: `work/datasets/ba_mvp_stage4_with_coco_replay/modelmaker.csv`
+  - next training config:
+    - [`configs/efficientdet_lite2_ba_mvp_stage4.yaml`](../configs/efficientdet_lite2_ba_mvp_stage4.yaml)
+
 ## Repo Prep Artifacts for This MVP Path
 - [`configs/label_maps/obstacle4_to_ba.yaml`](../configs/label_maps/obstacle4_to_ba.yaml)
 - [`configs/label_maps/mapillary_vistas_to_ba.yaml`](../configs/label_maps/mapillary_vistas_to_ba.yaml)
 - [`configs/label_maps/taco_to_ba.yaml`](../configs/label_maps/taco_to_ba.yaml)
 - [`configs/label_maps/obstacle_dataset_to_ba.yaml`](../configs/label_maps/obstacle_dataset_to_ba.yaml)
 - [`configs/label_maps/coco_replay_to_ba.yaml`](../configs/label_maps/coco_replay_to_ba.yaml)
+- [`configs/coco_replay_ba_mvp_stage4.yaml`](../configs/coco_replay_ba_mvp_stage4.yaml)
+- [`configs/merge_ba_mvp_stage4_with_coco_replay.yaml`](../configs/merge_ba_mvp_stage4_with_coco_replay.yaml)
 - [Obstacle_Dataset_Integration.md](./Obstacle_Dataset_Integration.md)
 - [Mapillary_Vistas_Integration.md](./Mapillary_Vistas_Integration.md)
 
@@ -138,6 +163,7 @@ Interpretation:
 - `Mapillary Vistas` now also has a checked-in balanced-subset config for the first multi-source MVP run.
 - `TACO` is still prep-only.
 - `OD` now has a real local import path, a checked-in partial mapping, and a verified merge hook with `Obstacle4`.
+- `COCO replay` now has a real small subset config and a verified Stage-4 merge hook.
 
 ## Minimal Execution Plan After Downloads Finish
 For each new BA supplemental source:
@@ -152,13 +178,14 @@ For each new BA supplemental source:
 For COCO replay:
 1. Keep only the six rehearsal classes.
 2. Build a small replay subset instead of using COCO-80 broadly.
-3. Merge replay data only after the BA supplemental sources are normalized into BA-v1.
+3. Cap replay images deliberately so COCO stays smaller than the BA-focused Stage-3 sources.
+4. Merge replay data only after the BA supplemental sources are normalized into BA-v1.
 
 ## What This Plan Does Not Assume Yet
 - exact raw paths for `TACO`
 - exact source class names for those datasets
 - exact merge ratios between the new sources
-- exact replay subset size for COCO
+- future tuning of the replay subset size for COCO
 
 Those facts stay open until the local downloads finish and each source is reviewed from real files.
 
@@ -169,6 +196,10 @@ Current exception:
   - `1224` images
   - `27597` annotations
 - `OD` now also has a real local source review, a verified BA-filtered export under `work/datasets/od_ba_v1`, and a verified merge hook with `Obstacle4`.
+- `COCO replay` now also has a real small rehearsal subset under `work/datasets/coco_replay_ba_v1_stage4`:
+  - `785` images
+  - `11646` annotations
+  - rehearsal-only classes: `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck`
 - `TACO` remains prep-only on current repo HEAD.
 
 ## Current Risks
@@ -185,3 +216,4 @@ Current exception:
 - Treat [`BA_MVP_Stage3_Baseline.md`](./BA_MVP_Stage3_Baseline.md) as the current verified multi-source reference before adding `COCO replay`.
 - Treat `TACO` as prep-only until its local taxonomy is verified.
 - Treat `COCO replay` as a narrow rehearsal mechanism, not as a return to general COCO training.
+- Use the checked-in Stage-4 replay subset and merge hook for the next direct Stage-3 vs. Stage-4 Lite2 comparison run.

@@ -1,0 +1,14 @@
+status: first_stage4_rehearsal_subset
+source_coco: ../work/datasets/coco2017/instances_train2017.clean.json
+source_images_dir: ../data/coco2017/images/train2017
+label_map: label_maps/coco_replay_to_ba.yaml
+out_dir: ../work/datasets/coco_replay_ba_v1_stage4
+
+selection:
+  min_bbox_min_side: 16
+  max_positive_images_per_class: 250
+
+notes:
+  - Keep COCO narrow: rehearsal only for the six BA-v1 replay classes.
+  - Start from the cleaned train2017 COCO export already present in the repo workflow.
+  - Cap positive images per replay class so COCO stays smaller than the BA-focused Stage-3 sources.

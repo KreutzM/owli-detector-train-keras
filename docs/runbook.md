@@ -888,6 +888,82 @@ Current verified result on repo HEAD:
 - current verified Stage-3 Lite2 baseline:
   - [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
 
+## Stage-4 COCO replay data path
+
+Purpose:
+- keep `COCO` narrow and rehearsal-only for the six BA-v1 replay classes
+- prepare the next direct Stage-3 vs. Stage-4 Lite2 comparison without returning to COCO-80 training
+
+Verified replay config:
+- `configs/coco_replay_ba_mvp_stage4.yaml`
+
+Verified replay heuristic:
+- source: `work/datasets/coco2017/instances_train2017.clean.json`
+- classes: `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck`
+- filter replay boxes with `min_bbox_min_side < 16`
+- cap replay to `250` positive images per retained class
+
+Verified replay output:
+- `work/datasets/coco_replay_ba_v1_stage4/instances_ba_v1.coco.json`
+- `work/datasets/coco_replay_ba_v1_stage4/class_names.json`
+- `work/datasets/coco_replay_ba_v1_stage4/qc_report.json`
+- `785` images
+- `11646` annotations
+
+Verified Stage-4 assembly:
+- merge manifest: `configs/merge_ba_mvp_stage4_with_coco_replay.yaml`
+- merged COCO: `work/datasets/ba_mvp_stage4_with_coco_replay/instances_combined.json`
+- materialized COCO: `work/datasets/ba_mvp_stage4_with_coco_replay/instances_materialized.json`
+- split file: `work/splits/ba_mvp_stage4_with_coco_replay/splits.json`
+- Model Maker CSV: `work/datasets/ba_mvp_stage4_with_coco_replay/modelmaker.csv`
+- next training config: `configs/efficientdet_lite2_ba_mvp_stage4.yaml`
+
+Current verified Stage-4 result on repo HEAD:
+- merged images: `4851`
+- merged annotations: `50038`
+- merged categories: `10`
+- source image mix:
+  - `Obstacle4`: `1250`
+  - balanced `Mapillary`: `1224`
+  - `OD`: `1592`
+  - `COCO replay`: `785`
+- replay adds only the six rehearsal classes
+- all `10` BA-v1 classes remain present in `TRAIN`
+
+WSL example:
+```bash
+PYTHONPATH=src python -m owli_train dataset import coco-replay \
+  --config configs/coco_replay_ba_mvp_stage4.yaml
+
+PYTHONPATH=src python -m owli_train dataset validate \
+  --coco work/datasets/coco_replay_ba_v1_stage4/instances_ba_v1.coco.json \
+  --images-dir data/coco2017/images/train2017
+
+PYTHONPATH=src python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage4_with_coco_replay.yaml \
+  --out work/datasets/ba_mvp_stage4_with_coco_replay/instances_combined.json
+
+PYTHONPATH=src python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage4_with_coco_replay/instances_combined.json \
+  --out-dir work/splits/ba_mvp_stage4_with_coco_replay \
+  --seed 1337 \
+  --ensure-train-class-coverage \
+  --write-coco
+
+PYTHONPATH=src python -m owli_train dataset materialize-images \
+  --coco work/datasets/ba_mvp_stage4_with_coco_replay/instances_combined.json \
+  --merge-manifest configs/merge_ba_mvp_stage4_with_coco_replay.yaml \
+  --out-images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images \
+  --out-coco work/datasets/ba_mvp_stage4_with_coco_replay/instances_materialized.json \
+  --mode auto
+
+PYTHONPATH=src python -m owli_train dataset export modelmaker-csv \
+  --coco work/datasets/ba_mvp_stage4_with_coco_replay/instances_materialized.json \
+  --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images \
+  --splits-json work/splits/ba_mvp_stage4_with_coco_replay/splits.json \
+  --out work/datasets/ba_mvp_stage4_with_coco_replay/modelmaker.csv
+```
+
 ## Mapillary Vistas -> BA COCO Detection
 
 - Local source root: `data/DataSets/Map`

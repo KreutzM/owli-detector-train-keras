@@ -23,6 +23,7 @@ from owli_train.data.coco import (
     validate_coco,
     write_coco,
 )
+from owli_train.data.coco_replay import import_coco_replay_with_config
 from owli_train.data.mapillary_vistas import import_mapillary_vistas_to_coco
 from owli_train.data.materialize_images import (
     MaterializeImagesError,
@@ -350,6 +351,28 @@ def dataset_import_yolo(
 
     print(f"[green]OK[/green] wrote COCO: {artifacts.coco_path}")
     print(f"class_names_json: {artifacts.class_names_path}")
+    print(
+        "summary: "
+        f"images={artifacts.images}, annotations={artifacts.annotations}, categories={artifacts.categories}"
+    )
+
+
+@dataset_import_app.command("coco-replay")
+def dataset_import_coco_replay(
+    config: Annotated[
+        Path,
+        typer.Option("--config", exists=True, readable=True),
+    ] = Path("configs/coco_replay_ba_mvp_stage4.yaml"),
+):
+    try:
+        artifacts = import_coco_replay_with_config(config)
+    except ValueError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote COCO replay: {artifacts.coco_path}")
+    print(f"class_names_json: {artifacts.class_names_path}")
+    print(f"qc_report: {artifacts.qc_report_path}")
     print(
         "summary: "
         f"images={artifacts.images}, annotations={artifacts.annotations}, categories={artifacts.categories}"

@@ -43,6 +43,36 @@ def test_coco_replay_prep_stays_narrow_and_identity_mapped() -> None:
     assert replay["map"] == {name: name for name in expected_rehearsal}
 
 
+def test_coco_replay_stage4_config_stays_small_and_points_to_clean_train2017() -> None:
+    config = _load_yaml(Path("configs/coco_replay_ba_mvp_stage4.yaml"))
+
+    assert config["status"] == "first_stage4_rehearsal_subset"
+    assert config["source_coco"] == "../work/datasets/coco2017/instances_train2017.clean.json"
+    assert config["source_images_dir"] == "../data/coco2017/images/train2017"
+    assert config["label_map"] == "label_maps/coco_replay_to_ba.yaml"
+    assert config["out_dir"] == "../work/datasets/coco_replay_ba_v1_stage4"
+    assert config["selection"]["min_bbox_min_side"] == 16
+    assert config["selection"]["max_positive_images_per_class"] == 250
+
+
+def test_stage4_manifest_adds_coco_replay_as_a_fourth_source() -> None:
+    manifest = _load_yaml(Path("configs/merge_ba_mvp_stage4_with_coco_replay.yaml"))
+
+    assert [source["name"] for source in manifest["sources"]] == [
+        "obstacle4_combined",
+        "mapillary_vistas_ba_v1_mvp_balanced",
+        "od_ba_v1",
+        "coco_replay_ba_v1_stage4",
+    ]
+    assert (
+        manifest["sources"][3]["coco"]
+        == "../work/datasets/coco_replay_ba_v1_stage4/instances_ba_v1.coco.json"
+    )
+    assert manifest["sources"][3]["images_dir"] == "../data/coco2017/images/train2017"
+    assert manifest["sources"][3]["file_name_prefix"] == "coco_replay"
+    assert manifest["settings"]["allow_duplicate_file_names"] is False
+
+
 def test_stage2_obstacle4_mapillary_manifest_stays_concrete_and_prefixed() -> None:
     manifest = _load_yaml(Path("configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml"))
 
