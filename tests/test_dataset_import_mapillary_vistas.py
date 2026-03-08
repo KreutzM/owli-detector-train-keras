@@ -15,11 +15,7 @@ def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _make_mapillary_stub(root: Path) -> None:
-    for split in ("training", "validation"):
-        (root / split / "images").mkdir(parents=True)
-        (root / split / "panoptic").mkdir(parents=True)
-
+def _write_stub_images(root: Path) -> None:
     Image.new("RGB", (4000, 2000), color=(255, 0, 0)).save(
         root / "training" / "images" / "train_keep.jpg"
     )
@@ -29,6 +25,14 @@ def _make_mapillary_stub(root: Path) -> None:
     Image.new("RGB", (800, 1600), color=(0, 0, 255)).save(
         root / "validation" / "images" / "val_keep.jpg"
     )
+
+
+def _make_mapillary_stub(root: Path) -> None:
+    for split in ("training", "validation"):
+        (root / split / "images").mkdir(parents=True)
+        (root / split / "panoptic").mkdir(parents=True)
+
+    _write_stub_images(root)
 
     categories = [
         {"id": 4, "name": "Fence", "supercategory": "construction--barrier--fence"},
@@ -109,6 +113,114 @@ def _make_mapillary_stub(root: Path) -> None:
 
     _write_json(root / "training" / "panoptic" / "panoptic_2018.json", train_payload)
     _write_json(root / "validation" / "panoptic" / "panoptic_2018.json", val_payload)
+
+
+def _make_mapillary_v2_stub(root: Path) -> None:
+    for split in ("training", "validation"):
+        (root / split / "images").mkdir(parents=True)
+        (root / split / "v1.2" / "panoptic").mkdir(parents=True)
+        (root / split / "v2.0" / "panoptic").mkdir(parents=True)
+
+    _write_stub_images(root)
+
+    v12_categories = [
+        {"id": 4, "name": "Fence", "supercategory": "construction--barrier--fence"},
+        {"id": 20, "name": "Person", "supercategory": "human--person"},
+    ]
+    v20_categories = [
+        {"id": 5, "name": "construction--barrier--fence", "supercategory": "construction"},
+        {"id": 30, "name": "human--person--individual", "supercategory": "human"},
+    ]
+
+    train_v12 = {
+        "images": [
+            {"id": "train_keep", "file_name": "train_keep.jpg", "width": 4000, "height": 2000},
+        ],
+        "annotations": [
+            {
+                "image_id": "train_keep",
+                "file_name": "train_keep.png",
+                "segments_info": [
+                    {
+                        "id": 1,
+                        "category_id": 4,
+                        "bbox": [100.0, 200.0, 500.0, 600.0],
+                        "area": 300000,
+                        "iscrowd": 0,
+                    }
+                ],
+            },
+        ],
+        "categories": v12_categories,
+    }
+    val_v12 = {
+        "images": [
+            {"id": "val_keep", "file_name": "val_keep.jpg", "width": 800, "height": 1600},
+        ],
+        "annotations": [
+            {
+                "image_id": "val_keep",
+                "file_name": "val_keep.png",
+                "segments_info": [
+                    {
+                        "id": 2,
+                        "category_id": 20,
+                        "bbox": [8.0, 16.0, 80.0, 160.0],
+                        "area": 12800,
+                        "iscrowd": 0,
+                    }
+                ],
+            },
+        ],
+        "categories": v12_categories,
+    }
+    train_v20 = {
+        "images": [
+            {"id": "train_keep", "file_name": "train_keep.jpg", "width": 4000, "height": 2000},
+        ],
+        "annotations": [
+            {
+                "image_id": "train_keep",
+                "file_name": "train_keep.png",
+                "segments_info": [
+                    {
+                        "id": 3,
+                        "category_id": 5,
+                        "bbox": [100.0, 200.0, 500.0, 600.0],
+                        "area": 300000,
+                        "iscrowd": 0,
+                    }
+                ],
+            },
+        ],
+        "categories": v20_categories,
+    }
+    val_v20 = {
+        "images": [
+            {"id": "val_keep", "file_name": "val_keep.jpg", "width": 800, "height": 1600},
+        ],
+        "annotations": [
+            {
+                "image_id": "val_keep",
+                "file_name": "val_keep.png",
+                "segments_info": [
+                    {
+                        "id": 4,
+                        "category_id": 30,
+                        "bbox": [8.0, 16.0, 80.0, 160.0],
+                        "area": 12800,
+                        "iscrowd": 0,
+                    }
+                ],
+            },
+        ],
+        "categories": v20_categories,
+    }
+
+    _write_json(root / "training" / "v1.2" / "panoptic" / "panoptic_2018.json", train_v12)
+    _write_json(root / "validation" / "v1.2" / "panoptic" / "panoptic_2018.json", val_v12)
+    _write_json(root / "training" / "v2.0" / "panoptic" / "panoptic_2020.json", train_v20)
+    _write_json(root / "validation" / "v2.0" / "panoptic" / "panoptic_2020.json", val_v20)
 
 
 def test_import_mapillary_vistas_to_coco_filters_and_scales(tmp_path: Path) -> None:
@@ -199,3 +311,56 @@ def test_dataset_import_mapillary_vistas_cli(tmp_path: Path) -> None:
     assert (out_dir / "qc_report.json").is_file()
     assert "train_images=1" in result.stdout
     assert "val_images=1" in result.stdout
+
+
+def test_import_mapillary_vistas_supports_map2_v2_layout(tmp_path: Path) -> None:
+    source_root = tmp_path / "Map2"
+    _make_mapillary_v2_stub(source_root)
+
+    auto_artifacts = import_mapillary_vistas_to_coco(
+        mapillary_dir=source_root,
+        out_dir=tmp_path / "out_auto",
+        label_map_path=Path("configs/label_maps/mapillary_vistas_to_ba.yaml"),
+        max_long_side=1600,
+    )
+    assert auto_artifacts.annotation_version == "v1.2"
+
+    v2_artifacts = import_mapillary_vistas_to_coco(
+        mapillary_dir=source_root,
+        out_dir=tmp_path / "out_v2",
+        label_map_path=Path("configs/label_maps/mapillary_vistas_to_ba.yaml"),
+        max_long_side=1600,
+        annotation_version="v2.0",
+    )
+    assert v2_artifacts.annotation_version == "v2.0"
+
+    qc_report = json.loads(v2_artifacts.qc_report_path.read_text(encoding="utf-8"))
+    assert qc_report["annotation_version"] == "v2.0"
+    assert qc_report["splits"]["training"]["class_counts"] == {"obstacle_fence": 1}
+    assert qc_report["splits"]["validation"]["class_counts"] == {"person": 1}
+
+
+def test_dataset_import_mapillary_vistas_cli_accepts_annotation_version(tmp_path: Path) -> None:
+    source_root = tmp_path / "Map2"
+    _make_mapillary_v2_stub(source_root)
+    out_dir = tmp_path / "processed_v2"
+
+    result = runner.invoke(
+        app,
+        [
+            "dataset",
+            "import",
+            "mapillary-vistas",
+            "--mapillary-dir",
+            str(source_root),
+            "--out-dir",
+            str(out_dir),
+            "--label-map",
+            "configs/label_maps/mapillary_vistas_to_ba.yaml",
+            "--annotation-version",
+            "v2.0",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "annotation_version: v2.0" in result.stdout

@@ -36,6 +36,7 @@ def test_dataset_import_mapillary_vistas_help_lists_flags():
     assert "--out-dir" in r.stdout
     assert "--label-map" in r.stdout
     assert "--max-long-side" in r.stdout
+    assert "--annotation-version" in r.stdout
     assert "limit-images-per-spl" in r.stdout
 
 

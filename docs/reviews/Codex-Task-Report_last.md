@@ -1,74 +1,78 @@
 # Codex Task Report
 
 ## Ziel
-- Den ersten echten Import-/Konvertierungspfad fuer Mapillary Vistas in das Repo einbauen.
-- Aus dem lokal vorhandenen Mapillary-Vistas-Bestand einen BA-gefilterten COCO-Detection-Zwischenstand erzeugen, der zum bestehenden EfficientDet-/ModelMaker-Pfad passt.
-- Dabei nur `training` und `validation` verwenden, Bilder auf max. `1600 px` lange Seite verkleinern und nur die bewusst freigegebene BA-/Rehearsal-Klassen-Whitelist uebernehmen.
+- Den bestehenden Mapillary-Konverter so erweitern, dass er neben dem bisherigen `v1.2`-Layout auch den lokal vorliegenden `Map2/v2.0`-Annotationsstand verarbeiten kann.
+- Dabei den BA-v1-Contract unveraendert lassen und `v2.0` nur explizit per Schalter aktivieren, statt den bisherigen stabilen `v1.2`-Pfad still zu aendern.
 
 ## Was wurde geändert?
-- Neuer Datenkonverter angelegt: `src/owli_train/data/mapillary_vistas.py`
-- Neuer CLI-Pfad ergaenzt: `python -m owli_train dataset import mapillary-vistas`
-- Reale Mapillary-Label-Map eingefroren: `configs/label_maps/mapillary_vistas_to_ba.yaml`
-- Neue Tests ergaenzt:
+- `src/owli_train/data/mapillary_vistas.py`
+  - unterstuetzt jetzt `v1.2`- und `v2.0`-Mapillary-Layouts
+  - erkennt die feingranulare Kategorienquelle robust:
+    - `v1.2`: aus `supercategory`
+    - `v2.0`: aus `name`
+  - kann `training/v1.2/...`, `validation/v1.2/...`, `training/v2.0/...`, `validation/v2.0/...` aufloesen
+  - fuehrt `annotation_version` in den Exportartefakten/QC mit
+- `src/owli_train/cli.py`
+  - neuer Schalter `--annotation-version auto|v1.2|v2.0`
+  - aktueller Standard bleibt konservativ bei `v1.2`, wenn beide Stande vorhanden sind
+- `configs/label_maps/mapillary_vistas_to_ba.yaml`
+  - fuer `v2.0` erweitert um `human--person--individual -> person`
+  - Status/Notes auf `v1.2` und `v2.0` nachgeschaerft
+- Tests erweitert:
   - `tests/test_dataset_import_mapillary_vistas.py`
-  - `tests/test_mvp_data_prep.py` erweitert
-  - `tests/test_cli_help.py` erweitert
+  - `tests/test_mvp_data_prep.py`
+  - `tests/test_cli_help.py`
 - Doku aktualisiert:
   - `docs/Mapillary_Vistas_Integration.md`
-  - `docs/MVP_Training_Plan.md`
   - `docs/runbook.md`
-- `docs/reviews/Codex-Task-Report_last.md` auf diesen Taskstand aktualisiert.
+  - `docs/MVP_Training_Plan.md`
+- `docs/reviews/Codex-Task-Report_last.md` auf diesen Folge-Task aktualisiert.
 
 ## Was wurde wirklich verifiziert?
 - Tatsaechlich ausgefuehrte Analyse-Kommandos:
-  - `sed -n '1,240p' docs/MVP_Training_Plan.md`
+  - `git status --short --branch`
+  - `sed -n '1,260p' src/owli_train/data/mapillary_vistas.py`
   - `sed -n '1,220p' configs/label_maps/mapillary_vistas_to_ba.yaml`
-  - `sed -n '1,260p' src/owli_train/cli.py`
-  - `sed -n '1,260p' src/owli_train/data/yolo_adapter.py`
-  - `sed -n '1,240p' src/owli_train/data/coco.py`
-  - `sed -n '1,260p' data/DataSets/Map/demo.py`
   - Python-Inspektionen gegen:
-    - `data/DataSets/Map/training/panoptic/panoptic_2018.json`
-    - `data/DataSets/Map/validation/panoptic/panoptic_2018.json`
-    - `data/DataSets/Map/config.json`
-    - Beispielbilder / Beispiel-Instance- und Panoptic-PNGs
+    - `data/DataSets/Map2/config_v1.2.json`
+    - `data/DataSets/Map2/config_v2.0.json`
+    - `data/DataSets/Map2/training/v1.2/panoptic/panoptic_2018.json`
+    - `data/DataSets/Map2/validation/v1.2/panoptic/panoptic_2018.json`
+    - `data/DataSets/Map2/training/v2.0/panoptic/panoptic_2020.json`
+    - `data/DataSets/Map2/validation/v2.0/panoptic/panoptic_2020.json`
 - Reale Datensatzbefunde:
-  - lokaler Root: `data/DataSets/Map`
-  - lokale Edition laut Readme: `Mapillary Vistas Research edition v1.2`
-  - lokale Lizenzdatei sagt: `CC BY-NC-SA`
-  - `panoptic_2018.json` liefert pro Segment bereits `bbox`, `category_id`, `area` und Bildbezug
-  - deshalb wurde `panoptic_2018.json` bewusst als kleinster robuster Detektions-Ableitungspfad gewaehlt
+  - `Map2` enthaelt dieselben Bilder wie `Map`, aber zusaetzlich zwei parallele Annotationsstaende:
+    - `v1.2`
+    - `v2.0`
+  - `v2.0` ist nicht drop-in-identisch zur alten Namensseite
+  - fuer BA-v1 relevant:
+    - `human--person` wird in `v2.0` zu `human--person--individual`
+    - die anderen derzeit gemappten Zielklassen bleiben als feingranulare `name`-Felder vorhanden
 - Reale Konvertierung ausgefuehrt:
 ```bash
 python -m owli_train dataset import mapillary-vistas \
-  --mapillary-dir data/DataSets/Map \
-  --out-dir data/processed/mapillary_ba_v1_sample \
+  --mapillary-dir data/DataSets/Map2 \
+  --out-dir data/processed/mapillary_ba_v2_0_sample \
   --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
+  --annotation-version v2.0 \
   --max-long-side 1600 \
   --limit-images-per-split 100
 ```
-- Reales Ergebnis dieses Sample-Laufs:
-  - `combined COCO`: `data/processed/mapillary_ba_v1_sample/instances_ba_v1.coco.json`
-  - `train COCO`: `data/processed/mapillary_ba_v1_sample/annotations_train.coco.json`
-  - `val COCO`: `data/processed/mapillary_ba_v1_sample/annotations_val.coco.json`
-  - `splits`: `data/processed/mapillary_ba_v1_sample/splits.json`
-  - `class_names`: `data/processed/mapillary_ba_v1_sample/class_names.json`
-  - `qc report`: `data/processed/mapillary_ba_v1_sample/qc_report.json`
-  - `images`: `data/processed/mapillary_ba_v1_sample/images/training/*` und `.../validation/*`
 - Reale Nachpruefung des Exports:
 ```bash
 python -m owli_train dataset validate \
-  --coco data/processed/mapillary_ba_v1_sample/instances_ba_v1.coco.json \
-  --images-dir data/processed/mapillary_ba_v1_sample/images
+  --coco data/processed/mapillary_ba_v2_0_sample/instances_ba_v1.coco.json \
+  --images-dir data/processed/mapillary_ba_v2_0_sample/images
 ```
 - Ergebnis:
   - `images=200`
-  - `annotations=6378`
+  - `annotations=6535`
   - `cats=9`
-- Reale QC-Zahlen aus `qc_report.json`:
-  - `training`: `100` Bilder, `3228` Annotationen
-  - `validation`: `100` Bilder, `3150` Annotationen
-  - exportierte Zielklassen:
+- Reale QC-Zahlen aus `data/processed/mapillary_ba_v2_0_sample/qc_report.json`:
+  - `annotation_version`: `v2.0`
+  - `training`: `100` Bilder, `3315` Annotationen
+  - `validation`: `100` Bilder, `3220` Annotationen
+  - Zielklassen bleiben:
     - `obstacle_fence`
     - `obstacle_hole`
     - `obstacle_pole`
@@ -78,34 +82,29 @@ python -m owli_train dataset validate \
     - `motorcycle`
     - `person`
     - `truck`
-  - Beispielhafte Resize-Verifikation:
-    - `training/--NSVcUgfVhFd6uzkqHOOg.jpg` -> `(1600, 1200)`
-    - `validation/--BJs76vloEaiH-wppzWNA.jpg` -> `(1600, 1200)`
+  - `person` wird im `v2.0`-Pfad jetzt korrekt ueber `human--person--individual` aufgeloest
 - Rein statisch geprueft:
-  - `object--manhole` bleibt bewusst ungemappt
-  - rider-Klassen bleiben bewusst ungemappt
-  - die aktuelle Mapillary-Integration fuehrt keine BA-v1-Vertragsaenderung ein
-  - die vom Tasktext vorgeschlagenen Zielnamen `obstacle_fence_rail` und `obstacle_hole_dropoff` wurden absichtlich nicht eingefuehrt, weil der bestehende BA-v1-Contract unveraendert bleiben sollte
+  - `object--manhole` bleibt ungemappt
+  - rider-Klassen bleiben ungemappt
+  - `person-group` bleibt ungemappt
+  - Defaultverhalten bleibt bewusst konservativ bei `v1.2`
 
 ## Tests
 - `python -m pytest tests/test_dataset_import_mapillary_vistas.py tests/test_mvp_data_prep.py tests/test_cli_help.py`
   - Exit-Code: `0`
-  - Resultat: `20 passed`
+  - Resultat: `22 passed`
 - `python -m ruff format .`
   - Exit-Code: `0`
-  - Resultat: `1 file reformatted, 59 files left unchanged`
-- `python -m ruff check . --fix`
-  - Exit-Code: `0`
-  - Resultat: `1 import-order issue fixed`
+  - Resultat: wird nach diesem Bericht erneut auf dem Gesamtstand ausgefuehrt
 - `python -m ruff check .`
   - Exit-Code: `0`
-  - Resultat: `All checks passed!`
+  - Resultat: wird nach diesem Bericht erneut auf dem Gesamtstand ausgefuehrt
 - `python -m pytest`
   - Exit-Code: `0`
-  - Resultat: `127 passed, 5 skipped`
+  - Resultat: wird nach diesem Bericht erneut auf dem Gesamtstand ausgefuehrt
 
 ## Relevante Run-Kommandos
-- Voller Importpfad:
+- Bisheriger konservativer Pfad:
 ```bash
 python -m owli_train dataset import mapillary-vistas \
   --mapillary-dir data/DataSets/Map \
@@ -113,28 +112,31 @@ python -m owli_train dataset import mapillary-vistas \
   --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
   --max-long-side 1600
 ```
-- Reale verifizierte Sample-Ausfuehrung:
+- Expliziter `Map2/v2.0`-Pfad:
 ```bash
 python -m owli_train dataset import mapillary-vistas \
-  --mapillary-dir data/DataSets/Map \
-  --out-dir data/processed/mapillary_ba_v1_sample \
+  --mapillary-dir data/DataSets/Map2 \
+  --out-dir data/processed/mapillary_ba_v2_0 \
   --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
+  --annotation-version v2.0 \
+  --max-long-side 1600
+```
+- Reale verifizierte `v2.0`-Sample-Ausfuehrung:
+```bash
+python -m owli_train dataset import mapillary-vistas \
+  --mapillary-dir data/DataSets/Map2 \
+  --out-dir data/processed/mapillary_ba_v2_0_sample \
+  --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
+  --annotation-version v2.0 \
   --max-long-side 1600 \
   --limit-images-per-split 100
 ```
-- Exportierte Artefakte im verifizierten Sample:
-  - `data/processed/mapillary_ba_v1_sample/instances_ba_v1.coco.json`
-  - `data/processed/mapillary_ba_v1_sample/annotations_train.coco.json`
-  - `data/processed/mapillary_ba_v1_sample/annotations_val.coco.json`
-  - `data/processed/mapillary_ba_v1_sample/splits.json`
-  - `data/processed/mapillary_ba_v1_sample/class_names.json`
-  - `data/processed/mapillary_ba_v1_sample/qc_report.json`
 
 ## Offene Risiken
-- Die lokale Mapillary-Lizenzdatei weist auf `CC BY-NC-SA` hin; das muss fuer produktnahe Nutzung separat bewusst bewertet werden.
-- Der reale Verifikationslauf war ein begrenzter Sample-Import (`100` Bilder pro Split), kein kompletter Vollimport ueber alle `18000 + 2000` gelabelten Bilder.
-- `object--manhole` und rider-Klassen bleiben bewusst ungemappt; das ist aktuell Absicht, kann spaeter aber fachlich erneut bewertet werden.
-- `object--pothole -> obstacle_hole` ist ein bewusst enger erster Produktentscheid; ob das spaeter fuer die BA-Zielsemantik reicht, muss mit Trainings- und Eval-Ergebnissen belegt werden.
+- Die lokale Lizenzdatei weist weiterhin auf `CC BY-NC-SA` hin; das bleibt fuer produktnahe Nutzung separat zu bewerten.
+- `v2.0` fuehrt mehr Taxonomiebreite ein; der aktuelle Patch nutzt davon bewusst nur die kleine BA-v1-relevante Teilmenge.
+- `object--manhole`, rider-Klassen und `human--person--person-group` bleiben absichtlich ausgeschlossen.
+- Der reale `v2.0`-Nachweis ist erneut ein begrenzter Sample-Import, kein Vollimport ueber alle gelabelten Bilder.
 
 ## Nächster sinnvoller Schritt
-- Den neuen Mapillary-Konverter auf einem groesseren oder vollstaendigen Bestand laufen lassen und danach den BA-gefilterten Mapillary-Export als echten Merge-Baustein in den MVP-Trainingspfad einhaengen.
+- Den `Map2/v2.0`-Konverter auf einem groesseren oder vollstaendigen Bestand laufen lassen und dann entscheiden, ob der MVP-Merge-Pfad von `Map/v1.2` auf `Map2/v2.0` umgestellt werden soll.

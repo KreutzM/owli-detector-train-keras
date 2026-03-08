@@ -32,6 +32,7 @@ class MapillaryImportArtifacts:
     splits_path: Path
     class_names_path: Path
     qc_report_path: Path
+    annotation_version: str
     train: MapillarySplitArtifacts
     val: MapillarySplitArtifacts
     categories: list[str]
@@ -76,8 +77,63 @@ def _resolve_category_order(mapped_targets: set[str], contract_order: list[str])
     return sorted(mapped_targets)
 
 
-def _load_panoptic_payload(split_root: Path) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]], dict[int, str]]:
-    json_path = split_root / "panoptic" / "panoptic_2018.json"
+def _resolve_category_key(category: dict[str, Any], json_path: Path) -> str:
+    name = str(category.get("name", "")).strip()
+    supercategory = str(category.get("supercategory", "")).strip()
+
+    if "--" in name:
+        return name
+    if "--" in supercategory:
+        return supercategory
+    raise ValueError(
+        "Could not resolve a fine-grained Mapillary category key from panoptic metadata: "
+        f"{json_path}"
+    )
+
+
+def _resolve_annotation_layout(
+    *,
+    dataset_root: Path,
+    split_name: str,
+    annotation_version: str,
+) -> tuple[Path, Path, str]:
+    split_root = dataset_root / split_name
+    images_root = split_root / "images"
+    if not images_root.is_dir():
+        raise ValueError(f"Missing Mapillary images directory: {images_root}")
+
+    if annotation_version == "auto":
+        for candidate in ("v1.2", "v2.0"):
+            candidate_root = split_root / candidate
+            if candidate_root.is_dir():
+                return images_root, candidate_root, candidate
+        return images_root, split_root, "v1.2"
+
+    if annotation_version in {"v1.2", "v2.0"}:
+        candidate_root = split_root / annotation_version
+        if candidate_root.is_dir():
+            return images_root, candidate_root, annotation_version
+        if annotation_version == "v1.2" and (split_root / "panoptic").is_dir():
+            return images_root, split_root, "v1.2"
+        raise ValueError(
+            f"Requested Mapillary annotation version `{annotation_version}` not found under {split_root}"
+        )
+
+    raise ValueError("annotation_version must be one of: auto, v1.2, v2.0")
+
+
+def _load_panoptic_payload(
+    annotation_root: Path,
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]], dict[int, str], Path]:
+    json_candidates = sorted((annotation_root / "panoptic").glob("*.json"))
+    if not json_candidates:
+        raise ValueError(f"Missing Mapillary panoptic JSON in: {annotation_root / 'panoptic'}")
+    if len(json_candidates) > 1:
+        raise ValueError(
+            f"Expected exactly one Mapillary panoptic JSON in {annotation_root / 'panoptic'}, "
+            f"found {len(json_candidates)}"
+        )
+    json_path = json_candidates[0]
     if not json_path.is_file():
         raise ValueError(f"Missing Mapillary panoptic JSON: {json_path}")
     payload = json.loads(json_path.read_text(encoding="utf-8"))
@@ -117,12 +173,12 @@ def _load_panoptic_payload(split_root: Path) -> tuple[dict[str, dict[str, Any]],
             category_id = int(item["id"])
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError(f"Panoptic category missing integer id in {json_path}") from exc
-        source_name = str(item.get("supercategory", "")).strip()
+        source_name = _resolve_category_key(item, json_path)
         if not source_name:
             raise ValueError(f"Panoptic category missing supercategory in {json_path}")
         category_name_by_id[category_id] = source_name
 
-    return images_by_id, annotations_by_image_id, category_name_by_id
+    return images_by_id, annotations_by_image_id, category_name_by_id, json_path
 
 
 def _scaled_dimensions(width: int, height: int, max_long_side: int) -> tuple[int, int, float]:
@@ -183,8 +239,8 @@ def _write_resized_image(
 
 def _convert_split(
     *,
+    dataset_root: Path,
     split_name: str,
-    split_root: Path,
     out_images_root: Path,
     label_mapping: dict[str, str],
     category_id_by_name: dict[str, int],
@@ -192,8 +248,16 @@ def _convert_split(
     starting_image_id: int,
     starting_annotation_id: int,
     limit_images: int | None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[int], MapillarySplitArtifacts, int, int]:
-    images_by_id, annotations_by_image_id, source_name_by_category_id = _load_panoptic_payload(split_root)
+    annotation_version: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[int], MapillarySplitArtifacts, int, int, str]:
+    images_root, annotation_root, resolved_version = _resolve_annotation_layout(
+        dataset_root=dataset_root,
+        split_name=split_name,
+        annotation_version=annotation_version,
+    )
+    images_by_id, annotations_by_image_id, source_name_by_category_id, _ = _load_panoptic_payload(
+        annotation_root
+    )
     raw_image_ids = sorted(images_by_id)
     if limit_images is not None:
         raw_image_ids = raw_image_ids[:limit_images]
@@ -215,7 +279,7 @@ def _convert_split(
             continue
 
         source_file_name = str(image_info["file_name"])
-        source_image_path = split_root / "images" / source_file_name
+        source_image_path = images_root / source_file_name
         if not source_image_path.is_file():
             raise ValueError(f"Referenced Mapillary image is missing: {source_image_path}")
 
@@ -311,6 +375,7 @@ def _convert_split(
         ),
         next_image_id,
         next_annotation_id,
+        resolved_version,
     )
 
 
@@ -321,6 +386,7 @@ def import_mapillary_vistas_to_coco(
     label_map_path: Path,
     max_long_side: int = 1600,
     limit_images_per_split: int | None = None,
+    annotation_version: str = "auto",
 ) -> MapillaryImportArtifacts:
     source_root = Path(mapillary_dir)
     if not source_root.is_dir():
@@ -339,9 +405,17 @@ def import_mapillary_vistas_to_coco(
     images_root = out_root / "images"
     images_root.mkdir(parents=True, exist_ok=True)
 
-    train_images, train_annotations, train_ids, train_stats, next_image_id, next_annotation_id = _convert_split(
+    (
+        train_images,
+        train_annotations,
+        train_ids,
+        train_stats,
+        next_image_id,
+        next_annotation_id,
+        resolved_train_version,
+    ) = _convert_split(
+        dataset_root=source_root,
         split_name="training",
-        split_root=source_root / "training",
         out_images_root=images_root,
         label_mapping=label_mapping,
         category_id_by_name=category_id_by_name,
@@ -349,10 +423,19 @@ def import_mapillary_vistas_to_coco(
         starting_image_id=1,
         starting_annotation_id=1,
         limit_images=limit_images_per_split,
+        annotation_version=annotation_version,
     )
-    val_images, val_annotations, val_ids, val_stats, _, _ = _convert_split(
+    (
+        val_images,
+        val_annotations,
+        val_ids,
+        val_stats,
+        _,
+        _,
+        resolved_val_version,
+    ) = _convert_split(
+        dataset_root=source_root,
         split_name="validation",
-        split_root=source_root / "validation",
         out_images_root=images_root,
         label_mapping=label_mapping,
         category_id_by_name=category_id_by_name,
@@ -360,7 +443,15 @@ def import_mapillary_vistas_to_coco(
         starting_image_id=next_image_id,
         starting_annotation_id=next_annotation_id,
         limit_images=limit_images_per_split,
+        annotation_version=annotation_version,
     )
+
+    if resolved_train_version != resolved_val_version:
+        raise ValueError(
+            "Mapillary training and validation resolved to different annotation versions: "
+            f"{resolved_train_version} vs {resolved_val_version}"
+        )
+    resolved_annotation_version = resolved_train_version
 
     combined = {
         "images": train_images + val_images,
@@ -398,6 +489,7 @@ def import_mapillary_vistas_to_coco(
                 "limit_images_per_split": int(limit_images_per_split)
                 if limit_images_per_split is not None
                 else None,
+                "annotation_version": resolved_annotation_version,
                 "categories": category_names,
                 "splits": {
                     "training": {
@@ -435,6 +527,7 @@ def import_mapillary_vistas_to_coco(
         splits_path=splits_path,
         class_names_path=class_names_path,
         qc_report_path=qc_report_path,
+        annotation_version=resolved_annotation_version,
         train=train_stats,
         val=val_stats,
         categories=category_names,

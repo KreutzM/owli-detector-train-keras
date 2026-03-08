@@ -350,6 +350,12 @@ def dataset_import_mapillary_vistas(
         "configs/label_maps/mapillary_vistas_to_ba.yaml"
     ),
     max_long_side: Annotated[int, typer.Option("--max-long-side")] = 1600,
+    annotation_version: Annotated[
+        str,
+        typer.Option(
+            "--annotation-version", help="Mapillary annotation version: auto, v1.2, or v2.0"
+        ),
+    ] = "auto",
     limit_images_per_split: Annotated[
         Optional[int], typer.Option("--limit-images-per-split", min=1)
     ] = None,
@@ -361,6 +367,7 @@ def dataset_import_mapillary_vistas(
             label_map_path=label_map,
             max_long_side=max_long_side,
             limit_images_per_split=limit_images_per_split,
+            annotation_version=annotation_version,
         )
     except ValueError as exc:
         print(f"[red]ERROR[/red] {exc}")
@@ -372,6 +379,7 @@ def dataset_import_mapillary_vistas(
     print(f"splits_json: {artifacts.splits_path}")
     print(f"class_names_json: {artifacts.class_names_path}")
     print(f"qc_report: {artifacts.qc_report_path}")
+    print(f"annotation_version: {artifacts.annotation_version}")
     print(
         "summary: "
         f"categories={len(artifacts.categories)}, "

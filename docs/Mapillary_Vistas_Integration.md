@@ -2,7 +2,9 @@
 
 ## Status on Current Repo HEAD
 - Local source path verified: `data/DataSets/Map`
+- Additional local source path verified: `data/DataSets/Map2`
 - Local edition identified from bundled files: `Mapillary Vistas Research edition v1.2`
+- Additional local edition identified from bundled files: `Mapillary Vistas Research edition v2.0`
 - Local license file says: `CC BY-NC-SA`
 - Current repo support: BA-filtered conversion into COCO detection for the existing EfficientDet / Model Maker path
 
@@ -19,6 +21,16 @@ Why this path:
 - `panoptic_2018.json` already provides per-segment `bbox`, `category_id`, `area`, and image linkage.
 - That is smaller and more reliable for the current detector use case than reconstructing boxes from raw segmentation masks.
 - `testing/` is ignored because the local dataset does not ship labels for it.
+
+For the `Map2` layout the converter now also supports:
+- `training/v1.2/panoptic/panoptic_2018.json`
+- `validation/v1.2/panoptic/panoptic_2018.json`
+- `training/v2.0/panoptic/panoptic_2020.json`
+- `validation/v2.0/panoptic/panoptic_2020.json`
+
+Working rule:
+- default behavior stays conservative and prefers `v1.2` when both `v1.2` and `v2.0` are present
+- use `--annotation-version v2.0` explicitly when you want the newer taxonomy
 
 ## Current mapped source classes
 Configured in [`configs/label_maps/mapillary_vistas_to_ba.yaml`](../configs/label_maps/mapillary_vistas_to_ba.yaml):
@@ -64,6 +76,16 @@ python -m owli_train dataset import mapillary-vistas \
   --max-long-side 1600
 ```
 
+Explicit `Map2/v2.0` run:
+```bash
+python -m owli_train dataset import mapillary-vistas \
+  --mapillary-dir data/DataSets/Map2 \
+  --out-dir data/processed/mapillary_ba_v2_0 \
+  --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
+  --annotation-version v2.0 \
+  --max-long-side 1600
+```
+
 Useful bounded verification run:
 ```bash
 python -m owli_train dataset import mapillary-vistas \
@@ -103,3 +125,17 @@ QC highlights from `qc_report.json`:
   - `obstacle_hole` appears, but only once in this sample slice
 
 This verifies that the converter writes resized images, scaled boxes, and a BA-filtered COCO intermediate on the real local Mapillary source.
+
+Additional bounded `Map2/v2.0` run executed on this machine:
+- output dir: `data/processed/mapillary_ba_v2_0_sample`
+- limit: `100` images per split
+- `annotation_version`: `v2.0`
+- result:
+  - combined images: `200`
+  - combined annotations: `6535`
+  - categories: `9`
+
+Important v2.0 note:
+- `v2.0` is not a drop-in duplicate of the old label names.
+- Example: person is represented as `human--person--individual` instead of `human--person`.
+- The repo converter now handles that explicitly, but only when the source is routed to the `v2.0` annotation tree.

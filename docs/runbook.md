@@ -745,6 +745,8 @@ Current behavior:
 - keeps only the current narrow BA-relevant class whitelist
 - exports resized images with long side capped at `1600`
 - writes scaled COCO detection boxes plus `splits.json` and `qc_report.json`
+- supports both classic `v1.2` layout and `Map2` `v2.0` panoptic layout
+- default stays conservative and prefers `v1.2` when both annotation trees exist
 
 WSL example:
 ```bash
@@ -763,4 +765,14 @@ python -m owli_train dataset import mapillary-vistas \
   --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
   --max-long-side 1600 \
   --limit-images-per-split 100
+```
+
+Explicit `Map2/v2.0` example:
+```bash
+python -m owli_train dataset import mapillary-vistas \
+  --mapillary-dir data/DataSets/Map2 \
+  --out-dir data/processed/mapillary_ba_v2_0 \
+  --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
+  --annotation-version v2.0 \
+  --max-long-side 1600
 ```

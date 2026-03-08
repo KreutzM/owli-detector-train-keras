@@ -18,7 +18,7 @@ The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified referen
 | Source | MVP role | Current repo status | Intended BA-v1 contribution |
 | --- | --- | --- | --- |
 | `Obstacle4` | baseline anchor | fully verified on current repo HEAD | BA core classes + current pseudo-label bridge into rehearsal classes |
-| `Mapillary Vistas` | BA supplemental source | local source verified; BA-filtered COCO converter now exists | strengthen BA core classes and selected rehearsal classes from street-scene data |
+| `Mapillary Vistas` | BA supplemental source | local `v1.2` and `Map2/v2.0` source verified; BA-filtered COCO converter exists | strengthen BA core classes and selected rehearsal classes from street-scene data |
 | `TACO` | BA supplemental source | download / local source review pending | add BA-relevant clutter / hard-negative coverage where mappings are defensible |
 | `Obstacle-Dataset / OD` | BA supplemental source | repo prep exists, no verified local raw source on this machine | strengthen BA core classes with a second obstacle-focused source |
 | `COCO replay` | rehearsal-only replay | local COCO tree already exists; replay subset not assembled yet | preserve signal for `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck` without reverting to COCO-80 training |

@@ -22,9 +22,10 @@ def test_mapillary_prep_maps_only_into_the_current_ba_v1_contract() -> None:
     contract = _load_yaml(Path("configs/label_contracts/ba_v1.yaml"))
     mapillary = _load_yaml(Path("configs/label_maps/mapillary_vistas_to_ba.yaml"))
 
-    assert mapillary["status"] == "local_vistas_v1_2_verified"
+    assert mapillary["status"] == "local_vistas_v1_2_and_v2_0_verified"
     assert mapillary["drop_unmapped"] is True
     assert set(mapillary["map"].values()) <= set(contract["class_names"])
+    assert mapillary["map"]["human--person--individual"] == "person"
     assert "object--manhole" not in mapillary["map"]
     assert "human--rider--bicyclist" not in mapillary["map"]
     assert "human--rider--motorcyclist" not in mapillary["map"]
