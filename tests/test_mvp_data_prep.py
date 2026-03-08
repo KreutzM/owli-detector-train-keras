@@ -58,3 +58,17 @@ def test_stage2_obstacle4_mapillary_manifest_stays_concrete_and_prefixed() -> No
     )
     assert manifest["sources"][1]["file_name_prefix"] == "mapillary_vistas"
     assert manifest["settings"]["allow_duplicate_file_names"] is False
+
+
+def test_stage2_obstacle4_od_manifest_stays_concrete_and_prefixed() -> None:
+    manifest = _load_yaml(Path("configs/merge_ba_mvp_stage2_obstacle4_od.yaml"))
+
+    assert [source["name"] for source in manifest["sources"]] == [
+        "obstacle4_combined",
+        "od_ba_v1",
+    ]
+    assert manifest["sources"][0]["coco"] == "../work/datasets/obstacle4/instances_combined.json"
+    assert manifest["sources"][0]["file_name_prefix"] == "obstacle4"
+    assert manifest["sources"][1]["coco"] == "../work/datasets/od_ba_v1/instances_ba_v1.coco.json"
+    assert manifest["sources"][1]["file_name_prefix"] == "od_ba_v1"
+    assert manifest["settings"]["allow_duplicate_file_names"] is False

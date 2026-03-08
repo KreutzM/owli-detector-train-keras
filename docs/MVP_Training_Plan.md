@@ -20,7 +20,7 @@ The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified referen
 | `Obstacle4` | baseline anchor | fully verified on current repo HEAD | BA core classes + current pseudo-label bridge into rehearsal classes |
 | `Mapillary Vistas` | BA supplemental source | full local `v1.2` BA-filtered export verified; `Map2/v2.0` support exists; Stage-2 merge hook with `Obstacle4` verified | strengthen BA core classes and selected rehearsal classes from street-scene data |
 | `TACO` | BA supplemental source | download / local source review pending | add BA-relevant clutter / hard-negative coverage where mappings are defensible |
-| `Obstacle-Dataset / OD` | BA supplemental source | repo prep exists, no verified local raw source on this machine | strengthen BA core classes with a second obstacle-focused source |
+| `Obstacle-Dataset / OD` | BA supplemental source | local split-VOC raw source reviewed; BA-filtered COCO export and `Obstacle4` merge hook verified | strengthen `obstacle_pole` and selected exact-match rehearsal classes from an obstacle-focused source |
 | `COCO replay` | rehearsal-only replay | local COCO tree already exists; replay subset not assembled yet | preserve signal for `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck` without reverting to COCO-80 training |
 
 Current concrete MVP merge hook:
@@ -62,6 +62,12 @@ Working rule:
 - until each source taxonomy is reviewed locally, keep these sources constrained to the four BA core targets
 - do not use these sources to backfill rehearsal classes by default
 
+Current exception:
+- `OD` now has a reviewed local taxonomy and a partial BA-v1 mapping.
+- The current OD mapping remains conservative on obstacle classes, but exact-match rehearsal labels
+  (`person`, `bicycle`, `bus`, `car`, `motorbike`, `truck`) are allowed because they exist directly
+  in the local XML taxonomy and do not widen BA-v1.
+
 ### Stage 3. Add small COCO replay
 Goal:
 - protect the BA-v1 rehearsal classes from disappearing or remaining completely untrained in the combined run
@@ -91,7 +97,8 @@ Expected outcome:
 Interpretation:
 - `Obstacle4` and `COCO replay` already have a concrete class-level role in the repo.
 - `Mapillary Vistas` now has a concrete export path and a checked-in merge hook with `Obstacle4`.
-- `TACO` and `OD` are still conservative BA-v1 prep points, not completed integrations.
+- `TACO` is still prep-only.
+- `OD` now has a real local import path, a checked-in partial mapping, and a verified merge hook with `Obstacle4`.
 
 ## Minimal Execution Plan After Downloads Finish
 For each new BA supplemental source:
@@ -109,7 +116,7 @@ For COCO replay:
 3. Merge replay data only after the BA supplemental sources are normalized into BA-v1.
 
 ## What This Plan Does Not Assume Yet
-- exact raw paths for `Mapillary Vistas`, `TACO`, or `OD`
+- exact raw paths for `TACO`
 - exact source class names for those datasets
 - exact merge ratios between the new sources
 - exact replay subset size for COCO
@@ -118,7 +125,8 @@ Those facts stay open until the local downloads finish and each source is review
 
 Current exception:
 - `Mapillary Vistas` now has a real local source review, a full BA-filtered `v1.2` export, and a verified merge hook with `Obstacle4`.
-- `TACO` and `OD` still remain prep-only on current repo HEAD.
+- `OD` now also has a real local source review, a verified BA-filtered export under `work/datasets/od_ba_v1`, and a verified merge hook with `Obstacle4`.
+- `TACO` remains prep-only on current repo HEAD.
 
 ## Current Risks
 - The Obstacle4-only baseline is technically stable but not strong enough yet for product use.
@@ -128,5 +136,6 @@ Current exception:
 
 ## Current Working Rule
 - Treat `Obstacle4` as the verified reference baseline.
-- Treat `Mapillary Vistas`, `TACO`, and `OD` as BA core supplements until their local taxonomies are verified.
+- Treat `Mapillary Vistas` and `OD` as reviewed BA supplements with conservative mappings on current repo HEAD.
+- Treat `TACO` as prep-only until its local taxonomy is verified.
 - Treat `COCO replay` as a narrow rehearsal mechanism, not as a return to general COCO training.

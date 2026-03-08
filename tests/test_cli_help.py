@@ -40,6 +40,15 @@ def test_dataset_import_mapillary_vistas_help_lists_flags():
     assert "limit-images-per-spl" in r.stdout
 
 
+def test_dataset_import_obstacle_dataset_help_lists_flags():
+    r = runner.invoke(app, ["dataset", "import", "obstacle-dataset", "--help"])
+    assert r.exit_code == 0
+    assert "--dataset-dir" in r.stdout
+    assert "--out-dir" in r.stdout
+    assert "--label-map" in r.stdout
+    assert "--mode" in r.stdout
+
+
 def test_dataset_export_modelmaker_csv_help_lists_flags():
     r = runner.invoke(app, ["dataset", "export", "modelmaker-csv", "--help"])
     assert r.exit_code == 0

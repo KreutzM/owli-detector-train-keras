@@ -1,16 +1,28 @@
-status: pending_source_review
+status: local_source_reviewed_partial_mapping
 ba_contract: configs/label_contracts/ba_v1.yaml
 allowed_target_classes:
-  - obstacle_bump
-  - obstacle_fence
-  - obstacle_hole
   - obstacle_pole
+  - bicycle
+  - bus
+  - car
+  - motorcycle
+  - person
+  - truck
 
 drop_unmapped: true
 notes:
-  - This file is a checked-in preparation stub for the next BA-v1 obstacle dataset.
-  - Fill `map` only after the local raw dataset taxonomy, license, and image layout are verified.
-  - Do not map source classes into BA-v1 rehearsal classes from this dataset without explicit evidence.
-  - Leave uncertain or lossy source classes unmapped instead of stretching the BA-v1 taxonomy.
+  - The locally reviewed usable OD path is the split VOC-style XML layout under ann-train/ann-val/ann-test.
+  - Exact-match rehearsal classes are allowed because the local taxonomy contains person/vehicle labels directly.
+  - "'motorbike' is normalized into BA-v1 'motorcycle'."
+  - "'pole' and 'warning_column' are mapped into BA-v1 'obstacle_pole'."
+  - Leave uncertain classes such as reflective_cone, spherical_roadblock, ashcan, fire_hydrant, tricycle, dog, and stop_sign unmapped.
 
-map: {}
+map:
+  pole: obstacle_pole
+  warning_column: obstacle_pole
+  bicycle: bicycle
+  bus: bus
+  car: car
+  motorbike: motorcycle
+  person: person
+  truck: truck

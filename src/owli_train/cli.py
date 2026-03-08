@@ -32,6 +32,7 @@ from owli_train.data.merge_coco import (
     merge_coco_from_manifest,
 )
 from owli_train.data.modelmaker_csv import export_coco_to_modelmaker_csv
+from owli_train.data.obstacle_dataset import import_obstacle_dataset_to_coco
 from owli_train.data.split import split_coco_image_ids, write_split_coco_files, write_splits
 from owli_train.data.yolo_adapter import import_yolo_to_coco
 from owli_train.eval.detect import (
@@ -385,6 +386,54 @@ def dataset_import_mapillary_vistas(
         f"categories={len(artifacts.categories)}, "
         f"train_images={artifacts.train.images}, train_annotations={artifacts.train.annotations}, "
         f"val_images={artifacts.val.images}, val_annotations={artifacts.val.annotations}"
+    )
+
+
+@dataset_import_app.command("obstacle-dataset")
+def dataset_import_obstacle_dataset(
+    dataset_dir: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = Path("data/DataSets/Obstacle Dataset"),
+    out_dir: Annotated[Path, typer.Option("--out-dir")] = Path("work/datasets/od_ba_v1"),
+    label_map: Annotated[Path, typer.Option("--label-map", exists=True, readable=True)] = Path(
+        "configs/label_maps/obstacle_dataset_to_ba.yaml"
+    ),
+    mode: Annotated[
+        str,
+        typer.Option("--mode", help="Image export mode: auto, symlink, or copy."),
+    ] = "auto",
+):
+    try:
+        artifacts = import_obstacle_dataset_to_coco(
+            dataset_dir=dataset_dir,
+            out_dir=out_dir,
+            label_map_path=label_map,
+            mode=mode,
+        )
+    except ValueError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote combined COCO: {artifacts.combined_coco_path}")
+    print(f"train_coco: {artifacts.train_coco_path}")
+    print(f"val_coco: {artifacts.val_coco_path}")
+    print(f"test_coco: {artifacts.test_coco_path}")
+    print(f"splits_json: {artifacts.splits_path}")
+    print(f"class_names_json: {artifacts.class_names_path}")
+    print(f"qc_report: {artifacts.qc_report_path}")
+    print(
+        "summary: "
+        f"categories={len(artifacts.categories)}, "
+        f"train_images={artifacts.train.images}, train_annotations={artifacts.train.annotations}, "
+        f"val_images={artifacts.val.images}, val_annotations={artifacts.val.annotations}, "
+        f"test_images={artifacts.test.images}, test_annotations={artifacts.test.annotations}"
     )
 
 

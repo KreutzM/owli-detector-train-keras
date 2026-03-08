@@ -695,13 +695,71 @@ The pseudo-label classes (`person`, `bicycle`, `motorcycle`, `car`, `bus`, `truc
 product label contract, so `--ensure-train-class-coverage` is the safest way to keep rare merged
 classes from falling out of `TRAIN` when they are present in the data.
 
-## Obstacle-Dataset (DS2) prep
+## Obstacle-Dataset (OD) -> BA COCO Detection
 
-- Current status: prepared in-repo, not yet integrated with real local raw data.
-- Checked-in mapping stub: `configs/label_maps/obstacle_dataset_to_ba.yaml`
-- Integration notes: `docs/Obstacle_Dataset_Integration.md`
-- BA-v1 rule for DS2: keep this dataset constrained to the four BA core classes until the local
-  source taxonomy is reviewed and explicitly mapped.
+- Local source root verified on this machine: `/mnt/e/DataSets/Obstacle Dataset`
+- Integration notes: [Obstacle_Dataset_Integration.md](./Obstacle_Dataset_Integration.md)
+- Current mapping file: `configs/label_maps/obstacle_dataset_to_ba.yaml`
+- Source format used by the importer:
+  - split VOC XML under `ann-train`, `ann-val`, `ann-test`
+  - split image roots `img-train`, `img-val`, `img-test`
+  - fallback image roots `JPEGImages` and `OD-test/JPEGImages`
+- The checked-in importer intentionally ignores the local YOLO txt labels because no local
+  class-id legend was found for them.
+
+Current behavior:
+- keeps only the currently mapped BA-v1 subset
+- writes one combined COCO plus train/val/test split COCO files
+- writes `splits.json`, `class_names.json`, and `qc_report.json`
+- drops images with no mapped annotations
+- skips XMLs whose image file is missing locally
+- resolves duplicate XML `filename` conflicts against the real local image size when possible
+
+Real full export verified on this machine:
+- output dir: `work/datasets/od_ba_v1`
+- images: `1592`
+- annotations: `8911`
+- categories: `7`
+- categories present:
+  - `obstacle_pole`
+  - `bicycle`
+  - `bus`
+  - `car`
+  - `motorcycle`
+  - `person`
+  - `truck`
+
+WSL example:
+```bash
+python -m owli_train dataset import obstacle-dataset \
+  --dataset-dir '/mnt/e/DataSets/Obstacle Dataset' \
+  --out-dir work/datasets/od_ba_v1 \
+  --label-map configs/label_maps/obstacle_dataset_to_ba.yaml \
+  --mode auto
+```
+
+Validate the exported COCO:
+```bash
+python -m owli_train dataset validate \
+  --coco work/datasets/od_ba_v1/instances_ba_v1.coco.json \
+  --images-dir work/datasets/od_ba_v1/images
+```
+
+Merge hook with `Obstacle4`:
+```bash
+python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage2_obstacle4_od.yaml \
+  --out work/datasets/ba_mvp_stage2_obstacle4_od/instances_combined.json
+```
+
+Coverage split on the merged dataset:
+```bash
+python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage2_obstacle4_od/instances_combined.json \
+  --out-dir work/splits/ba_mvp_stage2_obstacle4_od \
+  --seed 1337 \
+  --ensure-train-class-coverage
+```
 
 ## BA MVP multi-source prep
 
@@ -710,10 +768,13 @@ classes from falling out of `TRAIN` when they are present in the data.
 - Verified baseline anchor: `Obstacle4`
 - Next BA supplemental sources to review locally after downloads complete:
   - `TACO`
-  - `Obstacle-Dataset / OD`
 - Mapillary status:
   - local source reviewed
   - BA-filtered converter documented in [Mapillary_Vistas_Integration.md](./Mapillary_Vistas_Integration.md)
+- OD status:
+  - local source reviewed
+  - BA-filtered converter documented in [Obstacle_Dataset_Integration.md](./Obstacle_Dataset_Integration.md)
+  - merge hook verified: `configs/merge_ba_mvp_stage2_obstacle4_od.yaml`
 - Narrow rehearsal-only source:
   - `COCO replay` for `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck`
 
@@ -724,8 +785,9 @@ Checked-in prep files:
 - `configs/label_maps/coco_replay_to_ba.yaml`
 
 Working rule:
-- Keep `Mapillary Vistas`, `TACO`, and `OD` conservative and BA-core-only until the local source
-  taxonomies are reviewed from real files.
+- Keep `TACO` conservative and BA-core-only until the local source taxonomy is reviewed from real files.
+- `Mapillary Vistas` and `OD` now have reviewed local taxonomies; keep their checked-in mappings
+  conservative and explicit instead of stretching new source classes into BA-v1.
 - Use COCO only as a small replay source for the six BA-v1 rehearsal classes, not as a return to
   broad COCO-80 training.
 

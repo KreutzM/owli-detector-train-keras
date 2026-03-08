@@ -82,22 +82,20 @@ These are product-driven priorities, not completed integrations.
 The current primary multi-source MVP assembly plan is tracked in [MVP_Training_Plan.md](./MVP_Training_Plan.md).
 
 ### 1. Obstacle-Dataset
-- Integration prep on current repo HEAD: [Obstacle_Dataset_Integration.md](./Obstacle_Dataset_Integration.md)
+- Current verified repo status: [Obstacle_Dataset_Integration.md](./Obstacle_Dataset_Integration.md)
 - Expected value:
   - Strengthen BA core classes first.
   - Reduce dependence on a single obstacle source.
 - BA-v1 classes most likely to benefit:
-  - `obstacle_bump`
-  - `obstacle_fence`
-  - `obstacle_hole`
   - `obstacle_pole`
+  - plus exact-match rehearsal classes where the local OD taxonomy already contains them directly
 - Likely repo work:
-  - Verify license and local acquisition path.
-  - Add import adapter or normalization mapping into the BA-v1 obstacle classes.
-  - Review split behavior and merge compatibility with the current Obstacle4 path.
+  - Review license and redistribution constraints separately; no local license/readme artifact was found in the current OD download.
+  - Expand the current conservative mapping only if additional OD source classes can be defended cleanly.
+  - Review merge weighting and downstream balancing against `Obstacle4` and `Mapillary`.
 - Risks / unknowns:
-  - Exact class vocabulary, layout, and label quality are not yet verified in this repo.
-  - Mapping may be lossy if the source taxonomy does not align cleanly to the four BA core classes.
+  - The local download is incomplete relative to its XML set; many XMLs reference missing images.
+  - The current clean mapping only contributes `obstacle_pole` on the BA-core side; `obstacle_bump`, `obstacle_fence`, and `obstacle_hole` still need other sources.
 
 ### 2. TACO
 - Expected value:

@@ -1,0 +1,17 @@
+sources:
+  - name: obstacle4_combined
+    coco: ../work/datasets/obstacle4/instances_combined.json
+    images_dir: ../data/raw/obstacle4/extracted
+    pseudo: false
+    file_name_prefix: obstacle4
+
+  - name: od_ba_v1
+    coco: ../work/datasets/od_ba_v1/instances_ba_v1.coco.json
+    images_dir: ../work/datasets/od_ba_v1/images
+    pseudo: false
+    file_name_prefix: od_ba_v1
+
+settings:
+  same_class_iou: 0.75
+  pseudo_block_iou: 0.6
+  allow_duplicate_file_names: false
