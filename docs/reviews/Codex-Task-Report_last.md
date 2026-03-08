@@ -1,189 +1,230 @@
 # Codex Task Report
 
 ## Ziel
-- Den lokal heruntergeladenen OD / Obstacle-Dataset-Bestand real pruefen.
-- Format, Taxonomie und lokal verfuegbare Metadaten belastbar verifizieren.
-- Einen ersten echten BA-v1-kompatiblen COCO-Zwischenstand fuer den bestehenden EfficientDet-/ModelMaker-Pfad bauen.
-- OD nicht nur isoliert exportieren, sondern als echten naechsten Merge-Baustein mit `Obstacle4` vorbereiten und real pruefen.
+- Aus den real verfuegbaren BA-v1-Datenquellen `Obstacle4`, `Mapillary Vistas` und `OD` den ersten bewusst balancierten Multi-Source-MVP-Datensatz bauen.
+- Den Pfad bis direkt vor das Training repo-seitig reproduzierbar machen:
+  - balancierter `Mapillary`-Baustein
+  - Drei-Quellen-Merge
+  - Coverage-Split
+  - materialisierte Bilder
+  - `ModelMaker`-CSV
+- Keine neue Datenarchitektur bauen, sondern eine kleine feste Balancing-Heuristik fuer den aktuellen MVP-Stand verankern.
 
 ## Was wurde geändert?
-- Neuer OD-spezifischer Importer:
-  - `src/owli_train/data/obstacle_dataset.py`
+- Neuer kleiner COCO-Balancer:
+  - `src/owli_train/data/balance_coco.py`
 - Neues CLI-Subcommand:
-  - `python -m owli_train dataset import obstacle-dataset`
+  - `python -m owli_train dataset balance-coco --config <yaml>`
   - eingebunden in `src/owli_train/cli.py`
-- Reale lokale OD-Label-Map statt Prep-Stub:
-  - `configs/label_maps/obstacle_dataset_to_ba.yaml`
-- Neuer konkreter Merge-Hook:
-  - `configs/merge_ba_mvp_stage2_obstacle4_od.yaml`
+- Neue feste Mapillary-Balance-Config:
+  - `configs/balance_ba_mvp_mapillary.yaml`
+- Neues Multi-Source-Merge-Manifest:
+  - `configs/merge_ba_mvp_stage3_balanced_multisource.yaml`
 - Neue gezielte Tests:
-  - `tests/test_dataset_import_obstacle_dataset.py`
+  - `tests/test_dataset_balance_coco.py`
 - Aktualisierte Konsistenztests:
-  - `tests/test_obstacle_dataset_prep.py`
-  - `tests/test_mvp_data_prep.py`
   - `tests/test_cli_help.py`
-- Doku auf den real verifizierten OD-Stand aktualisiert:
-  - `docs/Obstacle_Dataset_Integration.md`
+  - `tests/test_mvp_data_prep.py`
+- Doku auf den real verifizierten Multi-Source-MVP-Datensatz aktualisiert:
   - `docs/MVP_Training_Plan.md`
   - `docs/runbook.md`
-  - `docs/BA_v1_Labelset.md`
+  - `docs/Mapillary_Vistas_Integration.md`
 - `docs/reviews/Codex-Task-Report_last.md` auf diesen Task aktualisiert
 
 ## Was wurde wirklich verifiziert?
-- Reale lokale Quellpruefung unter:
-  - `/mnt/e/DataSets/Obstacle Dataset`
-- Belastbar gefunden:
-  - split VOC-XML-Struktur:
-    - `ann-train`
-    - `ann-val`
-    - `ann-test`
-  - split Bildordner:
-    - `img-train`
-    - `img-val`
-    - `img-test`
-  - zusaetzliche YOLO-TXT-Struktur:
-    - `label-train`
-    - `label-val`
-    - `label-test`
-  - zusaetzlicher Legacy-Baum:
-    - `Annotations`
-    - `JPEGImages`
-    - `ImageSets/Main`
-  - weiterer Fallback-Bildbaum:
-    - `OD-test/JPEGImages`
-- Nicht lokal gefunden:
-  - kein belastbares `README`
-  - keine belastbare `LICENSE`
-  - keine lokale YOLO-Class-ID-Legende
+- Reale Eingangsquellen benutzt:
+  - `work/datasets/obstacle4/instances_combined.json`
+  - `work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json`
+  - `work/datasets/od_ba_v1/instances_ba_v1.coco.json`
 
-- Reale Taxonomie aus den lokalen split XMLs:
-  - `ashcan`
-  - `bicycle`
-  - `bus`
-  - `car`
-  - `dog`
-  - `fire_hydrant`
-  - `motorbike`
-  - `person`
-  - `pole`
-  - `reflective_cone`
-  - `spherical_roadblock`
-  - `stop_sign`
-  - `tricycle`
-  - `truck`
-  - `warning_column`
+- Vor der Implementierung real bestaetigte Schieflage:
+  - `Obstacle4`
+    - `1250` Bilder
+    - `1912` Annotationen
+  - `Mapillary`
+    - `19962` Bilder
+    - `629801` Annotationen
+    - starke Dominanz bei `obstacle_pole` und `car`
+    - sehr viele kleine Boxen
+  - `OD`
+    - `1592` Bilder
+    - `8911` Annotationen
 
-- Reale Import-Ausfuehrung:
+- Gewaehlte feste erste Balancing-Heuristik:
+  - `Obstacle4` voll behalten
+  - `OD` voll behalten
+  - nur `Mapillary` gezielt reduzieren
+  - `Mapillary`-Regel:
+    - Annotationen mit `min_bbox_min_side < 16` verwerfen
+    - danach pro Zielklasse hoechstens `400` positive Bilder selektieren
+  - Begruendung:
+    - `Mapillary` dominiert sonst `obstacle_pole` und `car`
+    - `Obstacle4` bleibt die einzige verifizierte Quelle fuer `obstacle_bump`
+    - `OD` ist nuetzlich, aber auf der BA-Core-Seite schmal
+
+- Reale Balancing-Ausfuehrung:
 ```bash
-python -m owli_train dataset import obstacle-dataset \
-  --dataset-dir '/mnt/e/DataSets/Obstacle Dataset' \
-  --out-dir work/datasets/od_ba_v1 \
-  --label-map configs/label_maps/obstacle_dataset_to_ba.yaml \
-  --mode auto
+PYTHONPATH=src python -m owli_train dataset balance-coco \
+  --config configs/balance_ba_mvp_mapillary.yaml
 ```
   - Exit-Code: `0`
   - Erzeugte Artefakte:
-    - `work/datasets/od_ba_v1/instances_ba_v1.coco.json`
-    - `work/datasets/od_ba_v1/annotations_train.coco.json`
-    - `work/datasets/od_ba_v1/annotations_val.coco.json`
-    - `work/datasets/od_ba_v1/annotations_test.coco.json`
-    - `work/datasets/od_ba_v1/splits.json`
-    - `work/datasets/od_ba_v1/class_names.json`
-    - `work/datasets/od_ba_v1/qc_report.json`
-
-- Reale Validierung des fertigen OD-Exports:
-```bash
-python -m owli_train dataset validate \
-  --coco work/datasets/od_ba_v1/instances_ba_v1.coco.json \
-  --images-dir work/datasets/od_ba_v1/images
-```
-  - Exit-Code: `0`
-  - Ergebnis: `images=1592`, `ann=8911`, `cats=7`
-
-- Reale OD-QC-Ergebnisse:
-  - exportierte Bilder: `1592`
-  - exportierte Annotationen: `8911`
-  - Kategorien: `7`
-  - Zielklassen:
-    - `obstacle_pole`
-    - `bicycle`
-    - `bus`
-    - `car`
-    - `motorcycle`
-    - `person`
-    - `truck`
-  - `train`
-    - `scanned_xml_files=1000`
-    - `exported_images=471`
-    - `exported_annotations=1789`
-    - `skipped_missing_images=72`
-    - `skipped_images_without_mapped_annotations=457`
-  - `val`
-    - `scanned_xml_files=1113`
-    - `exported_images=436`
-    - `exported_annotations=2841`
-    - `skipped_missing_images=504`
-    - `skipped_images_without_mapped_annotations=173`
-  - `test`
-    - `scanned_xml_files=1190`
-    - `exported_images=685`
-    - `exported_annotations=4281`
-    - `skipped_missing_images=201`
-    - `skipped_images_without_mapped_annotations=302`
-    - `resolved_duplicate_filenames=2`
-  - lokal bewusst ungemappt:
-    - `reflective_cone`
-    - `spherical_roadblock`
-    - `ashcan`
-    - `fire_hydrant`
-    - `tricycle`
-    - `dog`
-    - `stop_sign`
-
-- Reale Merge-Ausfuehrung mit `Obstacle4`:
-```bash
-python -m owli_train dataset merge coco \
-  --manifest configs/merge_ba_mvp_stage2_obstacle4_od.yaml \
-  --out work/datasets/ba_mvp_stage2_obstacle4_od/instances_combined.json
-```
-  - Exit-Code: `0`
+    - `work/datasets/mapillary_vistas_ba_v1_mvp_balanced/instances_ba_v1.coco.json`
+    - `work/datasets/mapillary_vistas_ba_v1_mvp_balanced/class_names.json`
+    - `work/datasets/mapillary_vistas_ba_v1_mvp_balanced/splits.json`
+    - `work/datasets/mapillary_vistas_ba_v1_mvp_balanced/qc_report.json`
   - Ergebnis:
-    - `work/datasets/ba_mvp_stage2_obstacle4_od/instances_combined.json`
-    - `work/datasets/ba_mvp_stage2_obstacle4_od/instances_combined.report.json`
-    - `images=2842`
-    - `annotations=10821`
-    - `categories=10`
-  - Merge-Report:
-    - `obstacle4_combined`: `1912 / 1912` Annotationen behalten
-    - `od_ba_v1`: `8909 / 8911` Annotationen behalten
-    - `duplicate_gt_same_class=2`
+    - Bilder: `1224`
+    - Annotationen: `27597`
+    - Kategorien: `9`
+    - ausgewaehlte Original-Splits:
+      - `train`: `1106`
+      - `val`: `118`
+    - ausgewaehlte Bildanzahl je Zielklasse:
+      - `obstacle_fence`: `736`
+      - `obstacle_hole`: `254`
+      - `obstacle_pole`: `1186`
+      - `bicycle`: `456`
+      - `bus`: `424`
+      - `car`: `1155`
+      - `motorcycle`: `526`
+      - `person`: `847`
+      - `truck`: `400`
+    - gefilterte kleine `Mapillary`-Annotationen:
+      - `250432`
 
-- Reale Split-Ausfuehrung mit Coverage-Gate auf dem kombinierten Datensatz:
+- Reale Validierung des balancierten `Mapillary`-Exports:
 ```bash
-python -m owli_train dataset split \
-  --coco work/datasets/ba_mvp_stage2_obstacle4_od/instances_combined.json \
-  --out-dir work/splits/ba_mvp_stage2_obstacle4_od \
+PYTHONPATH=src python -m owli_train dataset validate \
+  --coco work/datasets/mapillary_vistas_ba_v1_mvp_balanced/instances_ba_v1.coco.json \
+  --images-dir work/datasets/mapillary_vistas_ba_v1/images
+```
+  - Exit-Code: `0`
+  - Ergebnis: `images=1224`, `ann=27597`, `cats=9`
+
+- Reale Drei-Quellen-Merge-Ausfuehrung:
+```bash
+PYTHONPATH=src python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
+  --out work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json
+```
+  - Exit-Code: `0`
+  - Erzeugte Artefakte:
+    - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json`
+    - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.report.json`
+  - Ergebnis:
+    - Bilder: `4066`
+    - Annotationen: `38399`
+    - Kategorien: `10`
+  - Source-Mix:
+    - `obstacle4`: `1250` Bilder, `1912` Annotationen
+    - `mapillary_vistas`: `1224` Bilder, `27578` Annotationen
+    - `od_ba_v1`: `1592` Bilder, `8909` Annotationen
+  - Merge-Drops:
+    - `duplicate_gt_same_class=21`
+
+- Reale Split-Ausfuehrung mit Coverage-Gate:
+```bash
+PYTHONPATH=src python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
+  --out-dir work/splits/ba_mvp_stage3_balanced_multisource \
   --seed 1337 \
   --ensure-train-class-coverage
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - `work/splits/ba_mvp_stage2_obstacle4_od/splits.json`
+    - `work/splits/ba_mvp_stage3_balanced_multisource/splits.json`
+    - Split-Groessen:
+      - `train=3252`
+      - `val=406`
+      - `test=408`
     - `missing_train_classes=[]`
     - alle `10` BA-v1-Klassen im `TRAIN` vorhanden
 
+- Reale Materialisierung des Drei-Quellen-Datensatzes:
+```bash
+PYTHONPATH=src python -m owli_train dataset materialize-images \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
+  --merge-manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
+  --out-images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --out-coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
+  --mode auto
+```
+  - Exit-Code: `0`
+  - Ergebnis:
+    - `work/datasets/ba_mvp_stage3_balanced_multisource/images`
+    - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json`
+    - `images_total=4066`
+    - `written=4066`
+    - `symlinked=4066`
+    - `copied=0`
+
+- Reale Validierung des materialisierten Merge-Datensatzes:
+```bash
+PYTHONPATH=src python -m owli_train dataset validate \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images
+```
+  - Exit-Code: `0`
+  - Ergebnis: `images=4066`, `ann=38399`, `cats=10`
+
+- Reale `ModelMaker`-CSV-Ausfuehrung:
+```bash
+PYTHONPATH=src python -m owli_train dataset export modelmaker-csv \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --splits-json work/splits/ba_mvp_stage3_balanced_multisource/splits.json \
+  --out work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv
+```
+  - Exit-Code: `0`
+  - Erzeugte Artefakte:
+    - `work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv`
+    - `work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.class_names.json`
+  - Ergebnis:
+    - Zeilen: `38399`
+    - Bilder: `4066`
+    - Annotationen: `38399`
+    - Zeilen je Set:
+      - `TRAIN=30616`
+      - `VAL=3909`
+      - `TEST=3874`
+
+- Reale Klassenverteilung des finalen Multi-Source-Merge-Datensatzes:
+  - `obstacle_bump`: `479`
+  - `obstacle_fence`: `1104`
+  - `obstacle_hole`: `673`
+  - `obstacle_pole`: `10878`
+  - `bicycle`: `2372`
+  - `bus`: `1482`
+  - `car`: `9726`
+  - `motorcycle`: `2594`
+  - `person`: `7521`
+  - `truck`: `1570`
+
+- Reale TRAIN-Verteilung des finalen Multi-Source-Merge-Datensatzes:
+  - `obstacle_bump`: `380`
+  - `obstacle_fence`: `864`
+  - `obstacle_hole`: `553`
+  - `obstacle_pole`: `8628`
+  - `bicycle`: `1853`
+  - `bus`: `1149`
+  - `car`: `7784`
+  - `motorcycle`: `2039`
+  - `person`: `6062`
+  - `truck`: `1304`
+
 - Nur statisch geprueft:
-  - Es wurde in diesem Task kein kombinierter `materialize-images`-Schritt auf dem neuen `Obstacle4 + OD`-Datensatz ausgefuehrt.
-  - Es wurde in diesem Task kein `modelmaker.csv`-Export fuer `Obstacle4 + OD` ausgefuehrt.
-  - Es wurde in diesem Task kein Trainingslauf gestartet.
+  - In diesem Task wurde kein neuer Trainingslauf gestartet.
+  - `COCO replay` wurde bewusst nicht in den Multi-Source-MVP-Datensatz aufgenommen.
+  - `TACO` bleibt weiter ausserhalb dieses MVP-Schritts.
 
 ## Tests
 - Gezielte neue/angepasste Tests:
 ```bash
-python -m pytest tests/test_dataset_import_obstacle_dataset.py tests/test_obstacle_dataset_prep.py tests/test_mvp_data_prep.py tests/test_cli_help.py
+python -m pytest tests/test_dataset_balance_coco.py tests/test_mvp_data_prep.py tests/test_cli_help.py
 ```
   - Exit-Code: `0`
-  - Resultat: `24 passed`
+  - Resultat: `26 passed`
 
 - Repo-Pflichtchecks:
 ```bash
@@ -191,52 +232,72 @@ python -m ruff format .
 python -m ruff check .
 python -m pytest
 ```
-  - `python -m ruff format .`
+  - erster Lauf:
+    - `python -m ruff format .`
+      - Exit-Code: `0`
+      - Resultat: `2 files reformatted, 60 files left unchanged`
+    - `python -m ruff check .`
+      - Exit-Code: `1`
+      - Grund: unsortierter Importblock in `src/owli_train/cli.py`
+  - direkter Fix:
+```bash
+python -m ruff check src/owli_train/cli.py --fix
+```
     - Exit-Code: `0`
-    - Resultat: `61 files left unchanged`
-  - `python -m ruff check .`
-    - Exit-Code: `0`
-    - Resultat: `All checks passed!`
-  - `python -m pytest`
-    - Exit-Code: `0`
-    - Resultat: `133 passed, 5 skipped`
+  - finaler Pflichtlauf:
+    - `python -m ruff format .`
+      - Exit-Code: `0`
+      - Resultat: `62 files left unchanged`
+    - `python -m ruff check .`
+      - Exit-Code: `0`
+      - Resultat: `All checks passed!`
+    - `python -m pytest`
+      - Exit-Code: `0`
+      - Resultat: `138 passed, 5 skipped`
 
 ## Relevante Run-Kommandos
 ```bash
-python -m owli_train dataset import obstacle-dataset \
-  --dataset-dir '/mnt/e/DataSets/Obstacle Dataset' \
-  --out-dir work/datasets/od_ba_v1 \
-  --label-map configs/label_maps/obstacle_dataset_to_ba.yaml \
-  --mode auto
+PYTHONPATH=src python -m owli_train dataset balance-coco \
+  --config configs/balance_ba_mvp_mapillary.yaml
 ```
 
 ```bash
-python -m owli_train dataset validate \
-  --coco work/datasets/od_ba_v1/instances_ba_v1.coco.json \
-  --images-dir work/datasets/od_ba_v1/images
+PYTHONPATH=src python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
+  --out work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json
 ```
 
 ```bash
-python -m owli_train dataset merge coco \
-  --manifest configs/merge_ba_mvp_stage2_obstacle4_od.yaml \
-  --out work/datasets/ba_mvp_stage2_obstacle4_od/instances_combined.json
-```
-
-```bash
-python -m owli_train dataset split \
-  --coco work/datasets/ba_mvp_stage2_obstacle4_od/instances_combined.json \
-  --out-dir work/splits/ba_mvp_stage2_obstacle4_od \
+PYTHONPATH=src python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
+  --out-dir work/splits/ba_mvp_stage3_balanced_multisource \
   --seed 1337 \
   --ensure-train-class-coverage
 ```
 
-## Offene Risiken
-- Im lokalen OD-Download fehlt ein Teil der in den XMLs referenzierten Bilder.
-  - Besonders `val` ist davon stark betroffen.
-- Im lokalen Download liegt kein belastbarer Lizenz-/README-Hinweis vor.
-- Der aktuelle konservative OD-Mapping-Schritt traegt auf der BA-Core-Seite nur `obstacle_pole` bei.
-- Mehrere obstacle-nahe OD-Klassen bleiben bewusst ungemappt, damit `obstacle_bump`, `obstacle_fence`, und `obstacle_hole` nicht semantisch ueberdehnt werden.
-- Der neue Importpfad ist real nutzbar, aber er ersetzt nicht die spaetere Entscheidung zu Balancing und Sampling im kombinierten MVP-Trainingssatz.
+```bash
+PYTHONPATH=src python -m owli_train dataset materialize-images \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
+  --merge-manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
+  --out-images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --out-coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
+  --mode auto
+```
 
-## Nächster sinnvoller Schritt
-- Den naechsten kombinierten MVP-Datensatz aus `Obstacle4 + Mapillary + OD` konkret aufbauen, materialisieren und mit bewusstem Sampling/Balancing fuer den ersten echten Multi-Source-Lite2-Lauf vorbereiten.
+```bash
+PYTHONPATH=src python -m owli_train dataset export modelmaker-csv \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --splits-json work/splits/ba_mvp_stage3_balanced_multisource/splits.json \
+  --out work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv
+```
+
+## Offene Risiken
+- Der Datensatz ist deutlich kontrollierter als der volle `Mapillary`-Merge, aber `obstacle_pole` und `car` bleiben weiterhin dominante Klassen.
+- `obstacle_bump` kommt weiterhin nur aus `Obstacle4`.
+- `obstacle_hole` bleibt ueber alle drei Quellen hinweg schwach.
+- `COCO replay` ist in diesem ersten Multi-Source-MVP-Datensatz bewusst noch nicht enthalten; schwache Rehearsal-Klassen koennen im spaeteren Training weiter unter Druck geraten.
+- Die lokale `Mapillary`-Lizenz bleibt `CC BY-NC-SA` laut lokalem Lizenzfile.
+
+## Genau ein nächster sinnvoller Schritt
+- Auf Basis dieses materialisierten Multi-Source-MVP-Datensatzes jetzt den ersten echten `EfficientDet-Lite2`-Trainingslauf ohne `COCO replay` als klare Stage-3-Baseline starten und danach erst entscheiden, wie gross ein spaeterer Replay-Baustein sein darf.

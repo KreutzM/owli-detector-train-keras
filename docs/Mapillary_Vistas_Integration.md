@@ -123,6 +123,12 @@ python -m owli_train dataset merge coco \
   --out work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json
 ```
 
+For the first balanced three-source MVP dataset, the repo now also carries:
+- balancing config:
+  - [`configs/balance_ba_mvp_mapillary.yaml`](../configs/balance_ba_mvp_mapillary.yaml)
+- multi-source merge hook:
+  - [`configs/merge_ba_mvp_stage3_balanced_multisource.yaml`](../configs/merge_ba_mvp_stage3_balanced_multisource.yaml)
+
 ## Real local sample verification
 Bounded run executed on this machine:
 - output dir: `data/processed/mapillary_ba_v1_sample`
@@ -211,3 +217,47 @@ Merge interpretation:
 - `Mapillary` contributes the large 9-class BA-filtered supplemental block
 - `Obstacle4` restores the missing BA-v1 class `obstacle_bump`
 - the combined split written via `--ensure-train-class-coverage` has no missing classes in `TRAIN`
+
+## Real local balanced-subset verification
+The first checked-in balancing step for the multi-source MVP path was executed on this machine:
+- config:
+  - [`configs/balance_ba_mvp_mapillary.yaml`](../configs/balance_ba_mvp_mapillary.yaml)
+- output dir:
+  - `work/datasets/mapillary_vistas_ba_v1_mvp_balanced`
+- balancing rule:
+  - drop annotations with `min_bbox_min_side < 16`
+  - cap `Mapillary` to `400` positive images per retained target class
+
+Balanced result:
+- images: `1224`
+- annotations: `27597`
+- categories: `9`
+- selected original source splits:
+  - `train`: `1106`
+  - `val`: `118`
+
+Selected image counts per target class:
+- `obstacle_fence`: `736`
+- `obstacle_hole`: `254`
+- `obstacle_pole`: `1186`
+- `bicycle`: `456`
+- `bus`: `424`
+- `car`: `1155`
+- `motorcycle`: `526`
+- `person`: `847`
+- `truck`: `400`
+
+Why this exists:
+- the full export is technically valid but massively dominated by `obstacle_pole` and `car`
+- the first multi-source MVP run should use a bounded `Mapillary` contribution instead of blindly
+  merging the full `19962`-image export
+
+The checked-in Stage-3 multi-source merge that uses this balanced subset was also verified on this machine:
+- manifest:
+  - [`configs/merge_ba_mvp_stage3_balanced_multisource.yaml`](../configs/merge_ba_mvp_stage3_balanced_multisource.yaml)
+- merged output:
+  - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json`
+- merged result:
+  - images: `4066`
+  - annotations: `38399`
+  - categories: `10`

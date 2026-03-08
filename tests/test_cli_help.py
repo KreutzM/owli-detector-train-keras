@@ -15,6 +15,7 @@ def test_dataset_help_lists_normalize():
     r = runner.invoke(app, ["dataset", "--help"])
     assert r.exit_code == 0
     assert "normalize" in r.stdout
+    assert "balance-coco" in r.stdout
     assert "import" in r.stdout
     assert "export" in r.stdout
     assert "merge" in r.stdout
@@ -55,6 +56,12 @@ def test_dataset_export_modelmaker_csv_help_lists_flags():
     assert "--coco" in r.stdout
     assert "--images-dir" in r.stdout
     assert "--out" in r.stdout
+
+
+def test_dataset_balance_coco_help_lists_flags():
+    r = runner.invoke(app, ["dataset", "balance-coco", "--help"])
+    assert r.exit_code == 0
+    assert "--config" in r.stdout
 
 
 def test_dataset_merge_coco_help_lists_flags():

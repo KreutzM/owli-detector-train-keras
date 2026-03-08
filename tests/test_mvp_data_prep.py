@@ -72,3 +72,38 @@ def test_stage2_obstacle4_od_manifest_stays_concrete_and_prefixed() -> None:
     assert manifest["sources"][1]["coco"] == "../work/datasets/od_ba_v1/instances_ba_v1.coco.json"
     assert manifest["sources"][1]["file_name_prefix"] == "od_ba_v1"
     assert manifest["settings"]["allow_duplicate_file_names"] is False
+
+
+def test_mapillary_balance_config_stays_on_the_verified_v1_export() -> None:
+    balance = _load_yaml(Path("configs/balance_ba_mvp_mapillary.yaml"))
+
+    assert balance["status"] == "first_balanced_multisource_mvp"
+    assert (
+        balance["source_coco"]
+        == "../work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json"
+    )
+    assert balance["source_images_dir"] == "../work/datasets/mapillary_vistas_ba_v1/images"
+    assert balance["source_splits_json"] == "../work/datasets/mapillary_vistas_ba_v1/splits.json"
+    assert balance["out_dir"] == "../work/datasets/mapillary_vistas_ba_v1_mvp_balanced"
+    assert balance["selection"]["min_bbox_min_side"] == 16
+    assert balance["selection"]["max_positive_images_per_class"] == 400
+
+
+def test_stage3_balanced_multisource_manifest_stays_concrete_and_prefixed() -> None:
+    manifest = _load_yaml(Path("configs/merge_ba_mvp_stage3_balanced_multisource.yaml"))
+
+    assert [source["name"] for source in manifest["sources"]] == [
+        "obstacle4_combined",
+        "mapillary_vistas_ba_v1_mvp_balanced",
+        "od_ba_v1",
+    ]
+    assert manifest["sources"][0]["coco"] == "../work/datasets/obstacle4/instances_combined.json"
+    assert (
+        manifest["sources"][1]["coco"]
+        == "../work/datasets/mapillary_vistas_ba_v1_mvp_balanced/instances_ba_v1.coco.json"
+    )
+    assert manifest["sources"][1]["images_dir"] == "../work/datasets/mapillary_vistas_ba_v1/images"
+    assert manifest["sources"][1]["file_name_prefix"] == "mapillary_vistas"
+    assert manifest["sources"][2]["coco"] == "../work/datasets/od_ba_v1/instances_ba_v1.coco.json"
+    assert manifest["sources"][2]["file_name_prefix"] == "od_ba_v1"
+    assert manifest["settings"]["allow_duplicate_file_names"] is False

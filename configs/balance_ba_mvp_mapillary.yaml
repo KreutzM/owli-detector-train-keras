@@ -1,0 +1,14 @@
+status: first_balanced_multisource_mvp
+source_coco: ../work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json
+source_images_dir: ../work/datasets/mapillary_vistas_ba_v1/images
+source_splits_json: ../work/datasets/mapillary_vistas_ba_v1/splits.json
+out_dir: ../work/datasets/mapillary_vistas_ba_v1_mvp_balanced
+
+selection:
+  min_bbox_min_side: 16
+  max_positive_images_per_class: 400
+
+notes:
+  - Keep Obstacle4 and OD fully in the first multi-source MVP dataset.
+  - Downsample only Mapillary because it otherwise dominates obstacle_pole and car by a large margin.
+  - Keep all available obstacle_hole positives after the min-side filter; the image cap mainly constrains dominant classes.

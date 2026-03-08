@@ -15,6 +15,7 @@ except ImportError:  # Python < 3.9
 import typer
 from rich import print
 
+from owli_train.data.balance_coco import balance_coco_with_config
 from owli_train.data.coco import (
     load_coco,
     load_label_map,
@@ -303,6 +304,27 @@ def dataset_split(
         )
     else:
         print(f"[green]OK[/green] wrote {out}")
+
+
+@dataset_app.command("balance-coco")
+def dataset_balance_coco(
+    config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
+):
+    try:
+        artifacts = balance_coco_with_config(config)
+    except ValueError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote balanced COCO: {artifacts.coco_path}")
+    if artifacts.splits_path is not None:
+        print(f"splits_json: {artifacts.splits_path}")
+    print(f"class_names_json: {artifacts.class_names_path}")
+    print(f"qc_report: {artifacts.qc_report_path}")
+    print(
+        "summary: "
+        f"images={artifacts.images}, annotations={artifacts.annotations}, categories={artifacts.categories}"
+    )
 
 
 @dataset_import_app.command("yolo")

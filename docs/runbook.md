@@ -791,6 +791,65 @@ Working rule:
 - Use COCO only as a small replay source for the six BA-v1 rehearsal classes, not as a return to
   broad COCO-80 training.
 
+## First balanced multi-source MVP dataset
+
+Current verified assembly rule:
+- keep `Obstacle4` fully
+- keep `OD` fully
+- use the checked-in balanced `Mapillary` subset instead of the full `Mapillary` export
+- keep `COCO replay` out of this step; it remains a later separate addition
+
+Current balancing heuristic:
+- config: `configs/balance_ba_mvp_mapillary.yaml`
+- filter `Mapillary` boxes with `min_bbox_min_side < 16`
+- then cap `Mapillary` to `400` positive images per retained target class
+
+Current verified artifact targets:
+- balanced `Mapillary`: `work/datasets/mapillary_vistas_ba_v1_mvp_balanced`
+- merged multi-source COCO: `work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json`
+- merged materialized COCO: `work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json`
+- merged split file: `work/splits/ba_mvp_stage3_balanced_multisource/splits.json`
+- merged Model Maker CSV: `work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv`
+
+WSL example:
+```bash
+python -m owli_train dataset balance-coco \
+  --config configs/balance_ba_mvp_mapillary.yaml
+
+python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
+  --out work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json
+
+python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
+  --out-dir work/splits/ba_mvp_stage3_balanced_multisource \
+  --seed 1337 \
+  --ensure-train-class-coverage
+
+python -m owli_train dataset materialize-images \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json \
+  --merge-manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
+  --out-images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --out-coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
+  --mode auto
+
+python -m owli_train dataset export modelmaker-csv \
+  --coco work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --splits-json work/splits/ba_mvp_stage3_balanced_multisource/splits.json \
+  --out work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv
+```
+
+Current verified result on repo HEAD:
+- merged images: `4066`
+- merged annotations: `38399`
+- merged categories: `10`
+- source image mix:
+  - `Obstacle4`: `1250`
+  - balanced `Mapillary`: `1224`
+  - `OD`: `1592`
+- all `10` BA-v1 classes remain present in `TRAIN`
+
 ## Mapillary Vistas -> BA COCO Detection
 
 - Local source root: `data/DataSets/Map`
@@ -817,6 +876,12 @@ Full `Map/v1.2` export verified on this machine:
 - categories: `9`
 - image tree size: about `7.65 GB`
 - merge hook verified: `configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml`
+- balanced MVP subset verified:
+  - config: `configs/balance_ba_mvp_mapillary.yaml`
+  - output dir: `work/datasets/mapillary_vistas_ba_v1_mvp_balanced`
+  - images: `1224`
+  - annotations: `27597`
+  - categories: `9`
 
 WSL example:
 ```bash
@@ -872,4 +937,15 @@ python -m owli_train dataset export modelmaker-csv \
   --images-dir work/datasets/ba_mvp_stage2_obstacle4_mapillary/images \
   --splits-json work/splits/ba_mvp_stage2_obstacle4_mapillary/splits.json \
   --out work/datasets/ba_mvp_stage2_obstacle4_mapillary/modelmaker.csv
+```
+
+For the first balanced three-source MVP dataset, use the dedicated balanced subset plus the
+checked-in Stage-3 manifest instead:
+```bash
+python -m owli_train dataset balance-coco \
+  --config configs/balance_ba_mvp_mapillary.yaml
+
+python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage3_balanced_multisource.yaml \
+  --out work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json
 ```
