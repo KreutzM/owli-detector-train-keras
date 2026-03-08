@@ -29,6 +29,16 @@ def test_dataset_import_yolo_help_lists_flags():
     assert "--data-yaml" in r.stdout
 
 
+def test_dataset_import_mapillary_vistas_help_lists_flags():
+    r = runner.invoke(app, ["dataset", "import", "mapillary-vistas", "--help"])
+    assert r.exit_code == 0
+    assert "--mapillary-dir" in r.stdout
+    assert "--out-dir" in r.stdout
+    assert "--label-map" in r.stdout
+    assert "--max-long-side" in r.stdout
+    assert "limit-images-per-spl" in r.stdout
+
+
 def test_dataset_export_modelmaker_csv_help_lists_flags():
     r = runner.invoke(app, ["dataset", "export", "modelmaker-csv", "--help"])
     assert r.exit_code == 0

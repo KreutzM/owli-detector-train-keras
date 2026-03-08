@@ -22,6 +22,7 @@ from owli_train.data.coco import (
     validate_coco,
     write_coco,
 )
+from owli_train.data.mapillary_vistas import import_mapillary_vistas_to_coco
 from owli_train.data.materialize_images import (
     MaterializeImagesError,
     materialize_coco_images,
@@ -329,6 +330,53 @@ def dataset_import_yolo(
     print(
         "summary: "
         f"images={artifacts.images}, annotations={artifacts.annotations}, categories={artifacts.categories}"
+    )
+
+
+@dataset_import_app.command("mapillary-vistas")
+def dataset_import_mapillary_vistas(
+    mapillary_dir: Annotated[
+        Path,
+        typer.Option(
+            "--mapillary-dir",
+            exists=True,
+            readable=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = Path("data/DataSets/Map"),
+    out_dir: Annotated[Path, typer.Option("--out-dir")] = Path("data/processed/mapillary_ba_v1"),
+    label_map: Annotated[Path, typer.Option("--label-map", exists=True, readable=True)] = Path(
+        "configs/label_maps/mapillary_vistas_to_ba.yaml"
+    ),
+    max_long_side: Annotated[int, typer.Option("--max-long-side")] = 1600,
+    limit_images_per_split: Annotated[
+        Optional[int], typer.Option("--limit-images-per-split", min=1)
+    ] = None,
+):
+    try:
+        artifacts = import_mapillary_vistas_to_coco(
+            mapillary_dir=mapillary_dir,
+            out_dir=out_dir,
+            label_map_path=label_map,
+            max_long_side=max_long_side,
+            limit_images_per_split=limit_images_per_split,
+        )
+    except ValueError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote combined COCO: {artifacts.combined_coco_path}")
+    print(f"train_coco: {artifacts.train_coco_path}")
+    print(f"val_coco: {artifacts.val_coco_path}")
+    print(f"splits_json: {artifacts.splits_path}")
+    print(f"class_names_json: {artifacts.class_names_path}")
+    print(f"qc_report: {artifacts.qc_report_path}")
+    print(
+        "summary: "
+        f"categories={len(artifacts.categories)}, "
+        f"train_images={artifacts.train.images}, train_annotations={artifacts.train.annotations}, "
+        f"val_images={artifacts.val.images}, val_annotations={artifacts.val.annotations}"
     )
 
 

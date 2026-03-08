@@ -10,17 +10,24 @@ def _load_yaml(path: Path):
 
 def test_mapillary_and_taco_prep_stay_constrained_to_ba_core() -> None:
     contract = _load_yaml(Path("configs/label_contracts/ba_v1.yaml"))
-    expected_targets = contract["roles"]["ba_core"]
+    taco = _load_yaml(Path("configs/label_maps/taco_to_ba.yaml"))
 
-    for rel_path in (
-        "configs/label_maps/mapillary_vistas_to_ba.yaml",
-        "configs/label_maps/taco_to_ba.yaml",
-    ):
-        prep = _load_yaml(Path(rel_path))
-        assert prep["status"] == "pending_source_review"
-        assert prep["allowed_target_classes"] == expected_targets
-        assert prep["drop_unmapped"] is True
-        assert prep["map"] == {}
+    assert taco["status"] == "pending_source_review"
+    assert taco["allowed_target_classes"] == contract["roles"]["ba_core"]
+    assert taco["drop_unmapped"] is True
+    assert taco["map"] == {}
+
+
+def test_mapillary_prep_maps_only_into_the_current_ba_v1_contract() -> None:
+    contract = _load_yaml(Path("configs/label_contracts/ba_v1.yaml"))
+    mapillary = _load_yaml(Path("configs/label_maps/mapillary_vistas_to_ba.yaml"))
+
+    assert mapillary["status"] == "local_vistas_v1_2_verified"
+    assert mapillary["drop_unmapped"] is True
+    assert set(mapillary["map"].values()) <= set(contract["class_names"])
+    assert "object--manhole" not in mapillary["map"]
+    assert "human--rider--bicyclist" not in mapillary["map"]
+    assert "human--rider--motorcyclist" not in mapillary["map"]
 
 
 def test_coco_replay_prep_stays_narrow_and_identity_mapped() -> None:

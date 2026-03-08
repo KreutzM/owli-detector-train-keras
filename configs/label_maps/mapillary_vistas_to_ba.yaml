@@ -1,17 +1,31 @@
-status: pending_source_review
+status: local_vistas_v1_2_verified
 ba_contract: configs/label_contracts/ba_v1.yaml
 allowed_target_classes:
-  - obstacle_bump
   - obstacle_fence
   - obstacle_hole
   - obstacle_pole
+  - bicycle
+  - bus
+  - car
+  - motorcycle
+  - person
+  - truck
 
 drop_unmapped: true
 notes:
-  - Conservative BA-v1 prep file for the future Mapillary Vistas integration.
-  - Fill `map` only after the local source taxonomy and license/readme files are reviewed.
-  - Keep this source constrained to BA core targets until a later PR proves broader mappings are justified.
-  - Leave uncertain source classes unmapped instead of stretching the BA-v1 contract.
+  - Local source reviewed against Mapillary Vistas Research edition v1.2 panoptic metadata.
+  - This mapping is intentionally narrow and only includes source classes verified as useful for the current BA MVP path.
+  - "The current BA-v1 contract uses obstacle_fence and obstacle_hole; no new target labels are introduced here."
+  - "object--manhole, rider classes, and all other source classes stay unmapped in this first converter pass."
 
-map: {}
-
+map:
+  construction--barrier--fence: obstacle_fence
+  object--support--pole: obstacle_pole
+  object--support--utility-pole: obstacle_pole
+  object--pothole: obstacle_hole
+  human--person: person
+  object--vehicle--bicycle: bicycle
+  object--vehicle--bus: bus
+  object--vehicle--car: car
+  object--vehicle--motorcycle: motorcycle
+  object--vehicle--truck: truck

@@ -709,9 +709,11 @@ classes from falling out of `TRAIN` when they are present in the data.
 - Fixed class contract: `configs/label_contracts/ba_v1.yaml`
 - Verified baseline anchor: `Obstacle4`
 - Next BA supplemental sources to review locally after downloads complete:
-  - `Mapillary Vistas`
   - `TACO`
   - `Obstacle-Dataset / OD`
+- Mapillary status:
+  - local source reviewed
+  - BA-filtered converter documented in [Mapillary_Vistas_Integration.md](./Mapillary_Vistas_Integration.md)
 - Narrow rehearsal-only source:
   - `COCO replay` for `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck`
 
@@ -726,3 +728,39 @@ Working rule:
   taxonomies are reviewed from real files.
 - Use COCO only as a small replay source for the six BA-v1 rehearsal classes, not as a return to
   broad COCO-80 training.
+
+## Mapillary Vistas -> BA COCO Detection
+
+- Local source root: `data/DataSets/Map`
+- Source representation used by the converter:
+  - `training/panoptic/panoptic_2018.json`
+  - `validation/panoptic/panoptic_2018.json`
+  - matching RGB images from `training/images` and `validation/images`
+- Current mapping file: `configs/label_maps/mapillary_vistas_to_ba.yaml`
+- Integration notes: [Mapillary_Vistas_Integration.md](./Mapillary_Vistas_Integration.md)
+
+Current behavior:
+- uses only `training` and `validation`
+- ignores `testing`
+- keeps only the current narrow BA-relevant class whitelist
+- exports resized images with long side capped at `1600`
+- writes scaled COCO detection boxes plus `splits.json` and `qc_report.json`
+
+WSL example:
+```bash
+python -m owli_train dataset import mapillary-vistas \
+  --mapillary-dir data/DataSets/Map \
+  --out-dir data/processed/mapillary_ba_v1 \
+  --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
+  --max-long-side 1600
+```
+
+Bounded verification example:
+```bash
+python -m owli_train dataset import mapillary-vistas \
+  --mapillary-dir data/DataSets/Map \
+  --out-dir data/processed/mapillary_ba_v1_sample \
+  --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
+  --max-long-side 1600 \
+  --limit-images-per-split 100
+```
