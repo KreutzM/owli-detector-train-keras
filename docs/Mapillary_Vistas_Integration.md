@@ -68,10 +68,13 @@ Reason:
 - invalid / empty boxes are dropped
 
 ## CLI
+Canonical MVP export target:
+- `work/datasets/mapillary_vistas_ba_v1`
+
 ```bash
 python -m owli_train dataset import mapillary-vistas \
   --mapillary-dir data/DataSets/Map \
-  --out-dir data/processed/mapillary_ba_v1 \
+  --out-dir work/datasets/mapillary_vistas_ba_v1 \
   --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
   --max-long-side 1600
 ```
@@ -104,6 +107,21 @@ python -m owli_train dataset import mapillary-vistas \
 - `class_names.json`
 - `qc_report.json`
 - resized images under `images/training/` and `images/validation/`
+
+## MVP merge hook
+The current repo hook for the next combined BA dataset is:
+- [`configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml`](../configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml)
+
+This manifest treats:
+- `Obstacle4` as the 10-class anchor source
+- `Mapillary Vistas` as the resized BA-filtered supplemental source
+
+Recommended merge step after export:
+```bash
+python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml \
+  --out work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json
+```
 
 ## Real local sample verification
 Bounded run executed on this machine:
@@ -139,3 +157,57 @@ Important v2.0 note:
 - `v2.0` is not a drop-in duplicate of the old label names.
 - Example: person is represented as `human--person--individual` instead of `human--person`.
 - The repo converter now handles that explicitly, but only when the source is routed to the `v2.0` annotation tree.
+
+## Real local full export verification
+Full `Map/v1.2` export executed on this machine:
+- output dir: `work/datasets/mapillary_vistas_ba_v1`
+- `annotation_version`: `v1.2`
+- combined images: `19962`
+- combined annotations: `629801`
+- categories: `9`
+- exported image tree size: about `7.65 GB`
+
+Split-level results from `qc_report.json`:
+- `training`
+  - source images scanned: `18000`
+  - exported images: `17966`
+  - dropped after BA filter: `34`
+  - annotations: `567060`
+- `validation`
+  - source images scanned: `2000`
+  - exported images: `1996`
+  - dropped after BA filter: `4`
+  - annotations: `62741`
+
+Class-distribution highlights from the exported COCO:
+- all expected Mapillary target classes occur
+- strongest classes:
+  - `obstacle_pole`: `383513`
+  - `car`: `148636`
+  - `person`: `58686`
+- weakest retained class:
+  - `obstacle_hole`: `479`
+
+Quality notes:
+- image loss after filtering is very small: `38 / 20000` images
+- the dataset is strongly skewed toward `obstacle_pole` and `car`
+- many exported boxes are small:
+  - `min_side < 8`: `207230`
+  - `min_side < 16`: `327376`
+  - `area < 32^2`: `340540`
+- `obstacle_bump` is still absent in Mapillary and must come from another BA-v1 source such as `Obstacle4`
+
+## Real local merge verification
+The checked-in Stage-2 manifest was exercised on this machine:
+- manifest: [`configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml`](../configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml)
+- merged output: `work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json`
+- merge report: `work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.report.json`
+- merged result:
+  - images: `21212`
+  - annotations: `631297`
+  - categories: `10`
+
+Merge interpretation:
+- `Mapillary` contributes the large 9-class BA-filtered supplemental block
+- `Obstacle4` restores the missing BA-v1 class `obstacle_bump`
+- the combined split written via `--ensure-train-class-coverage` has no missing classes in `TRAIN`

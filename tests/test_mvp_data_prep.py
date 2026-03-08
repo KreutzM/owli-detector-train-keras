@@ -41,3 +41,20 @@ def test_coco_replay_prep_stays_narrow_and_identity_mapped() -> None:
     assert replay["allowed_target_classes"] == expected_rehearsal
     assert replay["drop_unmapped"] is True
     assert replay["map"] == {name: name for name in expected_rehearsal}
+
+
+def test_stage2_obstacle4_mapillary_manifest_stays_concrete_and_prefixed() -> None:
+    manifest = _load_yaml(Path("configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml"))
+
+    assert [source["name"] for source in manifest["sources"]] == [
+        "obstacle4_combined",
+        "mapillary_vistas_ba_v1",
+    ]
+    assert manifest["sources"][0]["coco"] == "../work/datasets/obstacle4/instances_combined.json"
+    assert manifest["sources"][0]["file_name_prefix"] == "obstacle4"
+    assert (
+        manifest["sources"][1]["coco"]
+        == "../work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json"
+    )
+    assert manifest["sources"][1]["file_name_prefix"] == "mapillary_vistas"
+    assert manifest["settings"]["allow_duplicate_file_names"] is False

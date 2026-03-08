@@ -18,10 +18,15 @@ The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified referen
 | Source | MVP role | Current repo status | Intended BA-v1 contribution |
 | --- | --- | --- | --- |
 | `Obstacle4` | baseline anchor | fully verified on current repo HEAD | BA core classes + current pseudo-label bridge into rehearsal classes |
-| `Mapillary Vistas` | BA supplemental source | local `v1.2` and `Map2/v2.0` source verified; BA-filtered COCO converter exists | strengthen BA core classes and selected rehearsal classes from street-scene data |
+| `Mapillary Vistas` | BA supplemental source | full local `v1.2` BA-filtered export verified; `Map2/v2.0` support exists; Stage-2 merge hook with `Obstacle4` verified | strengthen BA core classes and selected rehearsal classes from street-scene data |
 | `TACO` | BA supplemental source | download / local source review pending | add BA-relevant clutter / hard-negative coverage where mappings are defensible |
 | `Obstacle-Dataset / OD` | BA supplemental source | repo prep exists, no verified local raw source on this machine | strengthen BA core classes with a second obstacle-focused source |
 | `COCO replay` | rehearsal-only replay | local COCO tree already exists; replay subset not assembled yet | preserve signal for `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck` without reverting to COCO-80 training |
+
+Current concrete MVP merge hook:
+- [`configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml`](../configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml)
+- expected Mapillary export target: `work/datasets/mapillary_vistas_ba_v1`
+- verified merged output path: `work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json`
 
 ## Planned Training Stages
 
@@ -85,7 +90,8 @@ Expected outcome:
 
 Interpretation:
 - `Obstacle4` and `COCO replay` already have a concrete class-level role in the repo.
-- `Mapillary Vistas`, `TACO`, and `OD` are checked in as conservative BA-v1 prep points, not as completed integrations.
+- `Mapillary Vistas` now has a concrete export path and a checked-in merge hook with `Obstacle4`.
+- `TACO` and `OD` are still conservative BA-v1 prep points, not completed integrations.
 
 ## Minimal Execution Plan After Downloads Finish
 For each new BA supplemental source:
@@ -111,7 +117,7 @@ For COCO replay:
 Those facts stay open until the local downloads finish and each source is reviewed from real files.
 
 Current exception:
-- `Mapillary Vistas` now has a real local source review and a narrow BA-filtered conversion path.
+- `Mapillary Vistas` now has a real local source review, a full BA-filtered `v1.2` export, and a verified merge hook with `Obstacle4`.
 - `TACO` and `OD` still remain prep-only on current repo HEAD.
 
 ## Current Risks

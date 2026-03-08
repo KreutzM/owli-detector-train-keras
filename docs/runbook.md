@@ -748,11 +748,19 @@ Current behavior:
 - supports both classic `v1.2` layout and `Map2` `v2.0` panoptic layout
 - default stays conservative and prefers `v1.2` when both annotation trees exist
 
+Full `Map/v1.2` export verified on this machine:
+- output dir: `work/datasets/mapillary_vistas_ba_v1`
+- images: `19962`
+- annotations: `629801`
+- categories: `9`
+- image tree size: about `7.65 GB`
+- merge hook verified: `configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml`
+
 WSL example:
 ```bash
 python -m owli_train dataset import mapillary-vistas \
   --mapillary-dir data/DataSets/Map \
-  --out-dir data/processed/mapillary_ba_v1 \
+  --out-dir work/datasets/mapillary_vistas_ba_v1 \
   --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
   --max-long-side 1600
 ```
@@ -771,8 +779,35 @@ Explicit `Map2/v2.0` example:
 ```bash
 python -m owli_train dataset import mapillary-vistas \
   --mapillary-dir data/DataSets/Map2 \
-  --out-dir data/processed/mapillary_ba_v2_0 \
+  --out-dir work/datasets/mapillary_vistas_ba_v2_0 \
   --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
   --annotation-version v2.0 \
   --max-long-side 1600
+```
+
+Merge `Obstacle4` with the canonical `Mapillary Vistas` export:
+```bash
+python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml \
+  --out work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json
+```
+
+Then continue with the usual MVP prep steps:
+```bash
+python -m owli_train dataset materialize-images \
+  --coco work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json \
+  --merge-manifest configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml \
+  --out-images-dir work/datasets/ba_mvp_stage2_obstacle4_mapillary/images \
+  --out-coco work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_materialized.json \
+  --mode auto
+python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_materialized.json \
+  --out-dir work/splits/ba_mvp_stage2_obstacle4_mapillary \
+  --seed 1337 \
+  --ensure-train-class-coverage
+python -m owli_train dataset export modelmaker-csv \
+  --coco work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_materialized.json \
+  --images-dir work/datasets/ba_mvp_stage2_obstacle4_mapillary/images \
+  --splits-json work/splits/ba_mvp_stage2_obstacle4_mapillary/splits.json \
+  --out work/datasets/ba_mvp_stage2_obstacle4_mapillary/modelmaker.csv
 ```

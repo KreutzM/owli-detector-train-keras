@@ -1,142 +1,160 @@
 # Codex Task Report
 
 ## Ziel
-- Den bestehenden Mapillary-Konverter so erweitern, dass er neben dem bisherigen `v1.2`-Layout auch den lokal vorliegenden `Map2/v2.0`-Annotationsstand verarbeiten kann.
-- Dabei den BA-v1-Contract unveraendert lassen und `v2.0` nur explizit per Schalter aktivieren, statt den bisherigen stabilen `v1.2`-Pfad still zu aendern.
+- Den vorhandenen Mapillary-Vistas-Konverter vom Sample-Status auf einen real nutzbaren BA-v1-Merge-Baustein heben.
+- Einen grossen bzw. vollstaendigen `Map/v1.2`-Export real ausfuehren, die Datenqualitaet knapp bewerten und den Export ueber ein konkretes Manifest in den bestehenden MVP-Pfad einhaengen.
 
 ## Was wurde geändert?
-- `src/owli_train/data/mapillary_vistas.py`
-  - unterstuetzt jetzt `v1.2`- und `v2.0`-Mapillary-Layouts
-  - erkennt die feingranulare Kategorienquelle robust:
-    - `v1.2`: aus `supercategory`
-    - `v2.0`: aus `name`
-  - kann `training/v1.2/...`, `validation/v1.2/...`, `training/v2.0/...`, `validation/v2.0/...` aufloesen
-  - fuehrt `annotation_version` in den Exportartefakten/QC mit
-- `src/owli_train/cli.py`
-  - neuer Schalter `--annotation-version auto|v1.2|v2.0`
-  - aktueller Standard bleibt konservativ bei `v1.2`, wenn beide Stande vorhanden sind
-- `configs/label_maps/mapillary_vistas_to_ba.yaml`
-  - fuer `v2.0` erweitert um `human--person--individual -> person`
-  - Status/Notes auf `v1.2` und `v2.0` nachgeschaerft
-- Tests erweitert:
-  - `tests/test_dataset_import_mapillary_vistas.py`
+- Neues konkretes Merge-Manifest:
+  - `configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml`
+- Kleiner Konsistenztest:
   - `tests/test_mvp_data_prep.py`
-  - `tests/test_cli_help.py`
+    - prueft, dass das Stage-2-Manifest konkret bleibt und File-Name-Praefixe fuer beide Quellen setzt
 - Doku aktualisiert:
   - `docs/Mapillary_Vistas_Integration.md`
-  - `docs/runbook.md`
   - `docs/MVP_Training_Plan.md`
-- `docs/reviews/Codex-Task-Report_last.md` auf diesen Folge-Task aktualisiert.
+  - `docs/runbook.md`
+- `docs/reviews/Codex-Task-Report_last.md` auf diesen Task aktualisiert
 
 ## Was wurde wirklich verifiziert?
-- Tatsaechlich ausgefuehrte Analyse-Kommandos:
-  - `git status --short --branch`
-  - `sed -n '1,260p' src/owli_train/data/mapillary_vistas.py`
-  - `sed -n '1,220p' configs/label_maps/mapillary_vistas_to_ba.yaml`
-  - Python-Inspektionen gegen:
-    - `data/DataSets/Map2/config_v1.2.json`
-    - `data/DataSets/Map2/config_v2.0.json`
-    - `data/DataSets/Map2/training/v1.2/panoptic/panoptic_2018.json`
-    - `data/DataSets/Map2/validation/v1.2/panoptic/panoptic_2018.json`
-    - `data/DataSets/Map2/training/v2.0/panoptic/panoptic_2020.json`
-    - `data/DataSets/Map2/validation/v2.0/panoptic/panoptic_2020.json`
-- Reale Datensatzbefunde:
-  - `Map2` enthaelt dieselben Bilder wie `Map`, aber zusaetzlich zwei parallele Annotationsstaende:
-    - `v1.2`
-    - `v2.0`
-  - `v2.0` ist nicht drop-in-identisch zur alten Namensseite
-  - fuer BA-v1 relevant:
-    - `human--person` wird in `v2.0` zu `human--person--individual`
-    - die anderen derzeit gemappten Zielklassen bleiben als feingranulare `name`-Felder vorhanden
-- Reale Konvertierung ausgefuehrt:
-```bash
-python -m owli_train dataset import mapillary-vistas \
-  --mapillary-dir data/DataSets/Map2 \
-  --out-dir data/processed/mapillary_ba_v2_0_sample \
-  --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
-  --annotation-version v2.0 \
-  --max-long-side 1600 \
-  --limit-images-per-split 100
-```
-- Reale Nachpruefung des Exports:
-```bash
-python -m owli_train dataset validate \
-  --coco data/processed/mapillary_ba_v2_0_sample/instances_ba_v1.coco.json \
-  --images-dir data/processed/mapillary_ba_v2_0_sample/images
-```
-- Ergebnis:
-  - `images=200`
-  - `annotations=6535`
-  - `cats=9`
-- Reale QC-Zahlen aus `data/processed/mapillary_ba_v2_0_sample/qc_report.json`:
-  - `annotation_version`: `v2.0`
-  - `training`: `100` Bilder, `3315` Annotationen
-  - `validation`: `100` Bilder, `3220` Annotationen
-  - Zielklassen bleiben:
-    - `obstacle_fence`
-    - `obstacle_hole`
-    - `obstacle_pole`
-    - `bicycle`
-    - `bus`
-    - `car`
-    - `motorcycle`
-    - `person`
-    - `truck`
-  - `person` wird im `v2.0`-Pfad jetzt korrekt ueber `human--person--individual` aufgeloest
-- Rein statisch geprueft:
-  - `object--manhole` bleibt ungemappt
-  - rider-Klassen bleiben ungemappt
-  - `person-group` bleibt ungemappt
-  - Defaultverhalten bleibt bewusst konservativ bei `v1.2`
-
-## Tests
-- `python -m pytest tests/test_dataset_import_mapillary_vistas.py tests/test_mvp_data_prep.py tests/test_cli_help.py`
-  - Exit-Code: `0`
-  - Resultat: `22 passed`
-- `python -m ruff format .`
-  - Exit-Code: `0`
-  - Resultat: wird nach diesem Bericht erneut auf dem Gesamtstand ausgefuehrt
-- `python -m ruff check .`
-  - Exit-Code: `0`
-  - Resultat: wird nach diesem Bericht erneut auf dem Gesamtstand ausgefuehrt
-- `python -m pytest`
-  - Exit-Code: `0`
-  - Resultat: wird nach diesem Bericht erneut auf dem Gesamtstand ausgefuehrt
-
-## Relevante Run-Kommandos
-- Bisheriger konservativer Pfad:
+- Reale Vollausfuehrung des Mapillary-Exports:
 ```bash
 python -m owli_train dataset import mapillary-vistas \
   --mapillary-dir data/DataSets/Map \
-  --out-dir data/processed/mapillary_ba_v1 \
+  --out-dir work/datasets/mapillary_vistas_ba_v1 \
   --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
   --max-long-side 1600
 ```
-- Expliziter `Map2/v2.0`-Pfad:
+  - Exit-Code: `0`
+- Reale Export-Ergebnisse:
+  - `annotation_version`: `v1.2`
+  - `work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json`
+  - `work/datasets/mapillary_vistas_ba_v1/annotations_train.coco.json`
+  - `work/datasets/mapillary_vistas_ba_v1/annotations_val.coco.json`
+  - `work/datasets/mapillary_vistas_ba_v1/splits.json`
+  - `work/datasets/mapillary_vistas_ba_v1/class_names.json`
+  - `work/datasets/mapillary_vistas_ba_v1/qc_report.json`
+- Reale Validierung des fertigen Exports:
+```bash
+python -m owli_train dataset validate \
+  --coco work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json \
+  --images-dir work/datasets/mapillary_vistas_ba_v1/images
+```
+  - Exit-Code: `0`
+  - Ergebnis: `images=19962`, `ann=629801`, `cats=9`
+- Reale QC-Auswertung des fertigen Exports:
+  - exportierte Bilder: `19962`
+  - exportierte Annotationen: `629801`
+  - Kategorien: `9`
+  - Bildbaumgroesse: ca. `7.65 GB`
+  - `training`
+    - gescannte Bilder: `18000`
+    - exportierte Bilder: `17966`
+    - verworfen nach BA-Filter: `34`
+    - Annotationen: `567060`
+  - `validation`
+    - gescannte Bilder: `2000`
+    - exportierte Bilder: `1996`
+    - verworfen nach BA-Filter: `4`
+    - Annotationen: `62741`
+  - kombinierte Klassenhaeufigkeiten:
+    - `obstacle_fence`: `12528`
+    - `obstacle_hole`: `479`
+    - `obstacle_pole`: `383513`
+    - `bicycle`: `7155`
+    - `bus`: `4910`
+    - `car`: `148636`
+    - `motorcycle`: `6270`
+    - `person`: `58686`
+    - `truck`: `7624`
+  - kleine Boxen:
+    - `min_side < 8`: `207230`
+    - `min_side < 16`: `327376`
+    - `area < 32^2`: `340540`
+  - alle erwarteten Mapillary-Zielklassen kommen vor
+  - `obstacle_bump` kommt in Mapillary weiterhin nicht vor
+- Reale Merge-Ausfuehrung gegen den bestehenden Obstacle4-Anker:
+```bash
+python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml \
+  --out work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json
+```
+  - Exit-Code: `0`
+  - Ergebnis:
+    - `work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json`
+    - `work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.report.json`
+    - `images=21212`
+    - `annotations=631297`
+    - `categories=10`
+  - Merge-Report:
+    - `obstacle4_combined`: `1912 / 1912` Annotationen behalten
+    - `mapillary_vistas_ba_v1`: `629385 / 629801` Annotationen behalten
+    - `duplicate_gt_same_class`: `416`
+- Reale Split-Ausfuehrung mit Coverage-Gate auf dem kombinierten Datensatz:
+```bash
+python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json \
+  --out-dir work/splits/ba_mvp_stage2_obstacle4_mapillary \
+  --seed 1337 \
+  --ensure-train-class-coverage
+```
+  - Exit-Code: `0`
+  - Ergebnis: `work/splits/ba_mvp_stage2_obstacle4_mapillary/splits.json`
+  - Reale `TRAIN`-Class-Coverage:
+    - `missing_train_classes`: `[]`
+    - `bus` ist im `TRAIN` enthalten: `3985`
+    - alle 10 Klassen sind im `TRAIN` vorhanden
+- Nur statisch geprueft:
+  - Die spaetere `materialize-images`- und `modelmaker.csv`-Fortsetzung des kombinierten Stage-2-Pfads wurde im Runbook aktualisiert, aber in diesem Task nicht real ausgefuehrt.
+
+## Tests
+- `python -m ruff format .`
+  - Exit-Code: `0`
+  - Resultat: `60 files left unchanged`
+- `python -m ruff check .`
+  - Exit-Code: `0`
+  - Resultat: `All checks passed!`
+- `python -m pytest`
+  - Exit-Code: `0`
+  - Resultat: `130 passed, 5 skipped`
+
+## Relevante Run-Kommandos
 ```bash
 python -m owli_train dataset import mapillary-vistas \
-  --mapillary-dir data/DataSets/Map2 \
-  --out-dir data/processed/mapillary_ba_v2_0 \
+  --mapillary-dir data/DataSets/Map \
+  --out-dir work/datasets/mapillary_vistas_ba_v1 \
   --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
-  --annotation-version v2.0 \
   --max-long-side 1600
 ```
-- Reale verifizierte `v2.0`-Sample-Ausfuehrung:
+
 ```bash
-python -m owli_train dataset import mapillary-vistas \
-  --mapillary-dir data/DataSets/Map2 \
-  --out-dir data/processed/mapillary_ba_v2_0_sample \
-  --label-map configs/label_maps/mapillary_vistas_to_ba.yaml \
-  --annotation-version v2.0 \
-  --max-long-side 1600 \
-  --limit-images-per-split 100
+python -m owli_train dataset validate \
+  --coco work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json \
+  --images-dir work/datasets/mapillary_vistas_ba_v1/images
+```
+
+```bash
+python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_mvp_stage2_obstacle4_mapillary.yaml \
+  --out work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json
+```
+
+```bash
+python -m owli_train dataset split \
+  --coco work/datasets/ba_mvp_stage2_obstacle4_mapillary/instances_combined.json \
+  --out-dir work/splits/ba_mvp_stage2_obstacle4_mapillary \
+  --seed 1337 \
+  --ensure-train-class-coverage
 ```
 
 ## Offene Risiken
-- Die lokale Lizenzdatei weist weiterhin auf `CC BY-NC-SA` hin; das bleibt fuer produktnahe Nutzung separat zu bewerten.
-- `v2.0` fuehrt mehr Taxonomiebreite ein; der aktuelle Patch nutzt davon bewusst nur die kleine BA-v1-relevante Teilmenge.
-- `object--manhole`, rider-Klassen und `human--person--person-group` bleiben absichtlich ausgeschlossen.
-- Der reale `v2.0`-Nachweis ist erneut ein begrenzter Sample-Import, kein Vollimport ueber alle gelabelten Bilder.
+- Die lokale Lizenzdatei fuer Mapillary weist weiterhin auf `CC BY-NC-SA` hin; das bleibt fuer produktnahe Nutzung separat zu bewerten.
+- Der Datensatz ist stark unausgewogen:
+  - `obstacle_pole` dominiert sehr stark
+  - `car` ist ebenfalls sehr haeufig
+  - `obstacle_hole` bleibt sehr schwach
+- Viele Boxen sind klein; das kann Training und Eval auf Lite2 spaeter deutlich beeinflussen.
+- `obstacle_bump` fehlt in Mapillary weiterhin komplett und muss ueber andere BA-v1-Quellen im Gesamtcontract erhalten bleiben.
 
 ## Nächster sinnvoller Schritt
-- Den `Map2/v2.0`-Konverter auf einem groesseren oder vollstaendigen Bestand laufen lassen und dann entscheiden, ob der MVP-Merge-Pfad von `Map/v1.2` auf `Map2/v2.0` umgestellt werden soll.
+- Den ersten kombinierten Stage-2-Trainingssatz aus `Obstacle4 + Mapillary + bewusst kleinem Sampling/Balancing` materialisieren und daraus den naechsten echten EfficientDet-Lite2-MVP-Lauf bauen.
