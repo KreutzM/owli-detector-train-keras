@@ -691,3 +691,11 @@ For Obstacle4, build `splits.json` from `instances_combined.json`, not GT-only C
 The pseudo-label classes (`person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck`) are part of the
 product label contract, so `--ensure-train-class-coverage` is the safest way to keep rare merged
 classes from falling out of `TRAIN` when they are present in the data.
+
+## Obstacle-Dataset (DS2) prep
+
+- Current status: prepared in-repo, not yet integrated with real local raw data.
+- Checked-in mapping stub: `configs/label_maps/obstacle_dataset_to_ba.yaml`
+- Integration notes: `docs/Obstacle_Dataset_Integration.md`
+- BA-v1 rule for DS2: keep this dataset constrained to the four BA core classes until the local
+  source taxonomy is reviewed and explicitly mapped.

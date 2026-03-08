@@ -1,0 +1,16 @@
+status: pending_source_review
+ba_contract: configs/label_contracts/ba_v1.yaml
+allowed_target_classes:
+  - obstacle_bump
+  - obstacle_fence
+  - obstacle_hole
+  - obstacle_pole
+
+drop_unmapped: true
+notes:
+  - This file is a checked-in preparation stub for the next BA-v1 obstacle dataset.
+  - Fill `map` only after the local raw dataset taxonomy, license, and image layout are verified.
+  - Do not map source classes into BA-v1 rehearsal classes from this dataset without explicit evidence.
+  - Leave uncertain or lossy source classes unmapped instead of stretching the BA-v1 taxonomy.
+
+map: {}

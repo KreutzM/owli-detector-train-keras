@@ -80,6 +80,7 @@ This is why BA-v1 keeps those classes as explicit rehearsal targets instead of s
 These are product-driven priorities, not completed integrations.
 
 ### 1. Obstacle-Dataset
+- Integration prep on current repo HEAD: [Obstacle_Dataset_Integration.md](./Obstacle_Dataset_Integration.md)
 - Expected value:
   - Strengthen BA core classes first.
   - Reduce dependence on a single obstacle source.
