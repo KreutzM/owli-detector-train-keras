@@ -890,6 +890,9 @@ Current verified result on repo HEAD:
 
 ## Stage-4 COCO replay data path
 
+Dedicated overview:
+- [BA_MVP_Stage4_Replay_Pipeline.md](./BA_MVP_Stage4_Replay_Pipeline.md)
+
 Purpose:
 - keep `COCO` narrow and rehearsal-only for the six BA-v1 replay classes
 - prepare the next direct Stage-3 vs. Stage-4 Lite2 comparison without returning to COCO-80 training

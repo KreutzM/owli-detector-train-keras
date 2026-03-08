@@ -12,6 +12,7 @@
 - Labelset rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
 - Current verified baseline: [Obstacle4_E2E_Results.md](./Obstacle4_E2E_Results.md)
 - Current verified multi-source baseline: [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
+- Current verified Stage-4 data pipeline: [BA_MVP_Stage4_Replay_Pipeline.md](./BA_MVP_Stage4_Replay_Pipeline.md)
 
 ## Primary MVP Sources
 The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified reference baseline, but the next training run is intended to be multi-source.
@@ -145,6 +146,8 @@ Current verified Stage-4 data path on repo HEAD:
   - Model Maker CSV: `work/datasets/ba_mvp_stage4_with_coco_replay/modelmaker.csv`
   - next training config:
     - [`configs/efficientdet_lite2_ba_mvp_stage4.yaml`](../configs/efficientdet_lite2_ba_mvp_stage4.yaml)
+  - dedicated overview:
+    - [BA_MVP_Stage4_Replay_Pipeline.md](./BA_MVP_Stage4_Replay_Pipeline.md)
 
 ## Repo Prep Artifacts for This MVP Path
 - [`configs/label_maps/obstacle4_to_ba.yaml`](../configs/label_maps/obstacle4_to_ba.yaml)
