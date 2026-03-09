@@ -12,6 +12,7 @@ def build_sample_repo(root: Path) -> Path:
     (root / "tests" / "data").mkdir(parents=True, exist_ok=True)
     (root / "tests" / "smoke_coco" / "images").mkdir(parents=True, exist_ok=True)
     (root / "work" / "datasets" / "demo-dataset").mkdir(parents=True, exist_ok=True)
+    (root / "work" / "datasets" / "demo-dataset" / "images").mkdir(parents=True, exist_ok=True)
     (root / "work" / "splits" / "demo-dataset").mkdir(parents=True, exist_ok=True)
     (root / "work" / "runs" / "20260309-123000-demo" / "artifacts").mkdir(
         parents=True, exist_ok=True
@@ -32,6 +33,8 @@ def build_sample_repo(root: Path) -> Path:
 
     image_path = root / "tests" / "smoke_coco" / "images" / "smoke1.jpg"
     Image.new("RGB", (10, 10), color=(220, 120, 80)).save(image_path)
+    materialized_image_path = root / "work" / "datasets" / "demo-dataset" / "images" / "smoke1.jpg"
+    Image.new("RGB", (10, 10), color=(220, 120, 80)).save(materialized_image_path)
     coco_payload = {
         "images": [
             {

@@ -46,12 +46,17 @@ def test_repository_reader_builds_dataset_run_eval_and_golden_details(tmp_path):
     assert dataset.class_distribution[0].label == "person"
     assert dataset.split_counts[0].label == "train"
     assert any(item.label == "images" and item.value == "1" for item in dataset.qc_summary)
+    assert dataset.fiftyone_target is not None
+    assert dataset.fiftyone_target.can_launch is True
+    assert dataset.fiftyone_target.images_dir == "work/datasets/demo-dataset/images"
 
     assert run is not None
     assert any(item.label == "eval_demo.json" for item in run.report_files)
     assert run.eval_reports[0].note == "mAP50=0.75"
 
     assert eval_detail is not None
+    assert eval_detail.fiftyone_target is not None
+    assert eval_detail.fiftyone_target.can_launch is True
     assert eval_detail.metrics[0].key == "mAP50"
     assert eval_detail.per_class_rows[0].class_name == "person"
     assert eval_detail.sibling_reports[0].label == "eval_demo_alt.json"
@@ -69,3 +74,19 @@ def test_repository_reader_rejects_invalid_detail_paths(tmp_path):
     assert reader.load_run_detail("work/datasets/demo-dataset") is None
     assert reader.load_eval_detail("README.md") is None
     assert reader.load_golden_detail("work/runs/20260309-123000-demo") is None
+
+
+def test_repository_reader_marks_dataset_without_images_dir_as_not_launchable(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    images_dir = repo_root / "work" / "datasets" / "demo-dataset" / "images"
+    for path in images_dir.iterdir():
+        path.unlink()
+    images_dir.rmdir()
+
+    reader = RepositoryReader(repo_root)
+    dataset = reader.load_dataset_detail("work/datasets/demo-dataset")
+
+    assert dataset is not None
+    assert dataset.fiftyone_target is not None
+    assert dataset.fiftyone_target.can_launch is False
+    assert "no local images directory" in dataset.fiftyone_target.message.lower()

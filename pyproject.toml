@@ -32,6 +32,9 @@ webui = [
   "Jinja2>=3.1",
   "python-multipart>=0.0.9",
 ]
+fiftyone = [
+  "fiftyone",
+]
 eval = [
   "pycocotools>=2.0.7",
 ]

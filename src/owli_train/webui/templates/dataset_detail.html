@@ -16,6 +16,29 @@
 
   <section class="grid">
     <article class="panel">
+      <h2>FiftyOne</h2>
+      {% if dataset.fiftyone_target %}
+        <p class="meta">{{ dataset.fiftyone_target.message }}</p>
+        <table>
+          <tbody>
+            <tr><th>Dataset name</th><td>{{ dataset.fiftyone_target.dataset_name or "-" }}</td></tr>
+            <tr><th>COCO path</th><td><code>{{ dataset.fiftyone_target.coco_path or "-" }}</code></td></tr>
+            <tr><th>Images dir</th><td><code>{{ dataset.fiftyone_target.images_dir or "-" }}</code></td></tr>
+          </tbody>
+        </table>
+        <div class="actions">
+          {% if dataset.fiftyone_target.can_launch %}
+            <a href="{{ url_for('fiftyone_launch_page') }}?source={{ dataset.fiftyone_target.source_kind }}&path={{ dataset.fiftyone_target.source_path }}">Open in FiftyOne</a>
+          {% else %}
+            <span class="status status-missing">not available</span>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="empty">No FiftyOne launch target is available for this dataset.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
       <h2>Class distribution</h2>
       {% if dataset.class_distribution %}
         <table>
@@ -33,23 +56,24 @@
       {% endif %}
     </article>
 
-    <article class="panel">
-      <h2>Split counts</h2>
-      {% if dataset.split_counts %}
-        <table>
-          <thead>
-            <tr><th>Split</th><th>Images</th></tr>
-          </thead>
-          <tbody>
-            {% for item in dataset.split_counts %}
-              <tr><td>{{ item.label }}</td><td>{{ item.value }}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <div class="empty">No split file was found for this dataset.</div>
-      {% endif %}
-    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Split counts</h2>
+    {% if dataset.split_counts %}
+      <table>
+        <thead>
+          <tr><th>Split</th><th>Images</th></tr>
+        </thead>
+        <tbody>
+          {% for item in dataset.split_counts %}
+            <tr><td>{{ item.label }}</td><td>{{ item.value }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No split file was found for this dataset.</div>
+    {% endif %}
   </section>
 
   <section class="grid">

@@ -136,11 +136,36 @@ class LinkedArtifactView:
 
 
 @dataclass(frozen=True)
+class FiftyOneLaunchTargetView:
+    source_kind: str
+    source_path: str
+    source_label: str
+    back_path: str
+    back_label: str
+    back_route_name: str
+    title: str
+    dataset_name: str | None
+    coco_path: str | None
+    images_dir: str | None
+    can_launch: bool
+    message: str
+
+
+@dataclass(frozen=True)
+class FiftyOneLaunchResultView:
+    status: str
+    message: str
+    app_url: str | None = None
+    detail: str | None = None
+
+
+@dataclass(frozen=True)
 class DatasetDetailView:
     title: str
     relative_path: str
     primary_coco_path: str | None
     images_dir: str | None
+    fiftyone_target: FiftyOneLaunchTargetView | None
     summary: list[LabelValueView]
     class_distribution: list[CountRowView]
     split_counts: list[CountRowView]
@@ -166,6 +191,7 @@ class EvalDetailView:
     title: str
     relative_path: str
     summary: list[LabelValueView]
+    fiftyone_target: FiftyOneLaunchTargetView | None
     metrics: list[MetricRowView]
     summary_counts: list[MetricRowView]
     per_class_headers: list[str]

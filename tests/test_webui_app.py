@@ -1,7 +1,19 @@
 from fastapi.testclient import TestClient
 
 from owli_train.webui.app import create_app
+from owli_train.webui.models import FiftyOneLaunchResultView
 from tests.webui_test_utils import build_sample_repo
+
+
+class FakeFiftyOneService:
+    def __init__(self, result: FiftyOneLaunchResultView):
+        self.result = result
+
+    def launch(self, target):
+        return self.result
+
+    def shutdown(self):
+        return None
 
 
 def test_webui_routes_render_dashboard_contracts_and_artifacts(tmp_path):
@@ -42,6 +54,7 @@ def test_webui_routes_render_dashboard_contracts_and_artifacts(tmp_path):
     assert dataset_detail.status_code == 200
     assert "Class distribution" in dataset_detail.text
     assert "small_bbox_filtered" in dataset_detail.text
+    assert "Open in FiftyOne" in dataset_detail.text
 
     assert run_detail.status_code == 200
     assert "Eval reports" in run_detail.text
@@ -50,6 +63,7 @@ def test_webui_routes_render_dashboard_contracts_and_artifacts(tmp_path):
     assert eval_detail.status_code == 200
     assert "Per-class metrics" in eval_detail.text
     assert "eval_demo_alt.json" in eval_detail.text
+    assert "Open eval dataset in FiftyOne" in eval_detail.text
 
     assert golden_detail.status_code == 200
     assert "Detections" in golden_detail.text
@@ -62,3 +76,62 @@ def test_webui_detail_routes_return_404_for_unknown_paths(tmp_path):
 
     response = client.get("/datasets/view", params={"path": "../outside"})
     assert response.status_code == 404
+
+
+def test_fiftyone_launch_route_renders_ready_state_with_local_link(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    app = create_app(repo_root=repo_root)
+    app.state.fiftyone = FakeFiftyOneService(
+        FiftyOneLaunchResultView(
+            status="ready",
+            message="Started local session.",
+            app_url="http://127.0.0.1:5151/",
+        )
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        "/fiftyone/open",
+        params={"source": "dataset", "path": "work/datasets/demo-dataset"},
+    )
+
+    assert response.status_code == 200
+    assert "Started local session." in response.text
+    assert "http://127.0.0.1:5151/" in response.text
+
+
+def test_fiftyone_launch_route_returns_503_for_launch_failure(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    app = create_app(repo_root=repo_root)
+    app.state.fiftyone = FakeFiftyOneService(
+        FiftyOneLaunchResultView(
+            status="error",
+            message="FiftyOne is not installed in this venv.",
+        )
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        "/fiftyone/open",
+        params={"source": "dataset", "path": "work/datasets/demo-dataset"},
+    )
+
+    assert response.status_code == 503
+    assert "FiftyOne is not installed in this venv." in response.text
+
+
+def test_fiftyone_launch_route_renders_clear_error_for_unlaunchable_dataset(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    images_dir = repo_root / "work" / "datasets" / "demo-dataset" / "images"
+    for path in images_dir.iterdir():
+        path.unlink()
+    images_dir.rmdir()
+
+    client = TestClient(create_app(repo_root=repo_root))
+    response = client.get(
+        "/fiftyone/open",
+        params={"source": "dataset", "path": "work/datasets/demo-dataset"},
+    )
+
+    assert response.status_code == 400
+    assert "not ready for FiftyOne yet" in response.text

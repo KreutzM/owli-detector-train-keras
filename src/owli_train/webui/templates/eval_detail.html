@@ -22,6 +22,29 @@
 
   <section class="grid">
     <article class="panel">
+      <h2>FiftyOne</h2>
+      {% if eval_detail.fiftyone_target %}
+        <p class="meta">{{ eval_detail.fiftyone_target.message }}</p>
+        <table>
+          <tbody>
+            <tr><th>Dataset name</th><td>{{ eval_detail.fiftyone_target.dataset_name or "-" }}</td></tr>
+            <tr><th>COCO path</th><td><code>{{ eval_detail.fiftyone_target.coco_path or "-" }}</code></td></tr>
+            <tr><th>Images dir</th><td><code>{{ eval_detail.fiftyone_target.images_dir or "-" }}</code></td></tr>
+          </tbody>
+        </table>
+        <div class="actions">
+          {% if eval_detail.fiftyone_target.can_launch %}
+            <a href="{{ url_for('fiftyone_launch_page') }}?source={{ eval_detail.fiftyone_target.source_kind }}&path={{ eval_detail.fiftyone_target.source_path }}">Open eval dataset in FiftyOne</a>
+          {% else %}
+            <span class="status status-missing">not available</span>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="empty">No FiftyOne launch target is available for this eval report.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
       <h2>Global metrics</h2>
       {% if eval_detail.metrics %}
         <table>
@@ -39,23 +62,24 @@
       {% endif %}
     </article>
 
-    <article class="panel">
-      <h2>Summary counts</h2>
-      {% if eval_detail.summary_counts %}
-        <table>
-          <thead>
-            <tr><th>Count</th><th>Value</th></tr>
-          </thead>
-          <tbody>
-            {% for item in eval_detail.summary_counts %}
-              <tr><td><code>{{ item.key }}</code></td><td>{{ item.value }}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <div class="empty">This report does not provide summary count metrics.</div>
-      {% endif %}
-    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Summary counts</h2>
+    {% if eval_detail.summary_counts %}
+      <table>
+        <thead>
+          <tr><th>Count</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          {% for item in eval_detail.summary_counts %}
+            <tr><td><code>{{ item.key }}</code></td><td>{{ item.value }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">This report does not provide summary count metrics.</div>
+    {% endif %}
   </section>
 
   <section class="panel">

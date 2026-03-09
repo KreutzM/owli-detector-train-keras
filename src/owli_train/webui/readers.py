@@ -18,6 +18,7 @@ from owli_train.webui.models import (
     CountRowView,
     DatasetDetailView,
     EvalDetailView,
+    FiftyOneLaunchTargetView,
     GoldenDetailView,
     GoldenDetectionView,
     LabelValueView,
@@ -280,6 +281,11 @@ class RepositoryReader:
             if primary_coco is not None
             else None,
             images_dir=self._relative_path(images_dir) if images_dir.is_dir() else None,
+            fiftyone_target=self._build_dataset_fiftyone_target(
+                dataset_dir=dataset_dir,
+                primary_coco=primary_coco,
+                images_dir=images_dir,
+            ),
             summary=summary,
             class_distribution=[
                 CountRowView(label=label, value=value)
@@ -361,6 +367,10 @@ class RepositoryReader:
                     LabelValueView(label="Report path", value=self._relative_path(report_path)),
                     LabelValueView(label="Format", value="markdown"),
                 ],
+                fiftyone_target=self._build_eval_fiftyone_target(
+                    report_path=report_path,
+                    payload={},
+                ),
                 metrics=[],
                 summary_counts=[],
                 per_class_headers=[],
@@ -404,6 +414,10 @@ class RepositoryReader:
             title=report_path.name,
             relative_path=self._relative_path(report_path),
             summary=summary,
+            fiftyone_target=self._build_eval_fiftyone_target(
+                report_path=report_path,
+                payload=payload,
+            ),
             metrics=metrics,
             summary_counts=summary_counts,
             per_class_headers=per_class_headers,
@@ -692,6 +706,17 @@ class RepositoryReader:
             rows.append(LabelValueView(label="selected_image_total", value=str(total)))
         return rows
 
+    def resolve_fiftyone_target(
+        self, *, source_kind: str, relative_path: str
+    ) -> FiftyOneLaunchTargetView | None:
+        if source_kind == "dataset":
+            detail = self.load_dataset_detail(relative_path)
+            return detail.fiftyone_target if detail is not None else None
+        if source_kind == "eval":
+            detail = self.load_eval_detail(relative_path)
+            return detail.fiftyone_target if detail is not None else None
+        return None
+
     def _find_config_references_for_prefix(self, relative_prefix: str) -> list[ConfigReferenceView]:
         matches: list[ConfigReferenceView] = []
         prefix = relative_prefix.rstrip("/") + "/"
@@ -901,6 +926,123 @@ class RepositoryReader:
     ) -> RepoPathView:
         return self._path_view_from_absolute(self.repo_root / relative_path, label=label, note=note)
 
+    def _build_dataset_fiftyone_target(
+        self,
+        *,
+        dataset_dir: Path,
+        primary_coco: Path | None,
+        images_dir: Path,
+    ) -> FiftyOneLaunchTargetView:
+        dataset_name = f"owli-{dataset_dir.name}"
+        if primary_coco is None:
+            return FiftyOneLaunchTargetView(
+                source_kind="dataset",
+                source_path=self._relative_path(dataset_dir),
+                source_label="Dataset detail",
+                back_path=self._relative_path(dataset_dir),
+                back_label="Back to dataset detail",
+                back_route_name="dataset_detail_page",
+                title=f"Open {dataset_dir.name} in FiftyOne",
+                dataset_name=dataset_name,
+                coco_path=None,
+                images_dir=None,
+                can_launch=False,
+                message="No COCO file was found for this dataset directory.",
+            )
+        if not images_dir.is_dir():
+            return FiftyOneLaunchTargetView(
+                source_kind="dataset",
+                source_path=self._relative_path(dataset_dir),
+                source_label="Dataset detail",
+                back_path=self._relative_path(dataset_dir),
+                back_label="Back to dataset detail",
+                back_route_name="dataset_detail_page",
+                title=f"Open {dataset_dir.name} in FiftyOne",
+                dataset_name=dataset_name,
+                coco_path=self._relative_path(primary_coco),
+                images_dir=None,
+                can_launch=False,
+                message=(
+                    "This dataset is not ready for FiftyOne yet because no local images "
+                    "directory was found at <dataset>/images."
+                ),
+            )
+        return FiftyOneLaunchTargetView(
+            source_kind="dataset",
+            source_path=self._relative_path(dataset_dir),
+            source_label="Dataset detail",
+            back_path=self._relative_path(dataset_dir),
+            back_label="Back to dataset detail",
+            back_route_name="dataset_detail_page",
+            title=f"Open {dataset_dir.name} in FiftyOne",
+            dataset_name=dataset_name,
+            coco_path=self._relative_path(primary_coco),
+            images_dir=self._relative_path(images_dir),
+            can_launch=True,
+            message=(
+                "Supports local COCO datasets with a repo-visible images directory under "
+                "<dataset>/images."
+            ),
+        )
+
+    def _build_eval_fiftyone_target(
+        self,
+        *,
+        report_path: Path,
+        payload: dict[str, Any],
+    ) -> FiftyOneLaunchTargetView:
+        run_path = self._infer_run_path(report_path)
+        back_path = run_path or self._relative_path(report_path)
+        back_label = "Back to run detail" if run_path else "Back to eval detail"
+        back_route_name = "run_detail_page" if run_path else "eval_detail_page"
+        default_name = f"owli-{report_path.stem}"
+        coco_path = self._resolve_runtime_repo_path(payload.get("coco_path"))
+        images_dir = self._resolve_runtime_repo_path(payload.get("images_dir"))
+        if coco_path is None:
+            return FiftyOneLaunchTargetView(
+                source_kind="eval",
+                source_path=self._relative_path(report_path),
+                source_label="Eval detail",
+                back_path=back_path,
+                back_label=back_label,
+                back_route_name=back_route_name,
+                title=f"Open eval dataset for {report_path.name} in FiftyOne",
+                dataset_name=default_name,
+                coco_path=None,
+                images_dir=None,
+                can_launch=False,
+                message="This eval report does not expose a usable COCO path.",
+            )
+        if images_dir is None or not images_dir.is_dir():
+            return FiftyOneLaunchTargetView(
+                source_kind="eval",
+                source_path=self._relative_path(report_path),
+                source_label="Eval detail",
+                back_path=back_path,
+                back_label=back_label,
+                back_route_name=back_route_name,
+                title=f"Open eval dataset for {report_path.name} in FiftyOne",
+                dataset_name=default_name,
+                coco_path=self._relative_path(coco_path),
+                images_dir=self._relative_path(images_dir) if images_dir is not None else None,
+                can_launch=False,
+                message="This eval report does not point to a usable local images directory.",
+            )
+        return FiftyOneLaunchTargetView(
+            source_kind="eval",
+            source_path=self._relative_path(report_path),
+            source_label="Eval detail",
+            back_path=back_path,
+            back_label=back_label,
+            back_route_name=back_route_name,
+            title=f"Open eval dataset for {report_path.name} in FiftyOne",
+            dataset_name=default_name,
+            coco_path=self._relative_path(coco_path),
+            images_dir=self._relative_path(images_dir),
+            can_launch=True,
+            message="Uses the COCO and images paths recorded in the eval JSON report.",
+        )
+
     def _path_from_config(self, config_path: Path, label: str, value: Any) -> RepoPathView | None:
         if value is None:
             return None
@@ -943,6 +1085,19 @@ class RepositoryReader:
             return str(path.resolve().relative_to(self.repo_root))
         except ValueError:
             return str(path.resolve())
+
+    def _resolve_runtime_repo_path(self, value: Any) -> Path | None:
+        text = self._optional_text(value)
+        if text is None:
+            return None
+        raw = Path(text)
+        candidate = raw if raw.is_absolute() else (self.repo_root / raw)
+        resolved = candidate.resolve()
+        try:
+            resolved.relative_to(self.repo_root)
+        except ValueError:
+            return None
+        return resolved if resolved.exists() else None
 
     def _format_mtime(self, path: Path) -> str | None:
         if not path.exists():

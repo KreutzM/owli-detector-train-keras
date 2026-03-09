@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="panel">
+    <h2>FiftyOne Launch</h2>
+    <div class="path">{{ launch_target.source_path }}</div>
+    <table style="margin-top: 1rem;">
+      <tbody>
+        <tr><th>Source</th><td>{{ launch_target.source_label }}</td></tr>
+        <tr><th>Dataset name</th><td>{{ launch_target.dataset_name or "-" }}</td></tr>
+        <tr><th>COCO path</th><td><code>{{ launch_target.coco_path or "-" }}</code></td></tr>
+        <tr><th>Images dir</th><td><code>{{ launch_target.images_dir or "-" }}</code></td></tr>
+      </tbody>
+    </table>
+    <p class="meta">
+      <a href="{{ url_for(launch_target.back_route_name) }}?path={{ launch_target.back_path }}">{{ launch_target.back_label }}</a>
+    </p>
+  </section>
+
+  <section class="panel">
+    {% if launch_result.status == "ready" %}
+      <div class="callout callout-ok">
+        <strong>{{ launch_result.message }}</strong>
+        <p class="meta">Open the local FiftyOne app in the browser. If it was already running, this reuses the current session.</p>
+        {% if launch_result.app_url %}
+          <div class="actions">
+            <a href="{{ launch_result.app_url }}">Open FiftyOne</a>
+          </div>
+          <div class="path" style="margin-top: 0.8rem;">{{ launch_result.app_url }}</div>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="callout callout-error">
+        <strong>{{ launch_result.message }}</strong>
+        {% if launch_result.detail %}
+          <pre class="log-output" style="margin-top: 0.8rem;">{{ launch_result.detail }}</pre>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

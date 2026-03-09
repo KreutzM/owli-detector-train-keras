@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from owli_train.webui.fiftyone import FiftyOneService
 from owli_train.webui.jobs import (
     JOB_LAUNCHER_ORDER,
     JOB_MODE_OPTIONS,
@@ -21,18 +23,32 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 def create_app(repo_root: Path | None = None) -> FastAPI:
     resolved_repo_root = infer_repo_root(repo_root)
+    fiftyone_service = FiftyOneService(resolved_repo_root)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        try:
+            yield
+        finally:
+            fiftyone_service.shutdown()
+
     app = FastAPI(
         title="Owli Control UI",
-        description="Phase 3 visibility, diagnostics, and small whitelisted job control over contracts, datasets, runs, eval reports, and artifacts.",
-        version="0.3.0",
+        description="Phase 4 visibility, diagnostics, small whitelisted job control, and a first local FiftyOne bridge for datasets and eval-linked datasets.",
+        version="0.4.0",
+        lifespan=lifespan,
     )
     app.state.repo_root = resolved_repo_root
+    app.state.fiftyone = fiftyone_service
 
     def _reader() -> RepositoryReader:
         return RepositoryReader(app.state.repo_root)
 
     def _jobs() -> JobService:
         return JobService(app.state.repo_root)
+
+    def _fiftyone() -> FiftyOneService:
+        return app.state.fiftyone
 
     def _context(request: Request, page_title: str) -> dict[str, object]:
         return {
@@ -96,6 +112,36 @@ def create_app(repo_root: Path | None = None) -> FastAPI:
             "golden": detail,
         }
         return templates.TemplateResponse(request, "golden_detail.html", context)
+
+    @app.get("/fiftyone/open", response_class=HTMLResponse, name="fiftyone_launch_page")
+    def fiftyone_launch_page(request: Request, source: str, path: str) -> HTMLResponse:
+        target = _reader().resolve_fiftyone_target(source_kind=source, relative_path=path)
+        if target is None:
+            raise HTTPException(status_code=404, detail="Unknown FiftyOne source path.")
+        if not target.can_launch:
+            context = {
+                **_context(request, "FiftyOne"),
+                "launch_target": target,
+                "launch_result": _fiftyone().launch(target),
+            }
+            return templates.TemplateResponse(
+                request,
+                "fiftyone_launch.html",
+                context,
+                status_code=400,
+            )
+        launch_result = _fiftyone().launch(target)
+        context = {
+            **_context(request, "FiftyOne"),
+            "launch_target": target,
+            "launch_result": launch_result,
+        }
+        return templates.TemplateResponse(
+            request,
+            "fiftyone_launch.html",
+            context,
+            status_code=200 if launch_result.status == "ready" else 503,
+        )
 
     def _jobs_context(
         request: Request,
