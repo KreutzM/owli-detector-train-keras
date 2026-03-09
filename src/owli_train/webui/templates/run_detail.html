@@ -11,7 +11,11 @@
         {% endfor %}
       </tbody>
     </table>
-    <p class="meta"><a href="{{ url_for('artifacts_page') }}">Back to artifacts</a></p>
+    <p class="meta">
+      <a href="{{ url_for('compare_runs_page') }}">Back to compare</a>
+      ·
+      <a href="{{ url_for('artifacts_page') }}">Back to artifacts</a>
+    </p>
   </section>
 
   <section class="grid">
@@ -26,6 +30,7 @@
               <p class="meta">{{ item.note or "JSON metrics available." }}</p>
               <div class="actions">
                 <a href="{{ url_for('eval_detail_page') }}?path={{ item.relative_path }}">Open eval detail</a>
+                <a href="{{ url_for('compare_runs_page') }}?run={{ run.relative_path }}">Compare this run</a>
               </div>
             </li>
           {% endfor %}

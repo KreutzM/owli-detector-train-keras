@@ -187,6 +187,51 @@ class RunDetailView:
 
 
 @dataclass(frozen=True)
+class CompareRunOptionView:
+    run_id: str
+    relative_path: str
+    selected: bool
+    eval_count: int
+    curated_label: str | None = None
+
+
+@dataclass(frozen=True)
+class CompareTargetOptionView:
+    key: str
+    label: str
+    count: int
+    selected: bool
+
+
+@dataclass(frozen=True)
+class CompareRowView:
+    run_id: str
+    run_relative_path: str
+    run_display_name: str
+    curated_label: str | None
+    stage_label: str | None
+    dataset_label: str
+    config_path: str | None
+    config_note: str | None
+    eval_relative_path: str
+    eval_label: str
+    golden_relative_path: str | None
+    metrics: dict[str, str]
+
+
+@dataclass(frozen=True)
+class RunsCompareView:
+    selected_target_key: str | None
+    selected_target_label: str | None
+    target_options: list[CompareTargetOptionView]
+    run_options: list[CompareRunOptionView]
+    metric_keys: list[str]
+    rows: list[CompareRowView]
+    selection_summary: str
+    scope_note: str
+
+
+@dataclass(frozen=True)
 class EvalDetailView:
     title: str
     relative_path: str

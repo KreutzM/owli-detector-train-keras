@@ -6,8 +6,8 @@
       <h2>Project focus</h2>
       <p class="meta">
         This UI now surfaces stable repo contracts, curated docs, dataset details, run details,
-        eval reports, golden artifacts, and a small whitelisted launcher for lightweight dataset-prep
-        jobs without replacing the CLI.
+        eval reports, golden artifacts, a small run/eval comparison page, and a whitelisted
+        launcher for lightweight dataset-prep jobs without replacing the CLI.
       </p>
       <div class="chips">
         <span class="chip">dataset prep</span>
@@ -15,8 +15,12 @@
         <span class="chip">job list + logs</span>
         <span class="chip">dataset diagnostics</span>
         <span class="chip">run/eval/golden detail pages</span>
+        <span class="chip">compare key baselines</span>
         <span class="chip">whitelisted commands only</span>
         <span class="chip">no training from UI</span>
+      </div>
+      <div class="actions">
+        <a href="{{ url_for('compare_runs_page') }}">Open run comparison</a>
       </div>
     </article>
 

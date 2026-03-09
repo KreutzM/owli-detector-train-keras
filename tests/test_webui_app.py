@@ -23,6 +23,7 @@ def test_webui_routes_render_dashboard_contracts_and_artifacts(tmp_path):
     dashboard = client.get("/")
     contracts = client.get("/contracts")
     artifacts = client.get("/artifacts")
+    compare_runs = client.get("/compare/runs")
     jobs = client.get("/jobs")
     dataset_detail = client.get("/datasets/view", params={"path": "work/datasets/demo-dataset"})
     run_detail = client.get("/runs/view", params={"path": "work/runs/20260309-123000-demo"})
@@ -47,6 +48,11 @@ def test_webui_routes_render_dashboard_contracts_and_artifacts(tmp_path):
     assert artifacts.status_code == 200
     assert "efficientdet_demo.yaml" in artifacts.text
     assert "model.tflite" in artifacts.text
+
+    assert compare_runs.status_code == 200
+    assert "Run / Eval Compare" in compare_runs.text
+    assert "Stage-3 baseline" in compare_runs.text
+    assert "ba_mvp_stage3_balanced_multisource / TEST" in compare_runs.text
 
     assert jobs.status_code == 200
     assert "dataset validate" in jobs.text
@@ -76,6 +82,24 @@ def test_webui_detail_routes_return_404_for_unknown_paths(tmp_path):
 
     response = client.get("/datasets/view", params={"path": "../outside"})
     assert response.status_code == 404
+
+
+def test_compare_runs_route_supports_run_filter_and_target_selection(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    client = TestClient(create_app(repo_root=repo_root))
+
+    response = client.get(
+        "/compare/runs",
+        params=[
+            ("run", "work/runs/20260308-211806-ba-mvp-stage4-20260308"),
+            ("target", "split:ba_mvp_stage4_with_coco_replay:test"),
+        ],
+    )
+
+    assert response.status_code == 200
+    assert "Stage-4 replay baseline" in response.text
+    assert "Showing 1 eval rows across 1 runs" in response.text
+    assert "0.24" in response.text
 
 
 def test_fiftyone_launch_route_renders_ready_state_with_local_link(tmp_path):
