@@ -109,6 +109,28 @@ def test_repository_reader_builds_run_compare_from_common_eval_target(tmp_path):
     assert compare_view.rows[0].config_path == "configs/efficientdet_lite2_ba_mvp_stage3.yaml"
     assert compare_view.rows[1].metrics["AP50"] == "0.229"
     assert compare_view.rows[2].golden_relative_path is not None
+    assert compare_view.class_scope_key == "ba_core"
+    assert compare_view.per_class_rows[0].label == "obstacle_bump"
+    assert compare_view.per_class_rows[1].label == "obstacle_fence / obstacle_fence_rail"
+    assert compare_view.per_class_rows[1].cells[1].matched_class_name == "obstacle_fence_rail"
+    assert compare_view.per_class_rows[2].cells[2].matched_class_name == "obstacle_hole_dropoff"
+    assert compare_view.per_class_rows[3].cells[0].metrics["tp"] == "163"
+
+
+def test_repository_reader_compare_supports_ba_core_plus_rehearsal_scope(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    reader = RepositoryReader(repo_root)
+
+    compare_view = reader.load_runs_compare(class_scope_key="ba_core_rehearsal")
+
+    labels = [row.label for row in compare_view.per_class_rows]
+    assert compare_view.class_scope_key == "ba_core_rehearsal"
+    assert "person" in labels
+    assert "car" in labels
+    assert "truck" in labels
+    person_row = next(row for row in compare_view.per_class_rows if row.label == "person")
+    assert person_row.cells[0].metrics["precision"] == "0.2304"
+    assert person_row.cells[2].metrics["recall"] == "0.4748"
 
 
 def test_repository_reader_compare_handles_selected_run_and_missing_metrics(tmp_path):
@@ -128,3 +150,26 @@ def test_repository_reader_compare_handles_selected_run_and_missing_metrics(tmp_
     assert compare_view.rows[0].run_relative_path == "work/runs/20260309-123000-demo"
     assert compare_view.rows[0].metrics["AP"] == "-"
     assert compare_view.rows[0].metrics["precision"] == "-"
+
+
+def test_repository_reader_compare_handles_missing_per_class_payload(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    report_path = (
+        repo_root
+        / "work"
+        / "runs"
+        / "20260308-183140-ba-mvp-stage3-20260308"
+        / "reports"
+        / "eval_efficientdet_tflite_stage3_test.json"
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report["per_class"] = {}
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+    reader = RepositoryReader(repo_root)
+    compare_view = reader.load_runs_compare(
+        selected_run_paths=["work/runs/20260308-183140-ba-mvp-stage3-20260308"]
+    )
+
+    assert compare_view.rows[0].run_display_name == "Stage-3 baseline"
+    assert compare_view.per_class_rows == []

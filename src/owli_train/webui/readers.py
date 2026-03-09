@@ -11,6 +11,9 @@ import yaml
 
 from owli_train.webui.models import (
     ArtifactDirectoryView,
+    CompareClassScopeOptionView,
+    ComparePerClassCellView,
+    ComparePerClassRowView,
     CompareRowView,
     CompareRunOptionView,
     CompareTargetOptionView,
@@ -64,6 +67,35 @@ CURATED_ARTIFACT_ROOTS: tuple[tuple[str, str, str], ...] = (
 
 CONTRACT_ORDER: tuple[str, ...] = ("ba_v1", "ba_v2_hazard")
 COMPARE_METRIC_KEYS: tuple[str, ...] = ("AP", "AP50", "AP75", "AR100", "precision", "recall")
+COMPARE_PER_CLASS_METRIC_KEYS: tuple[str, ...] = ("precision", "recall", "tp", "fp", "fn")
+COMPARE_CLASS_SCOPE_OPTIONS: tuple[tuple[str, str], ...] = (
+    ("ba_core", "BA core only"),
+    ("ba_core_rehearsal", "BA core + rehearsal"),
+)
+CURATED_COMPARE_CLASS_GROUPS: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
+    ("ba_core", "obstacle_bump", "BA core", ("obstacle_bump",)),
+    (
+        "ba_core",
+        "obstacle_fence / obstacle_fence_rail",
+        "BA core",
+        ("obstacle_fence", "obstacle_fence_rail"),
+    ),
+    (
+        "ba_core",
+        "obstacle_hole / obstacle_hole_dropoff",
+        "BA core",
+        ("obstacle_hole", "obstacle_hole_dropoff"),
+    ),
+    ("ba_core", "obstacle_pole", "BA core", ("obstacle_pole",)),
+    ("ba_core", "obstacle_ground", "BA core", ("obstacle_ground",)),
+    ("ba_core", "obstacle_barrier", "BA core", ("obstacle_barrier",)),
+    ("ba_core_rehearsal", "person", "Rehearsal", ("person",)),
+    ("ba_core_rehearsal", "bicycle", "Rehearsal", ("bicycle",)),
+    ("ba_core_rehearsal", "motorcycle", "Rehearsal", ("motorcycle",)),
+    ("ba_core_rehearsal", "car", "Rehearsal", ("car",)),
+    ("ba_core_rehearsal", "bus", "Rehearsal", ("bus",)),
+    ("ba_core_rehearsal", "truck", "Rehearsal", ("truck",)),
+)
 CURATED_COMPARE_LABELS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "Stage-3 baseline",
@@ -118,6 +150,7 @@ class _CompareCandidate:
     eval_sort_value: str
     golden_relative_path: str | None
     metrics: dict[str, str]
+    per_class: dict[str, dict[str, Any]]
 
 
 def infer_repo_root(start: Path | None = None) -> Path:
@@ -419,6 +452,7 @@ class RepositoryReader:
         *,
         selected_run_paths: list[str] | None = None,
         target_key: str | None = None,
+        class_scope_key: str | None = None,
     ) -> RunsCompareView:
         candidates = self._load_compare_candidates()
         selected_paths = {path for path in (selected_run_paths or []) if path.strip()}
@@ -447,6 +481,22 @@ class RepositoryReader:
             for candidate in filtered_candidates
             if selected_target is not None and candidate.target_key == selected_target.key
         ]
+        selected_candidates = [
+            candidate
+            for candidate in filtered_candidates
+            if selected_target is not None and candidate.target_key == selected_target.key
+        ]
+        class_scope_options = self._build_compare_class_scope_options(
+            requested_scope_key=class_scope_key
+        )
+        selected_class_scope = next(
+            (item for item in class_scope_options if item.selected),
+            class_scope_options[0],
+        )
+        per_class_rows = self._build_compare_per_class_rows(
+            candidates=selected_candidates,
+            scope_key=selected_class_scope.key,
+        )
 
         if selected_target is None:
             selection_summary = "No comparable eval JSON reports were found under work/runs."
@@ -464,13 +514,22 @@ class RepositoryReader:
             "This page compares structured eval JSON reports only. It intentionally stays small: "
             "global metrics, dataset/stage context, and links back to run, eval, and golden details."
         )
+        per_class_note = (
+            "Per-class rows use a small curated class list and only exact class names or the listed "
+            "historical aliases inside each row. Missing values stay visible as '-'."
+        )
         return RunsCompareView(
             selected_target_key=selected_target.key if selected_target is not None else None,
             selected_target_label=selected_target.label if selected_target is not None else None,
             target_options=target_options,
             run_options=run_options,
+            class_scope_key=selected_class_scope.key,
+            class_scope_options=class_scope_options,
             metric_keys=list(COMPARE_METRIC_KEYS),
             rows=rows,
+            per_class_metric_keys=list(COMPARE_PER_CLASS_METRIC_KEYS),
+            per_class_rows=per_class_rows,
+            per_class_note=per_class_note,
             selection_summary=selection_summary,
             scope_note=scope_note,
         )
@@ -656,6 +715,7 @@ class RepositoryReader:
                         or eval_path.name,
                         golden_relative_path=golden_relative_path,
                         metrics=self._extract_compare_metrics(payload),
+                        per_class=self._extract_compare_per_class(payload),
                     )
                 )
         candidates.sort(key=self._compare_candidate_sort_key)
@@ -714,6 +774,76 @@ class RepositoryReader:
             )
             for key, (label, count) in ordered
         ]
+
+    def _build_compare_class_scope_options(
+        self,
+        *,
+        requested_scope_key: str | None,
+    ) -> list[CompareClassScopeOptionView]:
+        default_scope_key = requested_scope_key
+        valid_keys = {key for key, _label in COMPARE_CLASS_SCOPE_OPTIONS}
+        if default_scope_key not in valid_keys:
+            default_scope_key = "ba_core"
+        return [
+            CompareClassScopeOptionView(
+                key=key,
+                label=label,
+                selected=key == default_scope_key,
+            )
+            for key, label in COMPARE_CLASS_SCOPE_OPTIONS
+        ]
+
+    def _build_compare_per_class_rows(
+        self,
+        *,
+        candidates: list[_CompareCandidate],
+        scope_key: str,
+    ) -> list[ComparePerClassRowView]:
+        rows: list[ComparePerClassRowView] = []
+        include_rehearsal = scope_key == "ba_core_rehearsal"
+        for row_scope, label, role, aliases in CURATED_COMPARE_CLASS_GROUPS:
+            if row_scope == "ba_core_rehearsal" and not include_rehearsal:
+                continue
+            cells = [
+                self._build_compare_per_class_cell(candidate, aliases=aliases)
+                for candidate in candidates
+            ]
+            if not any(cell.matched_class_name is not None for cell in cells):
+                continue
+            note = None
+            if len(aliases) > 1:
+                note = "Matches " + " or ".join(aliases) + "."
+            rows.append(
+                ComparePerClassRowView(
+                    label=label,
+                    role=role,
+                    note=note,
+                    cells=cells,
+                )
+            )
+        return rows
+
+    def _build_compare_per_class_cell(
+        self,
+        candidate: _CompareCandidate,
+        *,
+        aliases: tuple[str, ...],
+    ) -> ComparePerClassCellView:
+        for alias in aliases:
+            payload = candidate.per_class.get(alias.lower())
+            if payload is None:
+                continue
+            return ComparePerClassCellView(
+                matched_class_name=str(payload.get("__matched_name__", alias)),
+                metrics={
+                    key: self._format_number(payload.get(key))
+                    for key in COMPARE_PER_CLASS_METRIC_KEYS
+                },
+            )
+        return ComparePerClassCellView(
+            matched_class_name=None,
+            metrics={key: "-" for key in COMPARE_PER_CLASS_METRIC_KEYS},
+        )
 
     def _candidate_to_compare_row(self, candidate: _CompareCandidate) -> CompareRowView:
         return CompareRowView(
@@ -804,6 +934,24 @@ class RepositoryReader:
             ),
             "recall": self._format_number(count_map.get("recall", metric_map.get("recall"))),
         }
+
+    def _extract_compare_per_class(self, payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        per_class = payload.get("per_class")
+        if not isinstance(per_class, dict):
+            return {}
+
+        extracted: dict[str, dict[str, Any]] = {}
+        for class_name, values in per_class.items():
+            if not isinstance(values, dict):
+                continue
+            normalized = str(class_name).strip().lower()
+            if not normalized:
+                continue
+            extracted[normalized] = {
+                "__matched_name__": str(class_name).strip(),
+                **{key: values.get(key) for key in COMPARE_PER_CLASS_METRIC_KEYS if key in values},
+            }
+        return extracted
 
     def _resolve_run_config_reference(self, run_dir: Path) -> tuple[str | None, str | None]:
         snapshot_candidates = (
