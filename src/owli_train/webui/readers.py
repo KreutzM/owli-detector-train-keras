@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -13,8 +15,18 @@ from owli_train.webui.models import (
     ContractClassView,
     ContractRoleView,
     ContractView,
+    CountRowView,
+    DatasetDetailView,
+    EvalDetailView,
+    GoldenDetailView,
+    GoldenDetectionView,
+    LabelValueView,
+    LinkedArtifactView,
+    MetricRowView,
+    PerClassMetricRowView,
     RepoPathView,
     RepositoryViewModel,
+    RunDetailView,
 )
 
 CURATED_DOCS: tuple[tuple[str, str, str], ...] = (
@@ -192,6 +204,273 @@ class RepositoryReader:
             ),
         ]
 
+    def load_dataset_detail(self, relative_path: str) -> DatasetDetailView | None:
+        dataset_dir = self._resolve_allowed_path(
+            relative_path,
+            required_kind="dir",
+            allowed_roots=(
+                "work/datasets",
+                "work/splits",
+                "work/webui/materialized",
+                "work/webui/splits",
+            ),
+        )
+        if dataset_dir is None:
+            return None
+
+        primary_coco = self._find_primary_dataset_coco(dataset_dir)
+        coco_payload = self._load_json(primary_coco) if primary_coco is not None else {}
+        images = coco_payload.get("images", []) if isinstance(coco_payload, dict) else []
+        annotations = coco_payload.get("annotations", []) if isinstance(coco_payload, dict) else []
+        categories = coco_payload.get("categories", []) if isinstance(coco_payload, dict) else []
+
+        category_names = {
+            int(item.get("id")): str(item.get("name", "")).strip()
+            for item in categories
+            if isinstance(item, dict) and item.get("id") is not None
+        }
+        annotation_counts: Counter[str] = Counter()
+        for item in annotations:
+            if not isinstance(item, dict):
+                continue
+            category_id = item.get("category_id")
+            if category_id is None:
+                continue
+            category_name = category_names.get(int(category_id), f"id:{category_id}")
+            annotation_counts[category_name] += 1
+
+        split_counts = self._load_split_counts(dataset_dir)
+        qc_summary = self._load_qc_summary(dataset_dir)
+        images_dir = dataset_dir / "images"
+        related_files = [
+            self._path_view_from_absolute(dataset_dir, label="dataset directory"),
+        ]
+        if primary_coco is not None:
+            related_files.append(self._path_view_from_absolute(primary_coco, label="primary COCO"))
+        if images_dir.is_dir():
+            related_files.append(self._path_view_from_absolute(images_dir, label="images dir"))
+
+        qc_path = dataset_dir / "qc_report.json"
+        if qc_path.is_file():
+            related_files.append(self._path_view_from_absolute(qc_path, label="QC report"))
+
+        split_path = self._find_split_file(dataset_dir)
+        if split_path is not None:
+            related_files.append(self._path_view_from_absolute(split_path, label="splits"))
+
+        summary = [
+            LabelValueView(label="Dataset path", value=self._relative_path(dataset_dir)),
+            LabelValueView(label="Images", value=str(len(images))),
+            LabelValueView(label="Annotations", value=str(len(annotations))),
+            LabelValueView(label="Categories", value=str(len(categories))),
+        ]
+        if primary_coco is not None:
+            summary.append(
+                LabelValueView(label="Primary COCO", value=self._relative_path(primary_coco))
+            )
+        if images_dir.is_dir():
+            summary.append(
+                LabelValueView(label="Images dir", value=self._relative_path(images_dir))
+            )
+
+        return DatasetDetailView(
+            title=dataset_dir.name,
+            relative_path=self._relative_path(dataset_dir),
+            primary_coco_path=self._relative_path(primary_coco)
+            if primary_coco is not None
+            else None,
+            images_dir=self._relative_path(images_dir) if images_dir.is_dir() else None,
+            summary=summary,
+            class_distribution=[
+                CountRowView(label=label, value=value)
+                for label, value in sorted(
+                    annotation_counts.items(),
+                    key=lambda item: (-item[1], item[0]),
+                )
+            ],
+            split_counts=split_counts,
+            qc_summary=qc_summary,
+            related_files=related_files,
+            related_configs=self._find_config_references_for_prefix(
+                self._relative_path(dataset_dir)
+            ),
+        )
+
+    def load_run_detail(self, relative_path: str) -> RunDetailView | None:
+        run_dir = self._resolve_allowed_path(
+            relative_path,
+            required_kind="dir",
+            allowed_roots=("work/runs",),
+        )
+        if run_dir is None:
+            return None
+
+        artifact_files = self._list_known_files(run_dir / "artifacts")
+        report_files = self._list_known_files(run_dir / "reports")
+        config_candidates = [
+            run_dir / "config_snapshot.yaml",
+            run_dir / "mapping_snapshot.json",
+            run_dir / "class_names.json",
+        ]
+        config_files = [
+            self._path_view_from_absolute(path, label=path.name)
+            for path in config_candidates
+            if path.exists()
+        ]
+
+        eval_reports = [
+            self._linked_report_view(path, note=self._eval_headline(path))
+            for path in sorted((run_dir / "reports").glob("eval*.json"))
+        ]
+        golden_reports = [
+            self._linked_report_view(path, note=self._golden_headline(path))
+            for path in sorted((run_dir / "reports").glob("golden*.json"))
+        ]
+
+        summary = [
+            LabelValueView(label="Run id", value=run_dir.name),
+            LabelValueView(label="Run path", value=self._relative_path(run_dir)),
+            LabelValueView(label="Artifacts", value=str(len(artifact_files))),
+            LabelValueView(label="Reports", value=str(len(report_files))),
+        ]
+        return RunDetailView(
+            run_id=run_dir.name,
+            relative_path=self._relative_path(run_dir),
+            summary=summary,
+            config_files=config_files,
+            artifact_files=artifact_files,
+            report_files=report_files,
+            eval_reports=eval_reports,
+            golden_reports=golden_reports,
+        )
+
+    def load_eval_detail(self, relative_path: str) -> EvalDetailView | None:
+        report_path = self._resolve_allowed_path(
+            relative_path,
+            required_kind="file",
+            allowed_roots=("work",),
+        )
+        if report_path is None:
+            return None
+
+        if report_path.suffix.lower() == ".md":
+            return EvalDetailView(
+                title=report_path.name,
+                relative_path=self._relative_path(report_path),
+                summary=[
+                    LabelValueView(label="Report path", value=self._relative_path(report_path)),
+                    LabelValueView(label="Format", value="markdown"),
+                ],
+                metrics=[],
+                summary_counts=[],
+                per_class_headers=[],
+                per_class_rows=[],
+                related_run_path=self._infer_run_path(report_path),
+                sibling_reports=self._load_sibling_eval_reports(report_path),
+                raw_excerpt=self._read_excerpt(report_path),
+            )
+
+        payload = self._load_json(report_path)
+        if not isinstance(payload, dict):
+            return None
+
+        summary = self._label_values_from_mapping(
+            payload,
+            keys=(
+                "created_at",
+                "run_dir",
+                "model_path",
+                "coco_path",
+                "images_dir",
+                "bbox_format",
+                "score_threshold",
+                "map_score_threshold",
+                "max_detections_per_image",
+                "limit_images",
+                "num_threads",
+                "num_workers",
+                "num_eval_images",
+                "num_detections",
+            ),
+        )
+        summary.insert(
+            0, LabelValueView(label="Report path", value=self._relative_path(report_path))
+        )
+
+        metrics = self._metric_rows(payload.get("metrics"))
+        summary_counts = self._metric_rows(payload.get("summary_counts"))
+        per_class_headers, per_class_rows = self._per_class_rows(payload.get("per_class"))
+        return EvalDetailView(
+            title=report_path.name,
+            relative_path=self._relative_path(report_path),
+            summary=summary,
+            metrics=metrics,
+            summary_counts=summary_counts,
+            per_class_headers=per_class_headers,
+            per_class_rows=per_class_rows,
+            related_run_path=self._infer_run_path(report_path),
+            sibling_reports=self._load_sibling_eval_reports(report_path),
+            raw_excerpt=None,
+        )
+
+    def load_golden_detail(self, relative_path: str) -> GoldenDetailView | None:
+        report_path = self._resolve_allowed_path(
+            relative_path,
+            required_kind="file",
+            allowed_roots=("work",),
+        )
+        if report_path is None:
+            return None
+
+        payload = self._load_json(report_path)
+        if not isinstance(payload, dict):
+            return None
+
+        detections_payload = payload.get("detections", [])
+        detections: list[GoldenDetectionView] = []
+        if isinstance(detections_payload, list):
+            for item in detections_payload:
+                if not isinstance(item, dict):
+                    continue
+                bbox = item.get("bbox")
+                detections.append(
+                    GoldenDetectionView(
+                        class_name=str(item.get("class_name", "")).strip() or "-",
+                        score=self._format_number(item.get("score")),
+                        bbox=self._format_bbox(bbox),
+                    )
+                )
+
+        summary = [
+            LabelValueView(label="Report path", value=self._relative_path(report_path)),
+            LabelValueView(label="Created", value=str(payload.get("created_at", "-"))),
+            LabelValueView(label="Model path", value=str(payload.get("model_path", "-"))),
+            LabelValueView(label="Image path", value=str(payload.get("image_path", "-"))),
+            LabelValueView(label="Detections", value=str(len(detections))),
+        ]
+        contract = self._label_values_from_mapping(
+            payload.get("contract"),
+            keys=(
+                "class_labels_source",
+                "score_threshold",
+                "max_results",
+                "bbox_format",
+                "coordinates",
+            ),
+        )
+        model_metadata = self._label_values_from_mapping(payload.get("model_metadata"))
+        inspect_tflite = self._label_values_from_mapping(payload.get("inspect_tflite"))
+        return GoldenDetailView(
+            title=report_path.name,
+            relative_path=self._relative_path(report_path),
+            summary=summary,
+            contract=contract,
+            model_metadata=model_metadata,
+            inspect_tflite=inspect_tflite,
+            detections=detections,
+            related_run_path=self._infer_run_path(report_path),
+        )
+
     def _load_dataset_config_references(self) -> list[ConfigReferenceView]:
         config_dir = self.repo_root / "configs"
         patterns = ("balance_*.yaml", "coco_replay_*.yaml", "crop_*.yaml")
@@ -330,6 +609,279 @@ class RepositoryReader:
                 )
             )
         return results
+
+    def _find_primary_dataset_coco(self, dataset_dir: Path) -> Path | None:
+        candidates = [
+            dataset_dir / "instances_materialized.json",
+            dataset_dir / "instances.json",
+        ]
+        for path in candidates:
+            if path.is_file():
+                return path
+        matches = sorted(dataset_dir.glob("instances*.json"))
+        return matches[0] if matches else None
+
+    def _find_split_file(self, dataset_dir: Path) -> Path | None:
+        direct = dataset_dir / "splits.json"
+        if direct.is_file():
+            return direct
+        sibling = self.repo_root / "work" / "splits" / dataset_dir.name / "splits.json"
+        if sibling.is_file():
+            return sibling
+        return None
+
+    def _load_split_counts(self, dataset_dir: Path) -> list[CountRowView]:
+        split_path = self._find_split_file(dataset_dir)
+        if split_path is None:
+            return []
+        payload = self._load_json(split_path)
+        if not isinstance(payload, dict):
+            return []
+        rows: list[CountRowView] = []
+        for split_name in ("train", "val", "test"):
+            value = payload.get(split_name)
+            if isinstance(value, list):
+                rows.append(CountRowView(label=split_name, value=len(value)))
+        for key, value in payload.items():
+            if key in {"train", "val", "test"}:
+                continue
+            if isinstance(value, list):
+                rows.append(CountRowView(label=str(key), value=len(value)))
+        return rows
+
+    def _load_qc_summary(self, dataset_dir: Path) -> list[LabelValueView]:
+        qc_path = dataset_dir / "qc_report.json"
+        payload = self._load_json(qc_path)
+        if not isinstance(payload, dict):
+            return []
+
+        rows = self._label_values_from_mapping(payload.get("summary"))
+        if rows:
+            return rows
+
+        input_payload = payload.get("input")
+        if isinstance(input_payload, dict):
+            rows.extend(
+                self._label_values_from_mapping(
+                    input_payload,
+                    keys=("images", "annotations", "categories"),
+                    prefix="input",
+                )
+            )
+        output_payload = payload.get("output")
+        if isinstance(output_payload, dict):
+            rows.extend(
+                self._label_values_from_mapping(
+                    output_payload,
+                    keys=("images", "annotations", "categories"),
+                    prefix="output",
+                )
+            )
+        if "filtered_small_bbox_annotations" in payload:
+            rows.append(
+                LabelValueView(
+                    label="filtered_small_bbox_annotations",
+                    value=str(payload["filtered_small_bbox_annotations"]),
+                )
+            )
+        selected_image_counts = payload.get("selected_image_counts")
+        if isinstance(selected_image_counts, dict):
+            total = sum(
+                int(value) for value in selected_image_counts.values() if isinstance(value, int)
+            )
+            rows.append(LabelValueView(label="selected_image_total", value=str(total)))
+        return rows
+
+    def _find_config_references_for_prefix(self, relative_prefix: str) -> list[ConfigReferenceView]:
+        matches: list[ConfigReferenceView] = []
+        prefix = relative_prefix.rstrip("/") + "/"
+        for group in self.load_config_groups():
+            for item in group.items:
+                for target in item.targets:
+                    if target.relative_path == relative_prefix or target.relative_path.startswith(
+                        prefix
+                    ):
+                        matches.append(item)
+                        break
+        return matches
+
+    def _resolve_allowed_path(
+        self,
+        relative_path: str,
+        *,
+        required_kind: str,
+        allowed_roots: tuple[str, ...],
+    ) -> Path | None:
+        text = relative_path.strip()
+        if not text:
+            return None
+        candidate = (self.repo_root / text).resolve()
+        try:
+            candidate.relative_to(self.repo_root)
+        except ValueError:
+            return None
+        if not any(self._relative_path(candidate).startswith(prefix) for prefix in allowed_roots):
+            return None
+        if required_kind == "dir" and not candidate.is_dir():
+            return None
+        if required_kind == "file" and not candidate.is_file():
+            return None
+        return candidate
+
+    def _list_known_files(self, root: Path, limit: int = 16) -> list[RepoPathView]:
+        if not root.is_dir():
+            return []
+        files = [path for path in root.rglob("*") if path.is_file()]
+        files.sort()
+        return [
+            self._path_view_from_absolute(path, label=str(path.relative_to(root)))
+            for path in files[:limit]
+        ]
+
+    def _linked_report_view(self, path: Path, note: str | None = None) -> LinkedArtifactView:
+        return LinkedArtifactView(
+            label=path.name,
+            relative_path=self._relative_path(path),
+            exists=path.exists(),
+            note=note,
+        )
+
+    def _eval_headline(self, path: Path) -> str | None:
+        payload = self._load_json(path)
+        metrics = payload.get("metrics") if isinstance(payload, dict) else None
+        if not isinstance(metrics, dict):
+            return None
+        for key in ("mAP50", "mAP", "AP50", "AP", "precision", "recall"):
+            if key in metrics:
+                return f"{key}={self._format_number(metrics[key])}"
+        for key, value in metrics.items():
+            return f"{key}={self._format_number(value)}"
+        return None
+
+    def _golden_headline(self, path: Path) -> str | None:
+        payload = self._load_json(path)
+        detections = payload.get("detections") if isinstance(payload, dict) else None
+        if isinstance(detections, list):
+            return f"detections={len(detections)}"
+        return None
+
+    def _load_sibling_eval_reports(self, report_path: Path) -> list[LinkedArtifactView]:
+        parent = report_path.parent
+        siblings: list[LinkedArtifactView] = []
+        for path in sorted(parent.glob("eval*.json")):
+            if path == report_path:
+                continue
+            siblings.append(self._linked_report_view(path, note=self._eval_headline(path)))
+        return siblings[:8]
+
+    def _infer_run_path(self, path: Path) -> str | None:
+        relative = self._relative_path(path)
+        parts = Path(relative).parts
+        if len(parts) >= 3 and parts[0] == "work" and parts[1] == "runs":
+            return str(Path(*parts[:3]))
+        return None
+
+    def _label_values_from_mapping(
+        self,
+        value: Any,
+        *,
+        keys: tuple[str, ...] | None = None,
+        prefix: str | None = None,
+    ) -> list[LabelValueView]:
+        if not isinstance(value, dict):
+            return []
+        rows: list[LabelValueView] = []
+        if keys is None:
+            iterable = value.items()
+        else:
+            iterable = ((key, value.get(key)) for key in keys if key in value)
+        for key, item in iterable:
+            text = self._display_value(item)
+            if text is None:
+                continue
+            label = f"{prefix}.{key}" if prefix else str(key)
+            rows.append(LabelValueView(label=label, value=text))
+        return rows
+
+    def _metric_rows(self, value: Any) -> list[MetricRowView]:
+        if not isinstance(value, dict):
+            return []
+        return [
+            MetricRowView(key=str(key), value=self._format_number(item))
+            for key, item in value.items()
+        ]
+
+    def _per_class_rows(self, value: Any) -> tuple[list[str], list[PerClassMetricRowView]]:
+        if not isinstance(value, dict):
+            return [], []
+
+        headers: list[str] = []
+        for item in value.values():
+            if not isinstance(item, dict):
+                continue
+            for key in item:
+                if key not in headers:
+                    headers.append(str(key))
+
+        rows: list[PerClassMetricRowView] = []
+        for class_name, item in value.items():
+            if not isinstance(item, dict):
+                continue
+            rows.append(
+                PerClassMetricRowView(
+                    class_name=str(class_name),
+                    values={header: self._format_number(item.get(header)) for header in headers},
+                )
+            )
+        return headers, rows
+
+    def _read_excerpt(self, path: Path, line_limit: int = 40) -> str:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            return ""
+        lines = text.splitlines()
+        excerpt = "\n".join(lines[:line_limit])
+        if len(lines) > line_limit:
+            excerpt += "\n..."
+        return excerpt
+
+    def _load_json(self, path: Path | None) -> dict[str, Any]:
+        if path is None or not path.is_file():
+            return {}
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        if not isinstance(payload, dict):
+            return {}
+        return payload
+
+    @staticmethod
+    def _display_value(value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, dict):
+            return f"{len(value)} keys"
+        if isinstance(value, list):
+            return f"{len(value)} items"
+        return str(value)
+
+    @staticmethod
+    def _format_number(value: Any) -> str:
+        if isinstance(value, float):
+            return f"{value:.4f}".rstrip("0").rstrip(".")
+        if isinstance(value, list):
+            return ", ".join(str(item) for item in value)
+        if value is None:
+            return "-"
+        return str(value)
+
+    @staticmethod
+    def _format_bbox(value: Any) -> str:
+        if not isinstance(value, list):
+            return "-"
+        return "[" + ", ".join(RepositoryReader._format_number(item) for item in value) + "]"
 
     def _collect_highlights(self, root: Path, patterns: tuple[str, ...]) -> list[str]:
         seen: set[Path] = set()

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Dataset Detail</h2>
+    <div class="path">{{ dataset.relative_path }}</div>
+    <table style="margin-top: 1rem;">
+      <tbody>
+        {% for item in dataset.summary %}
+          <tr><th>{{ item.label }}</th><td>{{ item.value }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="meta"><a href="{{ url_for('artifacts_page') }}">Back to artifacts</a></p>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Class distribution</h2>
+      {% if dataset.class_distribution %}
+        <table>
+          <thead>
+            <tr><th>Class</th><th>Annotations</th></tr>
+          </thead>
+          <tbody>
+            {% for item in dataset.class_distribution %}
+              <tr><td><code>{{ item.label }}</code></td><td>{{ item.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No COCO class distribution could be derived.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Split counts</h2>
+      {% if dataset.split_counts %}
+        <table>
+          <thead>
+            <tr><th>Split</th><th>Images</th></tr>
+          </thead>
+          <tbody>
+            {% for item in dataset.split_counts %}
+              <tr><td>{{ item.label }}</td><td>{{ item.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No split file was found for this dataset.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>QC summary</h2>
+      {% if dataset.qc_summary %}
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            {% for item in dataset.qc_summary %}
+              <tr><td><code>{{ item.label }}</code></td><td>{{ item.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No QC report was found next to this dataset.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Related files</h2>
+      <table>
+        <thead>
+          <tr><th>File</th><th>Path</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for item in dataset.related_files %}
+            <tr>
+              <td>{{ item.label }}</td>
+              <td><code>{{ item.relative_path }}</code></td>
+              <td>{{ "present" if item.exists else "missing" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Related configs</h2>
+    {% if dataset.related_configs %}
+      <ul class="item-list">
+        {% for item in dataset.related_configs %}
+          <li>
+            <strong>{{ item.label }}</strong>
+            <div class="path">{{ item.relative_path }}</div>
+            <p class="meta">{{ item.description }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">No config references were matched to this dataset path.</div>
+    {% endif %}
+  </section>
+{% endblock %}

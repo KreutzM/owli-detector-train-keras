@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Golden Detail</h2>
+    <div class="path">{{ golden.relative_path }}</div>
+    <table style="margin-top: 1rem;">
+      <tbody>
+        {% for item in golden.summary %}
+          <tr><th>{{ item.label }}</th><td>{{ item.value }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="meta">
+      {% if golden.related_run_path %}
+        <a href="{{ url_for('run_detail_page') }}?path={{ golden.related_run_path }}">Back to run detail</a>
+      {% else %}
+        <a href="{{ url_for('artifacts_page') }}">Back to artifacts</a>
+      {% endif %}
+    </p>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Contract</h2>
+      {% if golden.contract %}
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            {% for item in golden.contract %}
+              <tr><td><code>{{ item.label }}</code></td><td>{{ item.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No contract metadata found in this golden file.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Inspect TFLite</h2>
+      {% if golden.inspect_tflite %}
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            {% for item in golden.inspect_tflite %}
+              <tr><td><code>{{ item.label }}</code></td><td>{{ item.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No inspect summary was embedded in this golden file.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Detections</h2>
+      {% if golden.detections %}
+        <table>
+          <thead>
+            <tr><th>Class</th><th>Score</th><th>BBox</th></tr>
+          </thead>
+          <tbody>
+            {% for item in golden.detections %}
+              <tr>
+                <td><code>{{ item.class_name }}</code></td>
+                <td>{{ item.score }}</td>
+                <td>{{ item.bbox }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">This golden artifact contains no detections.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Model metadata</h2>
+      {% if golden.model_metadata %}
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            {% for item in golden.model_metadata %}
+              <tr><td><code>{{ item.label }}</code></td><td>{{ item.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No model metadata was embedded in this golden file.</div>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}
