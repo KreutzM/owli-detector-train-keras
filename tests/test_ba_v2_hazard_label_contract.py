@@ -16,7 +16,6 @@ def test_ba_v2_hazard_contract_has_fixed_unique_class_order():
     assert payload["class_names"] == [
         "obstacle_ground",
         "obstacle_barrier",
-        "obstacle_overhang",
         "obstacle_hole_dropoff",
         "obstacle_pole",
         "person",
@@ -38,7 +37,6 @@ def test_ba_v2_hazard_roles_partition_classes_without_drift():
     assert hazard_core == [
         "obstacle_ground",
         "obstacle_barrier",
-        "obstacle_overhang",
         "obstacle_hole_dropoff",
         "obstacle_pole",
     ]
@@ -71,3 +69,4 @@ def test_ba_v2_hazard_explicitly_retires_old_obstacle4_shaped_labels():
         "obstacle_fence",
         "obstacle_hole",
     ]
+    assert payload["deferred_non_mvp_labels"] == ["obstacle_overhang"]

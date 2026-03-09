@@ -1,0 +1,21 @@
+status: narrow_local_obstacle4_ground_bootstrap
+ba_contract: configs/label_contracts/ba_v2_hazard.yaml
+allowed_target_classes:
+  - obstacle_ground
+  - obstacle_barrier
+  - obstacle_hole_dropoff
+  - obstacle_pole
+
+drop_unmapped: true
+notes:
+  - Narrow BA-v2 bootstrap from the local Obstacle4 GT export.
+  - This file is used only because the local repo currently has no cleaner ground-support source.
+  - "'obstacle_bump' is treated as a narrow subset bootstrap for 'obstacle_ground', not as proof that BA-v2 ground hazards are fully covered."
+  - "'obstacle_fence', 'obstacle_hole', and 'obstacle_pole' are remapped only to keep the source contract-consistent during normalization."
+  - This source remains a legacy bootstrap source, not the preferred long-term BA-v2 ontology anchor.
+
+map:
+  obstacle_bump: obstacle_ground
+  obstacle_fence: obstacle_barrier
+  obstacle_hole: obstacle_hole_dropoff
+  obstacle_pole: obstacle_pole

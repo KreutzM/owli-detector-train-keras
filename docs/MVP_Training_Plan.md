@@ -10,12 +10,16 @@
 - Preferred labelset rationale: [BA_v2_Hazard_Labelset.md](./BA_v2_Hazard_Labelset.md)
 - Preferred source-fit readout: [BA_v2_Hazard_Mapping_Strategy.md](./BA_v2_Hazard_Mapping_Strategy.md)
 - First real BA-v2 slice: [BA_v2_Hazard_Slice01_Mapillary_OD.md](./BA_v2_Hazard_Slice01_Mapillary_OD.md)
+- Ground-bootstrap extension: [BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md](./BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md)
+- First BA-v2 MVP training candidate: [BA_v2_MVP_Train_Candidate.md](./BA_v2_MVP_Train_Candidate.md)
 - Verified interim baseline contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
 - Historical interim rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
 - Important boundary:
   - the current verified Stage-3 / Stage-4 runs are BA-v1 historical baselines
-  - the first real BA-v2 hazard data slice now exists
-  - the next real step is the first BA-v2 training candidate on top of that slice
+  - the current BA-v2 MVP contract intentionally uses four hazard-core classes plus six rehearsal classes
+  - `obstacle_overhang` is deliberately deferred out of the MVP because the repo still has no defendable data path for it
+  - the current Slice02 path and its materialized export now form the first real BA-v2 MVP training candidate
+  - the next real step is the first BA-v2 MVP training run
   - this file keeps the verified BA-v1 evidence because the pipeline work remains relevant
 
 ## Historical Verified BA-v1 Baseline Contract
@@ -40,7 +44,7 @@ The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified referen
 
 | Source | MVP role | Current repo status | Intended BA-v1 contribution |
 | --- | --- | --- | --- |
-| `Obstacle4` | baseline anchor | fully verified on current repo HEAD | BA core classes + current pseudo-label bridge into rehearsal classes |
+| `Obstacle4` | baseline anchor + narrow BA-v2 ground bootstrap | fully verified on current repo HEAD; local GT now also used for a narrow BA-v2 `obstacle_ground` bootstrap | historical BA core classes + current pseudo-label bridge into rehearsal classes |
 | `Mapillary Vistas` | BA supplemental source | full local `v1.2` BA-filtered export verified; `Map2/v2.0` support exists; balanced MVP subset and Stage-3 multi-source merge hook verified | strengthen BA core classes and selected rehearsal classes from street-scene data without letting Mapillary dominate the first MVP run |
 | `Obstacle-Dataset / OD` | BA supplemental source | local split-VOC raw source reviewed; BA-filtered COCO export and `Obstacle4` merge hook verified | strengthen `obstacle_pole` and selected exact-match rehearsal classes from an obstacle-focused source |
 | `COCO replay` | rehearsal-only replay | local `train2017.clean` replay subset and Stage-4 merge hook verified | preserve signal for `person`, `bicycle`, `motorcycle`, `car`, `bus`, `truck` without reverting to COCO-80 training |

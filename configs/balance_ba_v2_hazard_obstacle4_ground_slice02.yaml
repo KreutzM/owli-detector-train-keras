@@ -1,0 +1,14 @@
+status: ba_v2_hazard_slice02_obstacle4_ground_bootstrap
+source_coco: ../work/datasets/obstacle4_ba_v2_hazard_ground_source/instances_normalized.json
+source_images_dir: ../data/raw/obstacle4/extracted
+source_splits_json: ../work/splits/obstacle4/splits.json
+out_dir: ../work/datasets/obstacle4_ba_v2_ground_slice02
+
+selection:
+  min_bbox_min_side: 0
+  max_positive_images_per_class: 100000
+
+notes:
+  - Pass through the full local Obstacle4 GT export after the narrow BA-v2 ground bootstrap remap.
+  - Keep all currently available obstacle_ground support instead of downsampling it away in the first ground-bridging step.
+  - This is still a legacy bootstrap slice and does not broaden the BA-v2 MVP beyond the current four hazard-core classes.

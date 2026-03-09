@@ -16,7 +16,7 @@ notes:
   - Exact-match rehearsal classes are retained where the local XML taxonomy already names them directly.
   - "'motorbike' is normalized into BA-v2 rehearsal class 'motorcycle'."
   - "'pole' and 'warning_column' are mapped into BA-v2 hazard-core class 'obstacle_pole'."
-  - "No BA-v2 mapping is claimed here yet for obstacle_ground, obstacle_barrier, obstacle_overhang, or obstacle_hole_dropoff."
+  - "No BA-v2 mapping is claimed here yet for obstacle_ground, obstacle_barrier, or obstacle_hole_dropoff."
   - "Leave uncertain classes such as reflective_cone, spherical_roadblock, ashcan, fire_hydrant, tricycle, dog, and stop_sign unmapped."
 
 map:

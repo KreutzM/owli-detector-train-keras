@@ -277,6 +277,23 @@ def test_ba_v1_non_obstacle4_export_remap_stays_narrow_and_skips_obstacle_bump()
     assert "obstacle_bump" not in prep["map"]
 
 
+def test_obstacle4_ground_bootstrap_map_stays_narrow_and_mvp_aligned() -> None:
+    contract = _load_yaml(Path("configs/label_contracts/ba_v2_hazard.yaml"))
+    prep = _load_yaml(Path("configs/label_maps/obstacle4_gt_to_ba_v2_hazard_ground_bootstrap.yaml"))
+
+    assert prep["status"] == "narrow_local_obstacle4_ground_bootstrap"
+    assert prep["drop_unmapped"] is True
+    assert set(prep["allowed_target_classes"]) <= set(contract["class_names"])
+    assert set(prep["map"].values()) <= set(contract["class_names"])
+    assert prep["map"] == {
+        "obstacle_bump": "obstacle_ground",
+        "obstacle_fence": "obstacle_barrier",
+        "obstacle_hole": "obstacle_hole_dropoff",
+        "obstacle_pole": "obstacle_pole",
+    }
+    assert prep["allowed_target_classes"] == contract["roles"]["hazard_core"]
+
+
 def test_ba_v2_slice01_configs_point_to_mapillary_and_od_only() -> None:
     balance_map = _load_yaml(Path("configs/balance_ba_v2_hazard_mapillary_slice01.yaml"))
     balance_od = _load_yaml(Path("configs/balance_ba_v2_hazard_od_slice01.yaml"))
@@ -299,6 +316,42 @@ def test_ba_v2_slice01_configs_point_to_mapillary_and_od_only() -> None:
     assert all(
         source["contract"] == "label_contracts/ba_v2_hazard.yaml" for source in manifest["sources"]
     )
+
+
+def test_ba_v2_slice02_configs_add_ground_bootstrap_without_claiming_overhang() -> None:
+    balance = _load_yaml(Path("configs/balance_ba_v2_hazard_obstacle4_ground_slice02.yaml"))
+    merge = _load_yaml(
+        Path("configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground.yaml")
+    )
+    materialize = _load_yaml(
+        Path("configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground_materialize.yaml")
+    )
+
+    assert (
+        balance["source_coco"]
+        == "../work/datasets/obstacle4_ba_v2_hazard_ground_source/instances_normalized.json"
+    )
+    assert balance["source_images_dir"] == "../data/raw/obstacle4/extracted"
+    assert balance["selection"]["max_positive_images_per_class"] == 100000
+    assert [source["name"] for source in merge["sources"]] == [
+        "ba_v2_hazard_slice01_mapillary_od",
+        "obstacle4_ba_v2_ground_bootstrap",
+    ]
+    assert "images_dir" not in merge["sources"][0]
+    assert "images_dir" not in merge["sources"][1]
+    assert materialize["sources"][1]["images_dir"] == "../data/raw/obstacle4/extracted"
+    assert materialize["sources"][1]["file_name_prefix"] == "obstacle4"
+
+
+def test_ba_v2_mvp_training_config_points_to_materialized_candidate() -> None:
+    cfg = _load_yaml(Path("configs/efficientdet_lite2_ba_v2_mvp.yaml"))
+
+    assert cfg["model"]["variant"] == "lite2"
+    assert cfg["data"]["csv"] == "work/datasets/ba_v2_mvp_candidate/modelmaker.csv"
+    assert cfg["data"]["images_dir"] == "work/datasets/ba_v2_mvp_candidate/images"
+    assert cfg["data"]["label_map_json"] == "configs/label_contracts/ba_v2_hazard.class_names.json"
+    assert cfg["train"]["batch_size"] == 16
+    assert cfg["train"]["epochs"] == 20
 
 
 def test_mapillary_import_accepts_checked_in_ba_v2_hazard_slice(tmp_path: Path) -> None:

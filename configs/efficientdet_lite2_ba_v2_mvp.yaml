@@ -1,0 +1,16 @@
+model:
+  variant: lite2
+
+data:
+  csv: work/datasets/ba_v2_mvp_candidate/modelmaker.csv
+  images_dir: work/datasets/ba_v2_mvp_candidate/images
+  label_map_json: configs/label_contracts/ba_v2_hazard.class_names.json
+
+train:
+  epochs: 20
+  batch_size: 16
+  train_whole_model: false
+
+outputs:
+  work_dir: work
+  out_dir: outputs

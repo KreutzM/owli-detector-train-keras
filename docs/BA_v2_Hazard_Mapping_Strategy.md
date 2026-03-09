@@ -11,6 +11,8 @@ Reference contract:
 Important boundary:
 - This document is a planning and scoping artifact.
 - It is not a claim that the listed mappings are already implemented everywhere in the repo.
+- The current BA-v2 MVP contract now excludes `obstacle_overhang`.
+- References to `obstacle_overhang` below are historical source-fit notes, not current MVP mapping obligations.
 
 Current checked-in first mapping slice:
 - `configs/label_maps/mapillary_vistas_to_ba_v2_hazard.yaml`
@@ -27,15 +29,13 @@ This is a product interpretation aid, not a source-taxonomy fact.
 | `obstacle_fence` | partial toward `obstacle_barrier` | partial only | Useful barrier evidence, but BA-v2 barrier should not collapse to fences only. |
 | `obstacle_hole` | partial toward `obstacle_hole_dropoff` | partial only | Safety meaning overlaps, but BA-v2 explicitly wants the drop-off framing. |
 | `obstacle_pole` | `obstacle_pole` | relatively clean | Semantics stay aligned across BA-v1 and BA-v2. |
-| none in BA-v1 | `obstacle_overhang` | open gap | No existing BA-v1 obstacle class covers this well. |
-
 ## Source Fit Summary
 
 | Source | Clean fit | Partial fit | Weak / unclear fit | Main likely BA-v2 value |
 | --- | --- | --- | --- | --- |
-| `Obstacle4` | `obstacle_pole` | `obstacle_ground`, `obstacle_barrier`, `obstacle_hole_dropoff` | `obstacle_overhang` | bootstrap evidence for ground/barrier/hole/pole, but still tied to old four-class framing |
-| `Mapillary Vistas` | `obstacle_barrier`, `obstacle_pole`, rehearsal classes | `obstacle_hole_dropoff` | `obstacle_ground`, `obstacle_overhang` | strongest current street-scene source for barriers, poles, and rehearsal continuity |
-| `OD / Obstacle-Dataset` | `obstacle_pole`, rehearsal exact matches | none clearly beyond `obstacle_pole` | `obstacle_ground`, `obstacle_barrier`, `obstacle_overhang`, `obstacle_hole_dropoff` | narrow hazard-core support for poles plus rehearsal reinforcement |
+| `Obstacle4` | `obstacle_pole` | `obstacle_ground`, `obstacle_barrier`, `obstacle_hole_dropoff` | historical `obstacle_overhang` gap | bootstrap evidence for ground/barrier/hole/pole, but still tied to old four-class framing |
+| `Mapillary Vistas` | `obstacle_barrier`, `obstacle_pole`, rehearsal classes | `obstacle_hole_dropoff` | `obstacle_ground`; historical `obstacle_overhang` gap | strongest current street-scene source for barriers, poles, and rehearsal continuity |
+| `OD / Obstacle-Dataset` | `obstacle_pole`, rehearsal exact matches | none clearly beyond `obstacle_pole` | `obstacle_ground`, `obstacle_barrier`, `obstacle_hole_dropoff`; historical `obstacle_overhang` gap | narrow hazard-core support for poles plus rehearsal reinforcement |
 | `COCO replay` | rehearsal classes only | none | all hazard-core classes | keeps the six rehearsal classes alive without widening the product contract |
 
 ## Source-by-Source Reading
@@ -56,9 +56,6 @@ BA-v2 hazard fit:
   - `bump -> obstacle_ground`
   - `fence -> obstacle_barrier`
   - `hole -> obstacle_hole_dropoff`
-- weak / missing:
-  - no clean existing support for `obstacle_overhang`
-
 Reading:
 - `Obstacle4` is still useful as a bootstrap source.
 - It should no longer define the product ontology.
@@ -85,12 +82,11 @@ BA-v2 hazard fit:
   - `object--pothole -> obstacle_hole_dropoff`
 - weak / unclear:
   - `obstacle_ground`
-  - `obstacle_overhang`
 
 Reading:
 - `Mapillary` is the best current repo source for moving from a fence-only obstacle notion toward a broader barrier class.
 - It also remains the strongest current street-scene source for `person` and vehicles.
-- It is not enough on its own to claim robust `obstacle_ground` or `obstacle_overhang` support.
+- It is not enough on its own to claim robust `obstacle_ground` support.
 - The first checked-in BA-v2 map therefore includes:
   - `obstacle_barrier`
   - `obstacle_hole_dropoff`
@@ -120,7 +116,6 @@ BA-v2 hazard fit:
 - unclear or currently unsuitable:
   - `obstacle_ground`
   - `obstacle_barrier`
-  - `obstacle_overhang`
   - `obstacle_hole_dropoff`
 
 Reading:
@@ -158,7 +153,7 @@ Reading:
 - `Mapillary` looks strongest for `obstacle_barrier`, `obstacle_pole`, and rehearsal continuity.
 - `OD` looks strongest for `obstacle_pole` plus exact-match rehearsal support.
 - `COCO replay` stays rehearsal-only.
-- `obstacle_overhang` is the clearest current gap and must be treated as an explicit data/mapping risk.
+- The current BA-v2 MVP can be supported without `obstacle_overhang`, because that class has now been intentionally deferred out of scope.
 
 ## What This Document Does Not Freeze
 - no promise that every BA-v2 hazard class already has enough data
@@ -166,5 +161,5 @@ Reading:
 - no claim that the next best run config is already known
 
 ## Next Step Boundary
-- The next real step is to build or review source mappings against BA-v2 hazard and only then assemble the next training input.
-- Do not start the next training run by reusing BA-v1 assumptions unchanged.
+- The next real step is the first BA-v2 MVP training run on the current four-hazard-core candidate.
+- Do not silently reintroduce deferred classes such as `obstacle_overhang` into the MVP without a new product and data decision.

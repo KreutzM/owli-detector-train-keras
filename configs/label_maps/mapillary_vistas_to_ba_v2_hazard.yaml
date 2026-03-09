@@ -17,7 +17,7 @@ notes:
   - This slice keeps only the current cleanest hazard-core mappings plus exact-match rehearsal classes.
   - "'construction--barrier--fence' is treated as partial BA-v2 support for 'obstacle_barrier', not as proof that all barriers are now covered."
   - "'object--pothole' is treated as partial BA-v2 support for 'obstacle_hole_dropoff'."
-  - "No BA-v2 mapping is claimed here yet for obstacle_ground or obstacle_overhang."
+  - "No BA-v2 mapping is claimed here yet for obstacle_ground."
   - "object--manhole, rider classes, person-group, and all other uncertain source classes stay unmapped."
 
 map:
