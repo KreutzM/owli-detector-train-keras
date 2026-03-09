@@ -1,0 +1,18 @@
+sources:
+  - name: ba_v2_hazard_slice01_mapillary_od
+    coco: ../work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_materialized.json
+    images_dir: ../work/datasets/ba_v2_hazard_slice01_mapillary_od/images
+    contract: label_contracts/ba_v2_hazard.yaml
+    pseudo: false
+
+  - name: obstacle4_ba_v2_ground_bootstrap
+    coco: ../work/datasets/obstacle4_ba_v2_ground_slice02/instances_ba_v1.coco.json
+    images_dir: ../data/raw/obstacle4/extracted
+    contract: label_contracts/ba_v2_hazard.yaml
+    pseudo: false
+    file_name_prefix: obstacle4
+
+settings:
+  same_class_iou: 0.75
+  pseudo_block_iou: 0.6
+  allow_duplicate_file_names: false
