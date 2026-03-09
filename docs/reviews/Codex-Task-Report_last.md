@@ -1,219 +1,119 @@
 # Codex Task Report
 
 ## Ziel
-- Den ersten echten `EfficientDet-Lite2`-Trainingslauf auf dem Stage-4-Datensatz mit kleinem `COCO replay` real ausfuehren.
-- Den neuen Stage-4-Lauf direkt gegen die verifizierte Stage-3-Baseline vergleichen.
-- Die Resultate im Repo-Stil dokumentieren, ohne BA-v1 oder den Produktpfad zu aendern.
+- Den langsamen `EfficientDet-TFLite`-Eval-Pfad fuer CPU-Systeme beschleunigen.
+- Bild-Inferenz optional ueber mehrere Prozesse parallelisieren, ohne das bestehende Default-Verhalten zu aendern.
+- Den neuen Bedienpfad mit kleinem, offline-faehigem Testumfang absichern.
 
 ## Was wurde geändert?
-- Neue Ergebnisdoku fuer den ersten echten Replay-Vergleich:
-  - `docs/BA_MVP_Stage4_Baseline.md`
-- Stage-4-Pipeline-Doku auf den neuen Ist-Stand gebracht:
-  - `docs/BA_MVP_Stage4_Replay_Pipeline.md`
-- Plan- und Runbook-Verweise auf den real verifizierten Stage-4-Lauf aktualisiert:
-  - `docs/MVP_Training_Plan.md`
+- Optionalen Multiprocess-Eval-Pfad fuer `eval efficientdet-tflite` implementiert:
+  - `src/owli_train/eval/efficientdet_tflite.py`
+- CLI um `--num-workers` erweitert:
+  - `src/owli_train/cli.py`
+- Leichte Tests fuer Config, CLI und Parallel-Auswahl ergaenzt/aktualisiert:
+  - `tests/test_eval_efficientdet_tflite_config.py`
+  - `tests/test_eval_efficientdet_tflite_cli.py`
+  - `tests/test_eval_efficientdet_tflite_parallel.py`
+- Runbook um den neuen Parallel-Pfad ergaenzt:
   - `docs/runbook.md`
-- Pflicht-Report fuer diesen Real-Run aktualisiert:
+- Pflicht-Report fuer diesen Task aktualisiert:
   - `docs/reviews/Codex-Task-Report_last.md`
 
 ## Was wurde wirklich verifiziert?
-- Stage-4-Datenbasis und Label-Contract vor dem Lauf geprueft:
+- Relevante Implementierung und bestehende Tests vor dem Patch gelesen:
 ```bash
-sed -n '1,220p' docs/MVP_Training_Plan.md
-sed -n '1,220p' docs/BA_v1_Labelset.md
-sed -n '1,260p' docs/runbook.md
-sed -n '1,260p' docs/BA_MVP_Stage3_Baseline.md
-sed -n '1,280p' docs/BA_MVP_Stage4_Replay_Pipeline.md
-sed -n '1,220p' configs/label_contracts/ba_v1.yaml
-sed -n '1,240p' configs/efficientdet_lite2_ba_mvp_stage3.yaml
-sed -n '1,240p' configs/efficientdet_lite2_ba_mvp_stage4.yaml
-sed -n '1,260p' configs/merge_ba_mvp_stage4_with_coco_replay.yaml
-sed -n '1,240p' configs/coco_replay_ba_mvp_stage4.yaml
+sed -n '800,920p' src/owli_train/cli.py
+sed -n '1,260p' src/owli_train/eval/efficientdet_tflite.py
+sed -n '1,260p' tests/test_eval_efficientdet_tflite_config.py
+sed -n '1,260p' tests/test_eval_efficientdet_tflite_cli.py
+sed -n '1,260p' tests/test_eval_efficientdet_tflite_empty_detections.py
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - Stage-4-Datensatz und Split liegen real auf Disk
-    - Stage-4 nutzt dieselben Lite2-Hyperparameter wie Stage-3
-    - die BA-v1-Reihenfolge wird ueber `configs/label_contracts/ba_v1.class_names.json` erzwungen
+    - der bestehende Eval-Pfad war seriell pro Bild
+    - `--num-threads` ging nur in einen einzelnen TFLite-Interpreter
+    - ein opt-in Multiprocess-Pfad ist der kleinste saubere Beschleunigungshebel
 
-- GPU-Sichtbarkeit im realen Model-Maker-Interpreter geprueft:
+- Gezielte Pytest-Suite fuer den neuen Pfad real ausgefuehrt:
 ```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -c "import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices('GPU'))"
+python -m pytest tests/test_eval_efficientdet_tflite_config.py tests/test_eval_efficientdet_tflite_cli.py tests/test_eval_efficientdet_tflite_empty_detections.py tests/test_eval_efficientdet_tflite_parallel.py
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - `tensorflow==2.8.4`
-    - `[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]`
+    - `10 passed`
+    - Config-Validierung bleibt intakt
+    - CLI reicht `--num-workers` korrekt weiter
+    - Eval wechselt bei `num_workers > 1` in den Parallel-Pfad
 
-- Echter Stage-4-Trainingslauf ausgefuehrt:
+- Gezielte Ruff-Checks auf den geaenderten Dateien real ausgefuehrt:
 ```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
-  --config configs/efficientdet_lite2_ba_mvp_stage4.yaml \
-  --run-name ba-mvp-stage4-20260308 \
-  --require-gpu
+python -m ruff check src/owli_train/eval/efficientdet_tflite.py src/owli_train/cli.py tests/test_eval_efficientdet_tflite_config.py tests/test_eval_efficientdet_tflite_cli.py tests/test_eval_efficientdet_tflite_parallel.py
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - Run dir: `work/runs/20260308-211806-ba-mvp-stage4-20260308`
-    - TFLite: `work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite`
-    - Labels: `work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/labels.txt`
-    - BA-v1-Reihenfolge unveraendert
-    - finale Validierungswerte:
-      - `val_det_loss=0.6234`
-      - `val_cls_loss=0.3775`
-      - `val_box_loss=0.0049`
-      - `val_loss=0.6309`
+    - alle geaenderten Dateien bestehen Ruff
 
-- TFLite inspect real ausgefuehrt:
+- Vollstaendige Repo-Checks real ausgefuehrt:
 ```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
-  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite
+python -m ruff format .
+python -m ruff check .
+python -m pytest
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - `builtin_ops_only: true`
-    - Operators:
-      - `QUANTIZE`
-      - `CONV_2D`
-      - `DEPTHWISE_CONV_2D`
-      - `ADD`
-      - `MAX_POOL_2D`
-      - `RESIZE_NEAREST_NEIGHBOR`
-      - `RESHAPE`
-      - `CONCATENATION`
-      - `LOGISTIC`
-      - `DEQUANTIZE`
-      - `TFLite_Detection_PostProcess`
+    - `ruff format .`: erfolgreich
+    - `ruff check .`: erfolgreich
+    - `pytest`: erfolgreich
 
-- Stage-4-Modell auf dem nativen Stage-4-Testsplit real evaluiert:
+- Realer Smoke-Run des neuen Parallel-Pfads ausgefuehrt:
 ```bash
 PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
   --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json \
   --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images \
   --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
+  --limit-images 8 \
   --score-threshold 0.1 \
   --noise-thresholds 0.05,0.1,0.3 \
-  --num-threads 8 \
-  --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage4_test.json
+  --num-workers 2 \
+  --num-threads 1 \
+  --out work/reports/eval_efficientdet_tflite_stage4_test_parallel_smoke.json
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - AP `0.1427`
-    - AP50 `0.2663`
-    - AP75 `0.1389`
-    - AR100 `0.2244`
-    - precision `0.2527`
-    - recall `0.4162`
-
-- Stage-4-Modell auf dem unveraenderten Stage-3-Testsplit real evaluiert:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
-  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
-  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
-  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
-  --score-threshold 0.1 \
-  --noise-thresholds 0.05,0.1,0.3 \
-  --num-threads 8 \
-  --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage3_test.json
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - AP `0.1232`
-    - AP50 `0.2170`
-    - AP75 `0.1203`
-    - AR100 `0.2095`
-    - precision `0.2118`
-    - recall `0.3627`
-
-- Stage-3-Modell auf dem Stage-4-Testsplit real gegengetestet:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
-  --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json \
-  --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images \
-  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
-  --score-threshold 0.1 \
-  --noise-thresholds 0.05,0.1,0.3 \
-  --num-threads 8 \
-  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage4_test.json
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - AP `0.1481`
-    - AP50 `0.2729`
-    - AP75 `0.1446`
-    - AR100 `0.2348`
-    - precision `0.2434`
-    - recall `0.4199`
-
-- Golden detect real ausgefuehrt:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
-  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
-  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
-  --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/golden_obstacle4.json \
-  --score-threshold 0.1 \
-  --max-results 20 \
-  --num-threads 8
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - `14` Detections
-    - Klassenmix:
-      - `obstacle_pole=7`
-      - `obstacle_hole=3`
-      - `obstacle_fence=2`
-      - `car=2`
+    - neuer `--num-workers`-Pfad laeuft real durch
+    - Report geschrieben:
+      - `work/reports/eval_efficientdet_tflite_stage4_test_parallel_smoke.json`
+      - `work/reports/eval_efficientdet_tflite_stage4_test_parallel_smoke.md`
 
 - Nur statisch geprueft:
-  - die neue Doku gegen die erzeugten Artefakte und die bestehenden Stage-3-Reports gegengelesen
-  - keine weiteren Codepfade ausserhalb des real ausgefuehrten Train/Inspect/Eval/Golden-Sets
+  - keine reale Performance-Messung auf einem grossen Eval-Set im Multiprocess-Modus
+  - keine neue GPU-Eval-Implementierung
 
 ## Tests
-- Keine separaten `ruff`- oder `pytest`-Laeufe nach den Doku-Aenderungen.
-- Grund:
-  - in diesem Task wurden keine Code- oder Trainingsconfig-Aenderungen benoetigt
-  - die reale Verifikation lag auf den produktnahen Kommandos fuer Training, Inspect, Eval und Golden
-- Exit-Codes der real ausgefuehrten Produkt-Kommandos:
-  - Training: `0`
-  - Inspect: `0`
-  - Eval Stage-4-Test: `0`
-  - Eval Stage-3-Test: `0`
-  - Gegen-Eval Stage-3-Modell auf Stage-4-Test: `0`
-  - Golden detect: `0`
+- Gezielte Tests:
+  - `python -m pytest tests/test_eval_efficientdet_tflite_config.py tests/test_eval_efficientdet_tflite_cli.py tests/test_eval_efficientdet_tflite_empty_detections.py tests/test_eval_efficientdet_tflite_parallel.py`
+  - Exit-Code: `0`
+  - Resultat: `10 passed`
+- Repo-weite Pflicht-Checks:
+  - `python -m ruff format .`
+  - `python -m ruff check .`
+  - `python -m pytest`
+  - Exit-Codes: alle `0`
 
 ## Relevante Run-Kommandos
-- WSL2 Train:
+- Seriell wie bisher:
 ```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet --config configs/efficientdet_lite2_ba_mvp_stage4.yaml --run-name ba-mvp-stage4-20260308 --require-gpu
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite --num-threads 8
 ```
-- WSL2 Inspect:
+- Parallel ueber mehrere Prozesse:
 ```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite
-```
-- WSL2 Eval Stage-4-Test:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage4_test.json
-```
-- WSL2 Eval Stage-3-Test:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage3_test.json
-```
-- WSL2 Gegen-Eval:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage4_test.json
-```
-- WSL2 Golden detect:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/golden_obstacle4.json --score-threshold 0.1 --max-results 20 --num-threads 8
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite --num-workers 8 --num-threads 1
 ```
 
 ## Offene Risiken
-- Der erste echte Stage-4-Run ist belastbar genug fuer eine Baseline-Aussage, aber noch nur ein einzelner Replay-Weighting-Punkt.
-- Der aktuelle kleine Replay-Baustein senkt einige FP-Zaehler, verschlechtert aber global AP/Recall; das ist negative Evidenz, noch keine vollstaendige Replay-Abschreibung.
-- Ohne weiteren kleinen Replay-Gewichtungsversuch bleibt offen, ob das Problem an der Idee `COCO replay` liegt oder an der aktuellen Selektion/Groesse.
-- Die aktuelle Produktempfehlung bleibt deshalb konservativ:
-  - Stage-3 behalten
-  - Stage-4 nicht promoten
+- Mehr Prozesse helfen nur beim Bild-Sharding; einzelne TFLite-Invokes bleiben CPU-bound.
+- Zu hohe Kombinationen aus `--num-workers` und `--num-threads` koennen die CPU uebersubskribieren und sogar bremsen.
+- Der neue Pfad nutzt bewusst mehrere CPU-Prozesse, nicht GPU-Delegates; GPU-Eval bleibt weiterhin offen.
 
 ## Nächster sinnvoller Schritt
-- Fuehre genau einen kleinen Folgeversuch innerhalb derselben sechs Replay-Klassen aus, der nur die Replay-Gewichtung oder Replay-Selektion reduziert, und vergleiche ihn wieder direkt gegen Stage-3 auf demselben Stage-3-Testsplit.
+- Miss den neuen Multiprocess-Pfad einmal auf dem realen Stage-4-Testsplit mit `--num-workers` in mehreren Stufen, z. B. `4`, `8`, `12`, bei kleinem `--num-threads`, und halte den besten Durchsatz im Runbook fest.

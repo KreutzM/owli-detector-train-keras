@@ -66,6 +66,8 @@ def test_eval_efficientdet_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
             "50",
             "--num-threads",
             "4",
+            "--num-workers",
+            "3",
             "--category-map",
             str(category_map),
         ],
@@ -81,6 +83,7 @@ def test_eval_efficientdet_tflite_cli_wires_flags(tmp_path: Path, monkeypatch):
     assert captured_cfg["noise_thresholds"] == [0.05, 0.1, 0.3]
     assert captured_cfg["max_detections_per_image"] == 50
     assert captured_cfg["num_threads"] == 4
+    assert captured_cfg["num_workers"] == 3
     assert captured_cfg["category_map_path"] == category_map
 
 
@@ -116,6 +119,8 @@ def test_eval_efficientdet_tflite_cli_delegates_with_required_flags(tmp_path: Pa
             str(model),
             "--limit-images",
             "3",
+            "--num-workers",
+            "2",
         ],
     )
 
@@ -133,6 +138,8 @@ def test_eval_efficientdet_tflite_cli_delegates_with_required_flags(tmp_path: Pa
         "0.3",
         "--max-detections-per-image",
         "100",
+        "--num-workers",
+        "2",
         "--limit-images",
         "3",
     ]

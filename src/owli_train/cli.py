@@ -826,6 +826,7 @@ def eval_efficientdet_tflite_cli(
     noise_thresholds: Annotated[Optional[str], typer.Option("--noise-thresholds")] = None,
     max_detections_per_image: Annotated[int, typer.Option("--max-detections-per-image")] = 100,
     num_threads: Annotated[Optional[int], typer.Option("--num-threads")] = None,
+    num_workers: Annotated[Optional[int], typer.Option("--num-workers")] = None,
     category_map: Annotated[
         Optional[Path], typer.Option("--category-map", exists=True, readable=True)
     ] = None,
@@ -849,6 +850,8 @@ def eval_efficientdet_tflite_cli(
         delegate_args.extend(["--noise-thresholds", noise_thresholds])
     if num_threads is not None:
         delegate_args.extend(["--num-threads", str(num_threads)])
+    if num_workers is not None:
+        delegate_args.extend(["--num-workers", str(num_workers)])
     if limit_images is not None:
         delegate_args.extend(["--limit-images", str(limit_images)])
     if category_map is not None:
@@ -883,6 +886,7 @@ def eval_efficientdet_tflite_cli(
             noise_thresholds=parsed_noise_thresholds,
             max_detections_per_image=max_detections_per_image,
             num_threads=num_threads,
+            num_workers=num_workers,
             out_path=out,
             category_map_path=category_map,
         )

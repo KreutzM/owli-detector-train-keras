@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -42,6 +44,7 @@ class EvalEfficientDetTFLiteConfig:
     noise_thresholds: tuple[float, ...]
     max_detections_per_image: int
     num_threads: int | None
+    num_workers: int | None
     out_path: Path | None
     category_map_path: Path | None
 
@@ -63,6 +66,7 @@ def build_eval_efficientdet_tflite_config(
     noise_thresholds: list[float] | tuple[float, ...] | None,
     max_detections_per_image: int,
     num_threads: int | None = None,
+    num_workers: int | None = None,
     out_path: Path | None = None,
     category_map_path: Path | None = None,
 ) -> EvalEfficientDetTFLiteConfig:
@@ -79,6 +83,8 @@ def build_eval_efficientdet_tflite_config(
         raise EfficientDetTFLiteEvalConfigError("--max-detections-per-image must be > 0.")
     if num_threads is not None and int(num_threads) <= 0:
         raise EfficientDetTFLiteEvalConfigError("--num-threads must be > 0 when provided.")
+    if num_workers is not None and int(num_workers) <= 0:
+        raise EfficientDetTFLiteEvalConfigError("--num-workers must be > 0 when provided.")
 
     return EvalEfficientDetTFLiteConfig(
         coco_path=Path(coco_path),
@@ -89,6 +95,7 @@ def build_eval_efficientdet_tflite_config(
         noise_thresholds=resolved_noise_thresholds,
         max_detections_per_image=max_detections_per_image,
         num_threads=int(num_threads) if num_threads is not None else None,
+        num_workers=int(num_workers) if num_workers is not None else None,
         out_path=Path(out_path) if out_path is not None else None,
         category_map_path=Path(category_map_path) if category_map_path is not None else None,
     )
@@ -368,6 +375,201 @@ def _compute_per_class_counts(
     return per_class, totals
 
 
+def _build_tflite_detections_for_image(
+    *,
+    image_id: int,
+    predicted: list[Any],
+    class_to_category: dict[int, int],
+) -> list[dict[str, Any]]:
+    detections: list[dict[str, Any]] = []
+    for item in predicted:
+        if item.class_index not in class_to_category:
+            continue
+        detections.append(
+            {
+                "image_id": image_id,
+                "category_id": class_to_category[item.class_index],
+                "bbox": [float(v) for v in item.bbox_xywh],
+                "score": float(item.score),
+            }
+        )
+    return detections
+
+
+def _split_eval_images(
+    eval_images: list[dict[str, Any]],
+    *,
+    num_workers: int,
+) -> list[list[dict[str, Any]]]:
+    if num_workers <= 1 or len(eval_images) <= 1:
+        return [list(eval_images)]
+
+    worker_count = min(num_workers, len(eval_images))
+    shards: list[list[dict[str, Any]]] = [[] for _ in range(worker_count)]
+    for index, image in enumerate(eval_images):
+        shards[index % worker_count].append(image)
+    return [shard for shard in shards if shard]
+
+
+def _collect_detections_serial(
+    *,
+    runtime: Any,
+    eval_images: list[dict[str, Any]],
+    images_dir: Path,
+    class_to_category: dict[int, int],
+    map_inference_threshold: float,
+    max_detections_per_image: int,
+    progress_every: int,
+    start_time: float,
+) -> list[dict[str, Any]]:
+    detections: list[dict[str, Any]] = []
+    total_images = len(eval_images)
+    for index, image in enumerate(eval_images, start=1):
+        image_id = int(image["id"])
+        image_path = images_dir / str(image["file_name"])
+        predicted, _ = run_tflite_detection(
+            runtime=runtime,
+            image_path=image_path,
+            score_threshold=map_inference_threshold,
+            max_detections=max_detections_per_image,
+        )
+        detections.extend(
+            _build_tflite_detections_for_image(
+                image_id=image_id,
+                predicted=predicted,
+                class_to_category=class_to_category,
+            )
+        )
+        if index == 1 or index % progress_every == 0 or index == total_images:
+            elapsed = time.perf_counter() - start_time
+            rate = float(index / elapsed) if elapsed > 0 else 0.0
+            print(
+                f"[eval] processed {index}/{total_images} images ({rate:.2f} img/s)",
+                flush=True,
+            )
+    return detections
+
+
+def _run_eval_shard_worker(
+    *,
+    model_path: str,
+    images_dir: str,
+    eval_images: list[dict[str, Any]],
+    class_to_category: dict[int, int],
+    map_inference_threshold: float,
+    max_detections_per_image: int,
+    num_threads: int | None,
+) -> list[dict[str, Any]]:
+    tf = ensure_tflite_runtime_dependencies()
+    runtime = create_tflite_runtime(
+        model_path=Path(model_path),
+        tf=tf,
+        num_threads=num_threads,
+    )
+    detections: list[dict[str, Any]] = []
+    images_root = Path(images_dir)
+    for image in eval_images:
+        image_id = int(image["id"])
+        image_path = images_root / str(image["file_name"])
+        predicted, _ = run_tflite_detection(
+            runtime=runtime,
+            image_path=image_path,
+            score_threshold=map_inference_threshold,
+            max_detections=max_detections_per_image,
+        )
+        detections.extend(
+            _build_tflite_detections_for_image(
+                image_id=image_id,
+                predicted=predicted,
+                class_to_category=class_to_category,
+            )
+        )
+    return detections
+
+
+def _collect_detections_parallel(
+    *,
+    cfg: EvalEfficientDetTFLiteConfig,
+    eval_images: list[dict[str, Any]],
+    class_to_category: dict[int, int],
+    map_inference_threshold: float,
+    progress_every: int,
+    start_time: float,
+) -> list[dict[str, Any]]:
+    total_images = len(eval_images)
+    requested_workers = cfg.num_workers or 1
+    shards = _split_eval_images(eval_images, num_workers=requested_workers)
+    if len(shards) <= 1:
+        raise RuntimeError("Parallel collection requested without multiple shards.")
+
+    detections: list[dict[str, Any]] = []
+    completed_images = 0
+    mp_context = multiprocessing.get_context("spawn")
+    with ProcessPoolExecutor(max_workers=len(shards), mp_context=mp_context) as executor:
+        future_to_shard_size = {
+            executor.submit(
+                _run_eval_shard_worker,
+                model_path=str(cfg.model_path),
+                images_dir=str(cfg.images_dir),
+                eval_images=shard,
+                class_to_category=class_to_category,
+                map_inference_threshold=map_inference_threshold,
+                max_detections_per_image=cfg.max_detections_per_image,
+                num_threads=cfg.num_threads,
+            ): len(shard)
+            for shard in shards
+        }
+
+        for future in as_completed(future_to_shard_size):
+            shard_detections = future.result()
+            detections.extend(shard_detections)
+            completed_images += future_to_shard_size[future]
+            if (
+                completed_images == total_images
+                or completed_images == 1
+                or completed_images % progress_every == 0
+            ):
+                elapsed = time.perf_counter() - start_time
+                rate = float(completed_images / elapsed) if elapsed > 0 else 0.0
+                print(
+                    f"[eval] processed {completed_images}/{total_images} images ({rate:.2f} img/s)",
+                    flush=True,
+                )
+    return detections
+
+
+def _collect_tflite_detections(
+    *,
+    cfg: EvalEfficientDetTFLiteConfig,
+    runtime: Any,
+    eval_images: list[dict[str, Any]],
+    class_to_category: dict[int, int],
+    map_inference_threshold: float,
+    progress_every: int,
+    start_time: float,
+) -> list[dict[str, Any]]:
+    num_workers = cfg.num_workers or 1
+    if num_workers <= 1 or len(eval_images) <= 1:
+        return _collect_detections_serial(
+            runtime=runtime,
+            eval_images=eval_images,
+            images_dir=cfg.images_dir,
+            class_to_category=class_to_category,
+            map_inference_threshold=map_inference_threshold,
+            max_detections_per_image=cfg.max_detections_per_image,
+            progress_every=progress_every,
+            start_time=start_time,
+        )
+    return _collect_detections_parallel(
+        cfg=cfg,
+        eval_images=eval_images,
+        class_to_category=class_to_category,
+        map_inference_threshold=map_inference_threshold,
+        progress_every=progress_every,
+        start_time=start_time,
+    )
+
+
 def _metrics_from_stats(stats: Any) -> dict[str, float]:
     names = [
         "AP",
@@ -488,39 +690,17 @@ def evaluate_efficientdet_tflite(
 
     # Keep all model outputs for mAP; threshold-specific summaries are derived afterward.
     map_inference_threshold = 0.0
-    detections: list[dict[str, Any]] = []
-    total_images = len(eval_images)
     progress_every = 100
     start_time = time.perf_counter()
-
-    for index, image in enumerate(eval_images, start=1):
-        image_id = int(image["id"])
-        image_path = cfg.images_dir / str(image["file_name"])
-        predicted, _ = run_tflite_detection(
-            runtime=runtime,
-            image_path=image_path,
-            score_threshold=map_inference_threshold,
-            max_detections=cfg.max_detections_per_image,
-        )
-
-        for item in predicted:
-            if item.class_index not in class_to_category:
-                continue
-            detections.append(
-                {
-                    "image_id": image_id,
-                    "category_id": class_to_category[item.class_index],
-                    "bbox": [float(v) for v in item.bbox_xywh],
-                    "score": float(item.score),
-                }
-            )
-        if index == 1 or index % progress_every == 0 or index == total_images:
-            elapsed = time.perf_counter() - start_time
-            rate = float(index / elapsed) if elapsed > 0 else 0.0
-            print(
-                f"[eval] processed {index}/{total_images} images ({rate:.2f} img/s)",
-                flush=True,
-            )
+    detections = _collect_tflite_detections(
+        cfg=cfg,
+        runtime=runtime,
+        eval_images=eval_images,
+        class_to_category=class_to_category,
+        map_inference_threshold=map_inference_threshold,
+        progress_every=progress_every,
+        start_time=start_time,
+    )
 
     if detections:
         coco_gt = COCO(str(cfg.coco_path))
@@ -595,6 +775,7 @@ def evaluate_efficientdet_tflite(
         "noise_thresholds": list(cfg.noise_thresholds),
         "max_detections_per_image": cfg.max_detections_per_image,
         "num_threads": cfg.num_threads,
+        "num_workers": cfg.num_workers,
         "num_eval_images": num_images,
         "num_detections": len(detections),
         "metrics": metrics,

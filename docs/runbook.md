@@ -421,6 +421,12 @@ WSL equivalent:
 MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python python -m owli_train eval efficientdet-tflite --coco work/datasets/coco128/instances_val.json --images-dir data/coco128/images/train2017 --model work/runs/<run_id>/artifacts/model.tflite --limit-images 20
 ```
 
+Parallel image sharding across multiple TFLite worker processes:
+
+```bash
+MODELMAKER_PYTHON_EXE=.venv-modelmaker-py39/bin/python python -m owli_train eval efficientdet-tflite --coco work/datasets/coco128/instances_val.json --images-dir data/coco128/images/train2017 --model work/runs/<run_id>/artifacts/model.tflite --num-workers 8 --num-threads 1
+```
+
 When all deps are already installed in the active environment, leave `MODELMAKER_PYTHON_EXE` unset and run directly:
 
 ```powershell
@@ -500,6 +506,8 @@ Optional committed docs snapshot:
 Notes:
 - The script requires a user-supplied baseline TFLite path (`--baseline-model`).
 - `--num-threads` is optional. When omitted, TFLite uses its runtime default.
+- `--num-workers` is optional. When set above `1`, eval shards images across multiple worker processes, each with its own TFLite interpreter.
+- For CPU-bound eval, start with `--num-workers` near the number of physical cores and keep `--num-threads` small, often `1`, to avoid oversubscribing the CPU.
 - mAP is computed from detections with `score >= 0.0` (all model outputs retained by postprocess + max detections cap).
 - Noise metrics are reported side-by-side at thresholds `0.05`, `0.1`, and `0.3`.
 
