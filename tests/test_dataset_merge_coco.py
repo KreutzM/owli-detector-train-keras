@@ -268,3 +268,71 @@ def test_dataset_merge_coco_cli(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert out_path.is_file()
     assert report_path.is_file()
+
+
+def test_merge_coco_from_manifest_can_preserve_contract_order(tmp_path: Path) -> None:
+    images_dir = tmp_path / "images"
+    images_dir.mkdir(parents=True)
+    (images_dir / "a.jpg").write_bytes(b"x")
+
+    coco = {
+        "images": [{"id": 1, "file_name": "a.jpg", "width": 64, "height": 64}],
+        "annotations": [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 1,
+                "bbox": [5, 5, 20, 20],
+                "area": 400,
+                "iscrowd": 0,
+            },
+            {
+                "id": 2,
+                "image_id": 1,
+                "category_id": 2,
+                "bbox": [25, 25, 20, 20],
+                "area": 400,
+                "iscrowd": 0,
+            },
+        ],
+        "categories": [
+            {"id": 1, "name": "person"},
+            {"id": 2, "name": "obstacle_pole"},
+        ],
+    }
+    _write_json(tmp_path / "a.json", coco)
+    contract_path = tmp_path / "contract.yaml"
+    contract_path.write_text(
+        "\n".join(
+            [
+                "class_names:",
+                "  - obstacle_ground",
+                "  - obstacle_pole",
+                "  - person",
+                "  - car",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    manifest_path = tmp_path / "merge.yaml"
+    manifest_path.write_text(
+        "\n".join(
+            [
+                "sources:",
+                "  - name: a",
+                "    coco: a.json",
+                "    images_dir: images",
+                "    contract: contract.yaml",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    artifacts = merge_coco_from_manifest(
+        manifest_path=manifest_path,
+        out_path=tmp_path / "merged.json",
+    )
+
+    merged = json.loads(artifacts.coco_path.read_text(encoding="utf-8"))
+    assert [item["name"] for item in merged["categories"]] == ["obstacle_pole", "person"]

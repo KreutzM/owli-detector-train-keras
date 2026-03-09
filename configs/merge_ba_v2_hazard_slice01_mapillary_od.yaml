@@ -1,0 +1,19 @@
+sources:
+  - name: mapillary_vistas_ba_v2_hazard_slice01_balanced
+    coco: ../work/datasets/mapillary_vistas_ba_v2_hazard_slice01_balanced/instances_ba_v1.coco.json
+    images_dir: ../work/datasets/mapillary_vistas_ba_v1/images
+    contract: label_contracts/ba_v2_hazard.yaml
+    pseudo: false
+    file_name_prefix: mapillary_vistas
+
+  - name: od_ba_v2_hazard
+    coco: ../work/datasets/od_ba_v2_hazard_slice01/instances_ba_v1.coco.json
+    images_dir: ../work/datasets/od_ba_v1/images
+    contract: label_contracts/ba_v2_hazard.yaml
+    pseudo: false
+    file_name_prefix: od_ba_v2_hazard
+
+settings:
+  same_class_iou: 0.75
+  pseudo_block_iou: 0.6
+  allow_duplicate_file_names: false

@@ -1,0 +1,15 @@
+map:
+  obstacle_fence: obstacle_barrier
+  obstacle_hole: obstacle_hole_dropoff
+  obstacle_pole: obstacle_pole
+  person: person
+  bicycle: bicycle
+  motorcycle: motorcycle
+  car: car
+  bus: bus
+  truck: truck
+
+notes:
+  - Transitional remap for already verified BA-v1 exports that do not contain obstacle_bump.
+  - Intended for the first BA-v2 slice built from existing Mapillary and OD BA-v1 exports.
+  - Do not apply this file to Obstacle4 or other exports that still contain obstacle_bump.

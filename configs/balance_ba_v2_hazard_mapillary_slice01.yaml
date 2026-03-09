@@ -1,0 +1,14 @@
+status: first_real_ba_v2_hazard_mapillary_slice
+source_coco: ../work/datasets/mapillary_vistas_ba_v2_hazard_source/instances_normalized.json
+source_images_dir: ../work/datasets/mapillary_vistas_ba_v1/images
+source_splits_json: ../work/datasets/mapillary_vistas_ba_v1/splits.json
+out_dir: ../work/datasets/mapillary_vistas_ba_v2_hazard_slice01_balanced
+
+selection:
+  min_bbox_min_side: 16
+  max_positive_images_per_class: 300
+
+notes:
+  - First real BA-v2 hazard balancing step for Mapillary from the already verified BA-v1 export.
+  - Keep the slice smaller than the full Mapillary-derived BA-v2 source so OD remains visible in the first combined slice.
+  - This is a first product-facing BA-v2 data slice, not a full dataset policy for future runs.

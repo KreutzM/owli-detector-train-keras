@@ -268,6 +268,39 @@ def test_ba_v2_coco_replay_slice_stays_rehearsal_only() -> None:
     assert prep["map"] == {name: name for name in contract["roles"]["rehearsal"]}
 
 
+def test_ba_v1_non_obstacle4_export_remap_stays_narrow_and_skips_obstacle_bump() -> None:
+    prep = _load_yaml(Path("configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml"))
+
+    assert prep["map"]["obstacle_fence"] == "obstacle_barrier"
+    assert prep["map"]["obstacle_hole"] == "obstacle_hole_dropoff"
+    assert prep["map"]["obstacle_pole"] == "obstacle_pole"
+    assert "obstacle_bump" not in prep["map"]
+
+
+def test_ba_v2_slice01_configs_point_to_mapillary_and_od_only() -> None:
+    balance_map = _load_yaml(Path("configs/balance_ba_v2_hazard_mapillary_slice01.yaml"))
+    balance_od = _load_yaml(Path("configs/balance_ba_v2_hazard_od_slice01.yaml"))
+    manifest = _load_yaml(Path("configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml"))
+
+    assert (
+        balance_map["source_coco"]
+        == "../work/datasets/mapillary_vistas_ba_v2_hazard_source/instances_normalized.json"
+    )
+    assert balance_map["selection"]["max_positive_images_per_class"] == 300
+    assert (
+        balance_od["source_coco"]
+        == "../work/datasets/od_ba_v2_hazard_source/instances_normalized.json"
+    )
+    assert balance_od["selection"]["max_positive_images_per_class"] == 100000
+    assert [source["name"] for source in manifest["sources"]] == [
+        "mapillary_vistas_ba_v2_hazard_slice01_balanced",
+        "od_ba_v2_hazard",
+    ]
+    assert all(
+        source["contract"] == "label_contracts/ba_v2_hazard.yaml" for source in manifest["sources"]
+    )
+
+
 def test_mapillary_import_accepts_checked_in_ba_v2_hazard_slice(tmp_path: Path) -> None:
     source_root = tmp_path / "Map"
     _make_mapillary_stub(source_root)

@@ -1,88 +1,124 @@
 # Codex Task Report
 
 ## Ziel
-- Den bisherigen BA-v1-Produktvertrag als historischen verifizierten Interimspfad einordnen, statt ihn weiter als bevorzugte Produktontologie zu behandeln.
-- Eine neue hazard-zentrierte BA-v2-Zielontologie fuer das MVP sauber im Repo festlegen.
-- Den Repo-Stand so vorbereiten, dass der naechste echte Daten-/Mapping-Schritt nicht mehr an den vier alten Obstacle4-Klassen haengt.
+- Den ersten echten Daten-/Mapping-Schritt auf die neue BA-v2-Hazard-Ontologie umsetzen.
+- Einen kleinen, defensiblen, real verifizierten BA-v2-Slice aus den aktuell am besten passenden Quellen erzeugen.
+- Den Pfad bis direkt vor den ersten BA-v2-Trainingskandidaten vorbereiten, ohne einen Trainingslauf zu starten.
 
 ## Was wurde geändert?
-- Neuer maschinenlesbarer BA-v2-Hazard-Contract ergaenzt:
-  - `configs/label_contracts/ba_v2_hazard.yaml`
-  - `configs/label_contracts/ba_v2_hazard.class_names.json`
-- Neue Produktdoku fuer die bevorzugte hazard-zentrierte Ontologie ergaenzt:
-  - `docs/BA_v2_Hazard_Labelset.md`
-- Neue ehrliche Quellen-/Mapping-Strategie fuer BA-v2 hazard ergaenzt:
-  - `docs/BA_v2_Hazard_Mapping_Strategy.md`
-- Historischen Status von BA-v1 minimal markiert:
-  - `docs/BA_v1_Labelset.md`
-- Bestehende Produktdoku minimal auf den Ontology-Reset geschaerft:
-  - `README.md`
+- Kleine Runtime-Erweiterung fuer contract-geordnete Normalisierung ergaenzt:
+  - `src/owli_train/data/coco.py`
+  - `src/owli_train/cli.py`
+- Kleine Runtime-Erweiterung fuer contract-geordneten Merge aus Manifesten ergaenzt:
+  - `src/owli_train/data/merge_coco.py`
+- Neuer transitorischer Remap von verifizierten BA-v1-Quell-Exporten auf BA-v2 hazard:
+  - `configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml`
+- Neue BA-v2-Slice-Configs ergaenzt:
+  - `configs/balance_ba_v2_hazard_mapillary_slice01.yaml`
+  - `configs/balance_ba_v2_hazard_od_slice01.yaml`
+  - `configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml`
+- Neue dedizierte Slice-Doku ergaenzt:
+  - `docs/BA_v2_Hazard_Slice01_Mapillary_OD.md`
+- Bestehende Doku minimal auf den ersten realen BA-v2-Slice geschaerft:
   - `docs/MVP_Training_Plan.md`
   - `docs/runbook.md`
-  - `docs/android-export-contract.md`
-- Kleinen Konsistenztest fuer BA-v2 hazard ergaenzt:
-  - `tests/test_ba_v2_hazard_label_contract.py`
-- Ersten konkreten BA-v2-Hazard-Mapping-Slice fuer reale Quellen ergaenzt:
-  - `configs/label_maps/mapillary_vistas_to_ba_v2_hazard.yaml`
-  - `configs/label_maps/obstacle_dataset_to_ba_v2_hazard.yaml`
-  - `configs/label_maps/coco_replay_to_ba_v2_hazard.yaml`
-- Kleine BA-v2-Mapping-Prep- und Importer-nahe Tests ergaenzt:
+- Kleine Tests fuer normalize/merge und BA-v2-Slice-Configs ergaenzt oder erweitert:
+  - `tests/test_dataset_normalize.py`
+  - `tests/test_dataset_merge_coco.py`
   - `tests/test_ba_v2_mapping_prep.py`
-- Verbliebene Reste der verworfenen frueheren Zusatzquelle vollstaendig entfernt:
-  - obsolete Label-Map-Datei geloescht
-  - historische Hinweise in `docs/BA_v1_Labelset.md`, `docs/MVP_Training_Plan.md` und `docs/runbook.md` entfernt
-  - alter Prep-Test in `tests/test_mvp_data_prep.py` entfernt
 
 ## Was wurde wirklich verifiziert?
 - Statisch geprueft:
-  - geforderte BA-v1-/MVP-Dokus
-  - bestehende Label-Contracts und Label-Maps
-  - relevante Merge-/Trainingsconfigs
-  - relevante Daten-, Training-, Eval-, Golden- und TFLite-Label-Resolver im Repo
+  - `docs/BA_v1_Labelset.md`
+  - `docs/BA_v2_Hazard_Labelset.md`
+  - `docs/MVP_Training_Plan.md`
+  - `docs/runbook.md`
+  - `docs/android-export-contract.md`
+  - `configs/label_contracts/ba_v1.yaml`
+  - `configs/label_contracts/ba_v2_hazard.yaml`
+  - bestehende Label-Maps und Merge-Configs
+  - relevante Datenmodule unter `src/owli_train/data/*`
 - Inhaltlich verifiziert:
-  - BA-v1 ist im Repo heute vor allem in Doku, Label-Contracts, Label-Maps, Stage-3/4-Configs und Tests fest verankert
-  - Eval, Golden und TFLite-Labelauflosung sind positionsbasiert ueber Export-Artefakte und damit grundsaetzlich BA-v2-faehig, ohne dass in diesem Task ein grosser Runtime-Refactor noetig war
-  - die neue BA-v2 hazard Ontologie ist im Repo jetzt separat und maschinenlesbar verankert, ohne BA-v1-Historie zu zerstoeren
-  - fuer `Mapillary`, `OD` und `COCO replay` existiert jetzt ein erster enger BA-v2-Hazard-Mapping-Slice im Repo
-  - die verworfene fruehere Zusatzquelle ist nicht mehr Teil des dokumentierten oder konfigurierten Repo-Pfads
+  - der kleinste robuste reale BA-v2-Einstiegspunkt ist aktuell `Mapillary + OD`
+  - `Obstacle4` wurde fuer diesen ersten Slice bewusst nicht verwendet
+  - `COCO replay` wurde fuer diesen ersten Slice bewusst nicht verwendet
+  - der erste reale BA-v2-Slice stuetzt aktuell nur:
+    - `obstacle_barrier`
+    - `obstacle_hole_dropoff`
+    - `obstacle_pole`
+  - weiterhin offen bleiben:
+    - `obstacle_ground`
+    - `obstacle_overhang`
 - Real ausgefuehrt:
-  - `python -m ruff format .`
-  - `python -m ruff check .`
-  - `python -m pytest`
+  - contract-geordnete BA-v2-Normalisierung fuer `Mapillary` und `OD`
+  - realer BA-v2-Balance-Lauf fuer `Mapillary`
+  - realer BA-v2-Pass-through mit QC fuer `OD`
+  - realer BA-v2-Merge
+  - realer Split mit `--ensure-train-class-coverage`
+  - reale Materialisierung der Bilder
+  - reale Validierung des materialisierten COCO
+  - reale Vorbereitung bis zum `ModelMaker`-CSV
 
 ## Tests
+- `PYTHONPATH=src python -m owli_train dataset normalize --coco work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json --images-dir work/datasets/mapillary_vistas_ba_v1/images --label-map configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml --contract configs/label_contracts/ba_v2_hazard.yaml --out work/datasets/mapillary_vistas_ba_v2_hazard_source/instances_normalized.json`
+  - Exit-Code: `0`
+- `PYTHONPATH=src python -m owli_train dataset normalize --coco work/datasets/od_ba_v1/instances_ba_v1.coco.json --images-dir work/datasets/od_ba_v1/images --label-map configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml --contract configs/label_contracts/ba_v2_hazard.yaml --out work/datasets/od_ba_v2_hazard_source/instances_normalized.json`
+  - Exit-Code: `0`
+- `PYTHONPATH=src python -m owli_train dataset balance-coco --config configs/balance_ba_v2_hazard_mapillary_slice01.yaml`
+  - Exit-Code: `0`
+  - Ergebnis: `957` Bilder, `21707` Annotationen, `9` Kategorien
+- `PYTHONPATH=src python -m owli_train dataset balance-coco --config configs/balance_ba_v2_hazard_od_slice01.yaml`
+  - Exit-Code: `0`
+  - Ergebnis: `1592` Bilder, `8911` Annotationen, `7` Kategorien
+- `PYTHONPATH=src python -m owli_train dataset merge coco --manifest configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml --out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.json --report-out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.report.json`
+  - Exit-Code: `0`
+  - Ergebnis: `2549` Bilder, `30604` Annotationen, `9` Kategorien
+- `PYTHONPATH=src python -m owli_train dataset split --coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.json --out-dir work/splits/ba_v2_hazard_slice01_mapillary_od --seed 1337 --ensure-train-class-coverage --write-coco`
+  - Exit-Code: `0`
+  - Ergebnis: `TRAIN=2039`, `VAL=254`, `TEST=256`
+- `PYTHONPATH=src python -m owli_train dataset materialize-images --coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.json --merge-manifest configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml --out-images-dir work/datasets/ba_v2_hazard_slice01_mapillary_od/images --out-coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_materialized.json --mode auto`
+  - Exit-Code: `0`
+  - Ergebnis: `2549` Bilder materialisiert, `2549` per Symlink vorhanden
+- `PYTHONPATH=src python -m owli_train dataset validate --coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_materialized.json --images-dir work/datasets/ba_v2_hazard_slice01_mapillary_od/images`
+  - Exit-Code: `0`
+  - Ergebnis: `images=2549`, `ann=30604`, `cats=9`
+- `PYTHONPATH=src python -m owli_train dataset export modelmaker-csv --coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_materialized.json --images-dir work/datasets/ba_v2_hazard_slice01_mapillary_od/images --splits-json work/splits/ba_v2_hazard_slice01_mapillary_od/splits.json --out work/datasets/ba_v2_hazard_slice01_mapillary_od/modelmaker.csv`
+  - Exit-Code: `0`
+  - Ergebnis: `rows=30604`, `images=2549`, `annotations=30604`
 - `python -m ruff format .`
   - Exit-Code: `0`
-  - Ergebnis: `67 files left unchanged`
+  - Ergebnis: `1 file reformatted, 66 files left unchanged`
 - `python -m ruff check .`
   - Exit-Code: `0`
   - Ergebnis: `All checks passed!`
 - `python -m pytest`
   - Exit-Code: `0`
-  - Ergebnis: `158 passed, 5 skipped in 4.76s`
-- Relevanter neuer Check im Testlauf:
-  - `tests/test_ba_v2_hazard_label_contract.py`
-  - prueft kanonische Reihenfolge, Rollenpartition, JSON/YAML-Konsistenz und das explizite Ausphasen der alten BA-v1-Obstacle4-Labels
-- `tests/test_ba_v2_mapping_prep.py`
-  - prueft neue BA-v2-Maps statisch und laesst `Mapillary`, `OD` und `COCO replay` ueber die bestehenden Importpfade mit den neuen Maps laufen
-- `tests/test_mvp_data_prep.py`
-  - enthaelt keinen alten Prep-Check fuer die verworfene Zusatzquelle mehr
+  - Ergebnis: `162 passed, 5 skipped in 5.07s`
 
 ## Relevante Run-Kommandos
-- Repo-weite Konsistenzchecks:
+- BA-v2-Quell-Export-Konvertierung:
 ```bash
-python -m ruff format .
-python -m ruff check .
-python -m pytest
+PYTHONPATH=src python -m owli_train dataset normalize \
+  --coco work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json \
+  --images-dir work/datasets/mapillary_vistas_ba_v1/images \
+  --label-map configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml \
+  --contract configs/label_contracts/ba_v2_hazard.yaml \
+  --out work/datasets/mapillary_vistas_ba_v2_hazard_source/instances_normalized.json
+```
+- BA-v2-Slice-Assembly:
+```bash
+PYTHONPATH=src python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml \
+  --out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.json \
+  --report-out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.report.json
 ```
 
 ## Offene Risiken
-- BA-v2 hazard ist jetzt als Produktziel sauber beschrieben, aber noch nicht datenverifiziert.
-- `obstacle_overhang` bleibt der groesste erkennbare Quellluecken-Risiko-Punkt.
-- Bestehende Importer und Merge-Pfade arbeiten weiterhin auf BA-v1-benannten Outputs; das ist in diesem Task bewusst nicht global umgebaut worden.
-- Die neue Mapping-Strategie ist absichtlich ehrlich und vorlaeufig; sie ersetzt noch keinen real ausgefuehrten Datensatz-Remap.
-- Der neue BA-v2-Mapping-Slice deckt bewusst noch nicht `obstacle_ground` oder `obstacle_overhang` ab.
-- Historische Dokumente nennen weiter BA-v1-spezifische Klassen und Runs, aber keine verworfene Zusatzquelle mehr als geplanten Pfad.
+- `obstacle_ground` und `obstacle_overhang` bleiben im ersten realen BA-v2-Slice ungestuetzt.
+- `obstacle_hole_dropoff` ist vorhanden, aber im Vergleich zu `obstacle_pole` und den Rehearsal-Klassen noch klein.
+- `obstacle_barrier` kommt aktuell praktisch nur ueber `Mapillary`.
+- Der Slice ist trainingsvorbereitet, aber noch nicht trainingsverifiziert; es wurde bewusst kein Lite2-Lauf gestartet.
+- Bestehende Source-Artefaktdateinamen enthalten in einzelnen Zwischenordnern noch historische `instances_ba_v1.coco.json`-Namen, obwohl der Inhalt fuer diesen Slice BA-v2-konform ist.
 
 ## Nächster sinnvoller Schritt
-- Den naechsten kleinen BA-v2-Quellschritt auf `Obstacle4` als bewusst partielle Bootstrap-Quelle auslegen und dokumentieren, statt seine alten vier Klassen stillschweigend als Endontologie weiterzufuehren.
+- Starte genau einen ersten kleinen BA-v2-Trainingskandidaten auf `work/datasets/ba_v2_hazard_slice01_mapillary_od`, ohne die Ontologie weiter zu verbreitern, und miss danach gezielt, ob `obstacle_barrier`, `obstacle_hole_dropoff` und `obstacle_pole` unter BA-v2 ueberhaupt gemeinsam stabil gelernt werden.

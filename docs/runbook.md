@@ -179,6 +179,52 @@ Optional split mapping:
 python -m owli_train dataset export modelmaker-csv --coco work\datasets\coco128\instances.json --images-dir data\coco128\images --splits-json work\splits\splits.json --out work\datasets\coco128\modelmaker.csv
 ```
 
+## First BA-v2 hazard slice from verified source exports
+
+Current dedicated note:
+- `docs/BA_v2_Hazard_Slice01_Mapillary_OD.md`
+
+This is the first real BA-v2 path on current repo HEAD:
+- sources:
+  - `Mapillary Vistas`
+  - `OD / Obstacle-Dataset`
+- not included:
+  - `Obstacle4`
+  - `COCO replay`
+- current supported BA-v2 hazard-core classes:
+  - `obstacle_barrier`
+  - `obstacle_hole_dropoff`
+  - `obstacle_pole`
+
+WSL example:
+
+```bash
+PYTHONPATH=src python -m owli_train dataset normalize \
+  --coco work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json \
+  --images-dir work/datasets/mapillary_vistas_ba_v1/images \
+  --label-map configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml \
+  --contract configs/label_contracts/ba_v2_hazard.yaml \
+  --out work/datasets/mapillary_vistas_ba_v2_hazard_source/instances_normalized.json
+
+PYTHONPATH=src python -m owli_train dataset normalize \
+  --coco work/datasets/od_ba_v1/instances_ba_v1.coco.json \
+  --images-dir work/datasets/od_ba_v1/images \
+  --label-map configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml \
+  --contract configs/label_contracts/ba_v2_hazard.yaml \
+  --out work/datasets/od_ba_v2_hazard_source/instances_normalized.json
+
+PYTHONPATH=src python -m owli_train dataset balance-coco \
+  --config configs/balance_ba_v2_hazard_mapillary_slice01.yaml
+
+PYTHONPATH=src python -m owli_train dataset balance-coco \
+  --config configs/balance_ba_v2_hazard_od_slice01.yaml
+
+PYTHONPATH=src python -m owli_train dataset merge coco \
+  --manifest configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml \
+  --out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.json \
+  --report-out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.report.json
+```
+
 ## Export small-object COCO crops for Stage-3
 
 This keeps the current Stage-3 full-image path intact and adds a small crop dataset from the

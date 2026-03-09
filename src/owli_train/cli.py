@@ -18,6 +18,7 @@ from rich import print
 from owli_train.data.balance_coco import balance_coco_with_config
 from owli_train.data.coco import (
     load_coco,
+    load_label_contract_class_names,
     load_label_map,
     normalize_coco,
     validate_coco,
@@ -248,12 +249,16 @@ def dataset_normalize(
     label_map: Annotated[
         Optional[Path], typer.Option("--label-map", exists=True, readable=True)
     ] = None,
+    contract: Annotated[
+        Optional[Path], typer.Option("--contract", exists=True, readable=True)
+    ] = None,
 ):
     obj = load_coco(coco)
     _ = validate_coco(obj, images_dir=images_dir)
 
     mapping = load_label_map(label_map) if label_map is not None else None
-    normalized = normalize_coco(obj, label_map=mapping)
+    category_order = load_label_contract_class_names(contract) if contract is not None else None
+    normalized = normalize_coco(obj, label_map=mapping, category_order=category_order)
     _ = validate_coco(normalized, images_dir=images_dir)
 
     out_path = write_coco(out, normalized)

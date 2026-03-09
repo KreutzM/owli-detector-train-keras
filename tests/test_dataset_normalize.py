@@ -89,3 +89,62 @@ def test_dataset_normalize_with_images_dir(tmp_path: Path):
 
     assert result.exit_code == 0
     assert out_path.is_file()
+
+
+def test_dataset_normalize_can_reorder_categories_by_contract(tmp_path: Path):
+    coco = {
+        "images": [{"id": 1, "file_name": "a.jpg"}],
+        "annotations": [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 1,
+                "bbox": [0, 0, 10, 10],
+                "area": 100,
+                "iscrowd": 0,
+            },
+            {
+                "id": 2,
+                "image_id": 1,
+                "category_id": 2,
+                "bbox": [10, 10, 10, 10],
+                "area": 100,
+                "iscrowd": 0,
+            },
+        ],
+        "categories": [
+            {"id": 1, "name": "person"},
+            {"id": 2, "name": "obstacle_pole"},
+        ],
+    }
+    coco_path = tmp_path / "instances.json"
+    coco_path.write_text(json.dumps(coco), encoding="utf-8")
+
+    contract = tmp_path / "contract.yaml"
+    contract.write_text(
+        "class_names:\n  - obstacle_pole\n  - person\n  - car\n",
+        encoding="utf-8",
+    )
+
+    out_path = tmp_path / "normalized.json"
+    result = runner.invoke(
+        app,
+        [
+            "dataset",
+            "normalize",
+            "--coco",
+            str(coco_path),
+            "--contract",
+            str(contract),
+            "--out",
+            str(out_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    normalized = json.loads(out_path.read_text(encoding="utf-8"))
+    assert normalized["categories"] == [
+        {"id": 1, "name": "obstacle_pole"},
+        {"id": 2, "name": "person"},
+    ]
+    assert [ann["category_id"] for ann in normalized["annotations"]] == [2, 1]

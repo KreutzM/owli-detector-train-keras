@@ -9,11 +9,13 @@
 - Preferred product ontology: [`configs/label_contracts/ba_v2_hazard.yaml`](../configs/label_contracts/ba_v2_hazard.yaml)
 - Preferred labelset rationale: [BA_v2_Hazard_Labelset.md](./BA_v2_Hazard_Labelset.md)
 - Preferred source-fit readout: [BA_v2_Hazard_Mapping_Strategy.md](./BA_v2_Hazard_Mapping_Strategy.md)
+- First real BA-v2 slice: [BA_v2_Hazard_Slice01_Mapillary_OD.md](./BA_v2_Hazard_Slice01_Mapillary_OD.md)
 - Verified interim baseline contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
 - Historical interim rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
 - Important boundary:
   - the current verified Stage-3 / Stage-4 runs are BA-v1 historical baselines
-  - the next real step is a BA-v2 hazard data/mapping reset
+  - the first real BA-v2 hazard data slice now exists
+  - the next real step is the first BA-v2 training candidate on top of that slice
   - this file keeps the verified BA-v1 evidence because the pipeline work remains relevant
 
 ## Historical Verified BA-v1 Baseline Contract

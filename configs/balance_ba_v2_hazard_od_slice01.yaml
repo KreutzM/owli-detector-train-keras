@@ -1,0 +1,14 @@
+status: first_real_ba_v2_hazard_od_slice
+source_coco: ../work/datasets/od_ba_v2_hazard_source/instances_normalized.json
+source_images_dir: ../work/datasets/od_ba_v1/images
+source_splits_json: ../work/datasets/od_ba_v1/splits.json
+out_dir: ../work/datasets/od_ba_v2_hazard_slice01
+
+selection:
+  min_bbox_min_side: 0
+  max_positive_images_per_class: 100000
+
+notes:
+  - First real BA-v2 hazard OD slice.
+  - This keeps the currently defendable OD signal intact instead of downsampling it further.
+  - The cap is intentionally set high so the step acts as a contract-aligned pass-through with QC artifacts.

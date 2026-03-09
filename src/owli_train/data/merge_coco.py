@@ -8,7 +8,13 @@ from typing import Any
 
 import yaml
 
-from owli_train.data.coco import load_coco, load_label_map, normalize_coco, validate_coco
+from owli_train.data.coco import (
+    load_coco,
+    load_label_contract_class_names,
+    load_label_map,
+    normalize_coco,
+    validate_coco,
+)
 
 
 class CocoMergeError(RuntimeError):
@@ -21,6 +27,7 @@ class MergeSource:
     coco_path: Path
     images_dir: Path | None
     label_map_path: Path | None
+    contract_path: Path | None
     pseudo: bool
     score_threshold: float
     image_namespace: str | None
@@ -145,6 +152,11 @@ def load_merge_manifest(path: Path) -> MergeManifest:
             base_dir=base_dir,
             label=f"sources[{idx}].label_map",
         )
+        contract_path = _resolve_path(
+            str(item.get("contract", "")).strip() or None,
+            base_dir=base_dir,
+            label=f"sources[{idx}].contract",
+        )
 
         pseudo = bool(item.get("pseudo", False))
         score_threshold = _coerce_prob(
@@ -160,6 +172,7 @@ def load_merge_manifest(path: Path) -> MergeManifest:
                 coco_path=coco_path,
                 images_dir=images_dir,
                 label_map_path=label_map_path,
+                contract_path=contract_path,
                 pseudo=pseudo,
                 score_threshold=score_threshold,
                 image_namespace=image_namespace,
@@ -248,7 +261,12 @@ def merge_coco_from_manifest(
         validate_coco(source_coco, images_dir=source.images_dir)
 
         label_map = load_label_map(source.label_map_path) if source.label_map_path is not None else None
-        normalized = normalize_coco(source_coco, label_map=label_map)
+        category_order = (
+            load_label_contract_class_names(source.contract_path)
+            if source.contract_path is not None
+            else None
+        )
+        normalized = normalize_coco(source_coco, label_map=label_map, category_order=category_order)
 
         categories = sorted(normalized["categories"], key=lambda cat: int(cat["id"]))
         category_by_id = {int(cat["id"]): str(cat["name"]) for cat in categories}

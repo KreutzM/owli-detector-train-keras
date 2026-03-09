@@ -155,11 +155,35 @@ def load_label_map(path: str | Path) -> dict[str, str]:
     return normalized
 
 
+def load_label_contract_class_names(path: str | Path) -> list[str]:
+    resolved = Path(path)
+    try:
+        loaded = yaml.safe_load(resolved.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        raise ValueError(f"Failed to read label contract: {resolved}") from exc
+    if not isinstance(loaded, dict):
+        raise ValueError(f"Label contract must contain an object: {resolved}")
+
+    raw = loaded.get("class_names")
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("Label contract must contain a non-empty class_names list.")
+    class_names = [str(item).strip() for item in raw]
+    if any(not name for name in class_names):
+        raise ValueError("Label contract contains empty class names.")
+    if len(set(class_names)) != len(class_names):
+        raise ValueError("Label contract contains duplicate class names.")
+    return class_names
+
+
 def _copy_items(items: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     return [dict(item) for item in items]
 
 
-def normalize_coco(obj: dict[str, Any], label_map: dict[str, str] | None = None) -> dict[str, Any]:
+def normalize_coco(
+    obj: dict[str, Any],
+    label_map: dict[str, str] | None = None,
+    category_order: list[str] | None = None,
+) -> dict[str, Any]:
     """
     Normalize COCO categories and annotation category references.
 
@@ -179,7 +203,19 @@ def normalize_coco(obj: dict[str, Any], label_map: dict[str, str] | None = None)
         category_id_to_name[source_id] = target_name
         merged_names.add(target_name)
 
-    ordered_names = sorted(merged_names)
+    if category_order is None:
+        ordered_names = sorted(merged_names)
+    else:
+        unknown_names = sorted(merged_names - set(category_order))
+        if unknown_names:
+            preview = ", ".join(unknown_names[:10])
+            suffix = "" if len(unknown_names) <= 10 else f" (+{len(unknown_names) - 10} more)"
+            raise ValueError(
+                "Normalized categories fall outside the requested category_order: "
+                f"{preview}{suffix}"
+            )
+        ordered_names = [name for name in category_order if name in merged_names]
+
     name_to_new_id = {name: idx + 1 for idx, name in enumerate(ordered_names)}
 
     normalized_annotations: list[dict[str, Any]] = []
