@@ -1,0 +1,34 @@
+status: first_stage3_plus_crops_small_object_probe
+source_coco: ../work/splits/ba_mvp_stage3_balanced_multisource/instances_train.json
+source_images_dir: ../work/datasets/ba_mvp_stage3_balanced_multisource/images
+out_dir: ../work/datasets/ba_mvp_stage3_crops
+
+selection:
+  target_classes:
+    - obstacle_bump
+    - obstacle_fence
+    - obstacle_hole
+    - obstacle_pole
+  allowed_source_prefixes:
+    - obstacle4
+    - mapillary_vistas
+    - od_ba_v1
+  max_bbox_min_side: 48
+  max_bbox_area_ratio: 0.01
+  max_bbox_short_side_ratio: 0.05
+  max_crops_per_class: 200
+  max_crops_per_image: 1
+
+crop:
+  context_scale: 4.0
+  min_size: 256
+  max_size: 512
+  min_retained_area_ratio: 0.5
+  min_retained_bbox_min_side: 4
+  file_name_prefix: stage3_crops
+
+notes:
+  - Stage-3 remains the current preferred baseline; this crop export is an additional small-object branch.
+  - Use only the Stage-3 TRAIN split to avoid leaking derived crops into later VAL/TEST comparisons.
+  - Older wording such as obstacle_fence_rail and obstacle_hole_dropoff stays mapped to the current BA-v1 names obstacle_fence and obstacle_hole.
+  - The heuristic is intentionally fixed and small: crop only if the target box is small in absolute or relative image terms, then cap crops per class and per source image.

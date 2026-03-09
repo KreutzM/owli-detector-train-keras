@@ -179,6 +179,68 @@ Optional split mapping:
 python -m owli_train dataset export modelmaker-csv --coco work\datasets\coco128\instances.json --images-dir data\coco128\images --splits-json work\splits\splits.json --out work\datasets\coco128\modelmaker.csv
 ```
 
+## Export small-object COCO crops for Stage-3
+
+This keeps the current Stage-3 full-image path intact and adds a small crop dataset from the
+existing Stage-3 `TRAIN` split only.
+
+```powershell
+python -m owli_train dataset export coco-crops --config configs\crop_ba_mvp_stage3_small_obstacles.yaml
+python -m owli_train dataset validate --coco work\datasets\ba_mvp_stage3_crops\instances_ba_v1.coco.json --images-dir work\datasets\ba_mvp_stage3_crops\images
+python -m owli_train dataset export modelmaker-csv --coco work\datasets\ba_mvp_stage3_crops\instances_ba_v1.coco.json --images-dir work\datasets\ba_mvp_stage3_crops\images --out work\datasets\ba_mvp_stage3_crops\modelmaker.csv
+```
+
+WSL equivalent:
+
+```bash
+python -m owli_train dataset export coco-crops --config configs/crop_ba_mvp_stage3_small_obstacles.yaml
+python -m owli_train dataset validate --coco work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json --images-dir work/datasets/ba_mvp_stage3_crops/images
+python -m owli_train dataset export modelmaker-csv --coco work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json --images-dir work/datasets/ba_mvp_stage3_crops/images --out work/datasets/ba_mvp_stage3_crops/modelmaker.csv
+```
+
+Artifacts:
+- crop COCO: `work\datasets\ba_mvp_stage3_crops\instances_ba_v1.coco.json`
+- crop images: `work\datasets\ba_mvp_stage3_crops\images`
+- QC report: `work\datasets\ba_mvp_stage3_crops\qc_report.json`
+- crop CSV: `work\datasets\ba_mvp_stage3_crops\modelmaker.csv`
+
+## Prepare Stage-3-plus-crops training input
+
+Merge the materialized Stage-3 dataset with the crop dataset, then materialize a combined
+images root for the next Lite2 comparison run.
+
+```powershell
+python -m owli_train dataset merge coco --manifest configs\merge_ba_mvp_stage3_plus_crops.yaml --out work\datasets\ba_mvp_stage3_plus_crops\instances_combined.json --report-out work\datasets\ba_mvp_stage3_plus_crops\instances_combined.report.json
+python -m owli_train dataset materialize-images --coco work\datasets\ba_mvp_stage3_plus_crops\instances_combined.json --merge-manifest configs\merge_ba_mvp_stage3_plus_crops.yaml --out-images-dir work\datasets\ba_mvp_stage3_plus_crops\images --out-coco work\datasets\ba_mvp_stage3_plus_crops\instances_materialized.json --mode auto
+python -m owli_train dataset validate --coco work\datasets\ba_mvp_stage3_plus_crops\instances_materialized.json --images-dir work\datasets\ba_mvp_stage3_plus_crops\images
+```
+
+Combine the existing Stage-3 CSV with the crop CSV so `VAL` and `TEST` stay unchanged and
+all crop rows stay `TRAIN`.
+
+```powershell
+@(
+  Get-Content work\datasets\ba_mvp_stage3_balanced_multisource\modelmaker.csv
+  Get-Content work\datasets\ba_mvp_stage3_crops\modelmaker.csv
+) | Set-Content work\datasets\ba_mvp_stage3_plus_crops\modelmaker.csv
+Copy-Item work\datasets\ba_mvp_stage3_balanced_multisource\modelmaker.class_names.json work\datasets\ba_mvp_stage3_plus_crops\modelmaker.class_names.json -Force
+```
+
+WSL equivalent:
+
+```bash
+cat \
+  work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv \
+  work/datasets/ba_mvp_stage3_crops/modelmaker.csv \
+  > work/datasets/ba_mvp_stage3_plus_crops/modelmaker.csv
+cp \
+  work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.class_names.json \
+  work/datasets/ba_mvp_stage3_plus_crops/modelmaker.class_names.json
+```
+
+Next training config:
+- `configs\efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml`
+
 ## Train detector (KerasCV YOLOv8 baseline)
 
 Install training dependencies first:
@@ -1017,6 +1079,35 @@ PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
   --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
   --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
   --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/golden_obstacle4.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
+```
+
+Verified Stage-3-plus-crops Lite2 comparison run on current repo HEAD:
+
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml \
+  --run-name ba-mvp-stage3-plus-crops-20260309 \
+  --require-gpu
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/reports/eval_efficientdet_tflite_stage3_test.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/reports/golden_obstacle4.json \
   --score-threshold 0.1 \
   --max-results 20 \
   --num-threads 8

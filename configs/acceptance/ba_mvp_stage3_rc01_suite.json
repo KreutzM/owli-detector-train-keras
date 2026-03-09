@@ -1,0 +1,99 @@
+{
+  "suite_id": "ba_mvp_stage3_rc01",
+  "model_run": "work/runs/20260308-183140-ba-mvp-stage3-20260308",
+  "images_dir": "work/datasets/ba_mvp_stage3_balanced_multisource/images",
+  "recommended_score_threshold": 0.15,
+  "items": [
+    {
+      "id": "bump_obstacle4_01",
+      "kind": "ba_core_positive",
+      "focus_class": "obstacle_bump",
+      "image": "obstacle4/train/images/photo_6_2023-06-19_19-33-14_jpg.rf.984ba1683a508a661a2af354e267a84e.jpg",
+      "notes": "Single bump-like obstacle from Obstacle4 with low scene clutter."
+    },
+    {
+      "id": "bump_obstacle4_02",
+      "kind": "ba_core_positive",
+      "focus_class": "obstacle_bump",
+      "image": "obstacle4/train/images/image44_jpg.rf.d0aa2dc0b027b786f5810c5d8aa95819.jpg",
+      "notes": "Second Obstacle4 bump example for bump recall spot checks."
+    },
+    {
+      "id": "fence_mapillary_01",
+      "kind": "ba_core_positive",
+      "focus_class": "obstacle_fence",
+      "image": "mapillary_vistas/validation/LIeUSaRiSWppbHqneGdMZQ.jpg",
+      "notes": "Small fence target in a dense street scene."
+    },
+    {
+      "id": "fence_mapillary_02",
+      "kind": "ba_core_positive",
+      "focus_class": "obstacle_fence",
+      "image": "mapillary_vistas/training/4DdqJkB217IefAutGGr6uQ.jpg",
+      "notes": "Second small fence target with heavy context."
+    },
+    {
+      "id": "hole_mapillary_01",
+      "kind": "ba_core_positive",
+      "focus_class": "obstacle_hole",
+      "image": "mapillary_vistas/training/Z2ozbmlck7YAvxgVm_eDUw.jpg",
+      "notes": "Small hole / drop-off target in cluttered context."
+    },
+    {
+      "id": "hole_mapillary_02",
+      "kind": "ba_core_positive",
+      "focus_class": "obstacle_hole",
+      "image": "mapillary_vistas/training/DxMP7RhxRZgN26iRwOh_EA.jpg",
+      "notes": "Second small hole / drop-off target from the held-out split."
+    },
+    {
+      "id": "pole_od_01",
+      "kind": "ba_core_positive",
+      "focus_class": "obstacle_pole",
+      "image": "od_ba_v1/train/0524376.jpg",
+      "notes": "Very small pole target from OD."
+    },
+    {
+      "id": "pole_od_02",
+      "kind": "ba_core_positive",
+      "focus_class": "obstacle_pole",
+      "image": "od_ba_v1/train/0524783.jpg",
+      "notes": "Second very small pole target from OD."
+    },
+    {
+      "id": "person_only_01",
+      "kind": "hard_negative_for_ba_core",
+      "focus_class": "person",
+      "image": "od_ba_v1/test/000000540670.jpg",
+      "notes": "Single-person image; use to watch for stray BA-core detections."
+    },
+    {
+      "id": "bicycle_only_01",
+      "kind": "hard_negative_for_ba_core",
+      "focus_class": "bicycle",
+      "image": "od_ba_v1/train/002377.jpg",
+      "notes": "Single-bicycle image; useful to watch BA-core false positives."
+    },
+    {
+      "id": "bus_only_01",
+      "kind": "hard_negative_for_ba_core",
+      "focus_class": "bus",
+      "image": "od_ba_v1/test/003163.jpg",
+      "notes": "Single-bus image; useful to watch BA-core false positives."
+    },
+    {
+      "id": "car_only_01",
+      "kind": "hard_negative_for_ba_core",
+      "focus_class": "car",
+      "image": "od_ba_v1/train/0518212.jpg",
+      "notes": "Single-car image; useful to watch BA-core false positives."
+    },
+    {
+      "id": "motorcycle_only_01",
+      "kind": "hard_negative_for_ba_core",
+      "focus_class": "motorcycle",
+      "image": "od_ba_v1/test/0518211.jpg",
+      "notes": "Single-motorcycle image; useful to watch BA-core false positives."
+    }
+  ]
+}
