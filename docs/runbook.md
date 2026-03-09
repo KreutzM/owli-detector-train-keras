@@ -1265,9 +1265,39 @@ PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
   --num-threads 8
 ```
 
+Verified BA-v2 MVP Lite2 augmentation comparison run on current repo HEAD:
+
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_v2_mvp_aug.yaml \
+  --run-name ba-v2-mvp-augmentation-baseline-20260309 \
+  --require-gpu
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260309-183932-ba-v2-mvp-augmentation-baseline-20260309/artifacts/model.tflite
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_v2_hazard_slice02_mapillary_od_ground/instances_test.json \
+  --images-dir work/datasets/ba_v2_mvp_candidate/images \
+  --model work/runs/20260309-183932-ba-v2-mvp-augmentation-baseline-20260309/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260309-183932-ba-v2-mvp-augmentation-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260309-183932-ba-v2-mvp-augmentation-baseline-20260309/artifacts/model.tflite \
+  --image work/datasets/ba_v2_mvp_candidate/images/mapillary_vistas/training/ppvi1a8kNPmFjkS6Lhbnsg.jpg \
+  --out work/runs/20260309-183932-ba-v2-mvp-augmentation-baseline-20260309/reports/golden_ba_v2_test_mix.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
+```
+
 Current reading:
 - the first real BA-v2 MVP baseline now exists on current repo HEAD
 - the preferred product ontology path is now BA-v2 MVP
+- the first small BA-v2 online-augmentation comparison run does not beat the non-augmented BA-v2 baseline
 - the historical strongest technical comparison baseline still remains Stage-3 until BA-v2 hazard-core quality improves
 - the first real Stage-4 replay run does not outperform the verified Stage-3 baseline
 - low-threshold FP load improves slightly

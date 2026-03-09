@@ -13,6 +13,7 @@
 - Ground-bootstrap extension: [BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md](./BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md)
 - First BA-v2 MVP training candidate: [BA_v2_MVP_Train_Candidate.md](./BA_v2_MVP_Train_Candidate.md)
 - First real BA-v2 MVP baseline: [BA_v2_MVP_Baseline.md](./BA_v2_MVP_Baseline.md)
+- First BA-v2 MVP online-augmentation comparison: [BA_v2_MVP_Augmentation_Baseline.md](./BA_v2_MVP_Augmentation_Baseline.md)
 - Online augmentation feasibility note: [BA_v2_Augmentation_Feasibility.md](./BA_v2_Augmentation_Feasibility.md)
 - Verified interim baseline contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
 - Historical interim rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
@@ -28,6 +29,8 @@
 ## Current Verified BA-v2 MVP Baseline
 - Baseline doc:
   - [BA_v2_MVP_Baseline.md](./BA_v2_MVP_Baseline.md)
+- First augmentation comparison:
+  - [BA_v2_MVP_Augmentation_Baseline.md](./BA_v2_MVP_Augmentation_Baseline.md)
 - run:
   - `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309`
 - primary eval:
@@ -45,6 +48,26 @@
   - the product contract is more convincing than the historical BA-v1 obstacle-shaped contracts
   - hazard-core quality is still not good enough to call the current BA-v2 model product-ready
   - the preferred forward path is now to improve BA-v2 hazard data quality inside the current MVP, not to widen the ontology again
+
+## Current Verified BA-v2 MVP Augmentation Comparison
+- comparison doc:
+  - [BA_v2_MVP_Augmentation_Baseline.md](./BA_v2_MVP_Augmentation_Baseline.md)
+- config:
+  - [`configs/efficientdet_lite2_ba_v2_mvp_aug.yaml`](../configs/efficientdet_lite2_ba_v2_mvp_aug.yaml)
+- run:
+  - `work/runs/20260309-183932-ba-v2-mvp-augmentation-baseline-20260309`
+- result vs. the current BA-v2 baseline:
+  - AP drops from `0.1184` to `0.1140`
+  - AP50 drops from `0.2149` to `0.2107`
+  - AP75 drops from `0.1120` to `0.1085`
+  - AR100 drops from `0.2005` to `0.1948`
+  - precision drops from `0.1948` to `0.1815`
+  - recall drops from `0.3653` to `0.3434`
+- reading:
+  - the limited online-augmentation hook is technically usable in the current product path
+  - the first real `rand_hflip + jitter` comparison run does not outperform the non-augmented BA-v2 baseline
+  - there is small class-level upside for `obstacle_hole_dropoff` and some recall gain for `obstacle_barrier`, but not enough to change the current default
+  - the preferred BA-v2 MVP baseline therefore remains the non-augmented run for now
 
 ## Historical Verified BA-v1 Baseline Contract
 - Primary model path: `EfficientDet-Lite2` via Model Maker
