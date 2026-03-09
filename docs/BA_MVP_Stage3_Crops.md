@@ -112,3 +112,21 @@ Current verified prepared size:
 - Compare the next Lite2 run directly as:
   - `Stage-3`
   - vs. `Stage-3-plus-crops`
+
+## First Comparison Result
+- verified comparison run:
+  - [BA_MVP_Stage3_Plus_Crops_Baseline.md](./BA_MVP_Stage3_Plus_Crops_Baseline.md)
+- on the held-out Stage-3 `TEST` split, the first real crop run does not beat the Stage-3 baseline:
+  - AP `0.1307 -> 0.1280`
+  - AP50 `0.2325 -> 0.2276`
+  - AP75 `0.1270 -> 0.1202`
+  - AR100 `0.2170 -> 0.2142`
+  - precision `0.2050 -> 0.2083`
+  - recall `0.3735 -> 0.3684`
+
+Practical reading:
+- `obstacle_fence` improves the clearest
+- `obstacle_pole` recall nudges upward, but FP load also rises
+- `obstacle_hole` gets fewer FP, but also less recall
+- `obstacle_bump` still remains too weak
+- the crop branch stays a useful experiment path, not the new default baseline

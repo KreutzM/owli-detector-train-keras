@@ -1084,6 +1084,35 @@ PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
   --num-threads 8
 ```
 
+Verified Stage-3-plus-crops Lite2 comparison run on current repo HEAD:
+
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml \
+  --run-name ba-mvp-stage3-plus-crops-20260309 \
+  --require-gpu
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/reports/eval_efficientdet_tflite_stage3_test.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/reports/golden_obstacle4.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
+```
+
 Current reading:
 - the first real Stage-4 replay run does not outperform the verified Stage-3 baseline
 - low-threshold FP load improves slightly

@@ -1,215 +1,195 @@
 # Codex Task Report
 
 ## Ziel
-- Einen kleinen, reproduzierbaren Crop-Datenpfad fuer kleine BA-Core-Objekte aufbauen, ohne den bestehenden Stage-3-Vollbildpfad zu ersetzen.
-- Stage-3 als aktuelle Baseline beibehalten und einen klaren `Stage-3-plus-crops`-Vergleichszweig vorbereiten.
-- Den Crop-Exporter, die Zielartefakte und die Anschluss-Pfade real verifizieren.
+- Den ersten echten `EfficientDet-Lite2`-Vergleichslauf auf dem vorbereiteten `Stage-3-plus-crops`-Datensatz ausfuehren.
+- Das neue Modell sauber gegen die verifizierte `Stage-3`-Baseline auf demselben Stage-3-`TEST`-Split vergleichen.
+- Das exportierte TFLite-Modell, die direkte Eval und `golden detect` real verifizieren und die minimal noetige Ergebnisdoku aktualisieren.
 
 ## Was wurde geändert?
-- Neuen YAML-gesteuerten COCO-Crop-Exporter fuer kleine BA-Core-Objekte implementiert:
-  - `src/owli_train/data/coco_crops.py`
-- Neue CLI fuer den Exportpfad ergaenzt:
-  - `src/owli_train/cli.py`
-- Reale Crop-Config fuer den Stage-3-Train-Split ergaenzt:
-  - `configs/crop_ba_mvp_stage3_small_obstacles.yaml`
-- Merge-Manifest und Training-Config fuer den naechsten `Stage-3-plus-crops`-Vergleichslauf ergaenzt:
-  - `configs/merge_ba_mvp_stage3_plus_crops.yaml`
-  - `configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml`
-- Gezielte Tests fuer Crop-Transform, Filter/Caps, Dedupe und CLI-Pfad ergaenzt:
-  - `tests/test_dataset_export_coco_crops.py`
-  - `tests/test_mvp_data_prep.py`
-- Minimale Doku fuer den Crop-Zweig und die Run-Kommandos aktualisiert:
+- Neue Ergebnisdoku fuer den ersten echten Vergleichslauf ergaenzt:
+  - `docs/BA_MVP_Stage3_Plus_Crops_Baseline.md`
+- Bestehende Doku fuer Plan, Baseline, Crop-Zweig und Run-Kommandos auf den echten Vergleichslauf aktualisiert:
   - `docs/BA_MVP_Stage3_Crops.md`
   - `docs/MVP_Training_Plan.md`
   - `docs/BA_MVP_Stage3_Baseline.md`
   - `docs/runbook.md`
-- Reale Zielartefakte erzeugt:
-  - `work/datasets/ba_mvp_stage3_crops`
-  - `work/datasets/ba_mvp_stage3_plus_crops`
+- Pflichtreport auf den real ausgefuehrten Trainings-/Eval-Lauf umgestellt:
+  - `docs/reviews/Codex-Task-Report_last.md`
+- Keine Code- oder Config-Aenderung war noetig:
+  - der vorhandene `Stage-3-plus-crops`-Trainingspfad war fuer den ersten Vergleichslauf bereits ausreichend und fair gegen Stage-3 aufgesetzt
 
 ## Was wurde wirklich verifiziert?
-- Neue Tests fuer den Crop-Pfad real ausgefuehrt:
+- GPU-Sichtbarkeit in der ModelMaker-Umgebung real geprueft:
 ```bash
-python -m pytest tests/test_dataset_export_coco_crops.py tests/test_mvp_data_prep.py
+.venv-modelmaker-py39/bin/python -c "import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices('GPU'))"
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - `14 passed`
-    - Crop-Box-Umrechnung stimmt
-    - partielle Restboxen werden gefiltert
-    - same-class-Duplikate im Crop werden dedupliziert
-    - Config-/Manifest-Pfade bleiben konsistent
+    - `tensorflow==2.8.4`
+    - `GPU:0` sichtbar in der WSL2-ModelMaker-Umgebung
 
-- Gezielte Ruff-Pruefung auf den geaenderten Crop-Dateien real ausgefuehrt:
+- Echter `Stage-3-plus-crops`-Lite2-Trainingslauf real ausgefuehrt:
 ```bash
-python -m ruff check src/owli_train/data/coco_crops.py src/owli_train/cli.py tests/test_dataset_export_coco_crops.py tests/test_mvp_data_prep.py
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml \
+  --run-name ba-mvp-stage3-plus-crops-20260309 \
+  --require-gpu
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - alle neuen Crop-Dateien bestehen Ruff
+    - echter Voll-Lauf auf `work/datasets/ba_mvp_stage3_plus_crops/modelmaker.csv`
+    - Run dir: `work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309`
+    - `20` Checkpoints geschrieben (`ckpt-1` bis `ckpt-20`)
+    - TFLite exportiert nach `work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite`
+    - Laufzeit bis TFLite-Export: ca. `2137.6` Sekunden (`35.6` Minuten)
 
-- Realer Crop-Export auf dem Stage-3-`TRAIN`-Split ausgefuehrt:
+- Exportiertes TFLite-Modell real inspiziert:
 ```bash
-PYTHONPATH=src python -m owli_train dataset export coco-crops --config configs/crop_ba_mvp_stage3_small_obstacles.yaml
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - Export geschrieben nach `work/datasets/ba_mvp_stage3_crops`
-    - `528` Crop-Bilder
-    - `3001` Annotationen
-    - `10` Kategorien
-    - Zielverteilung:
-      - `obstacle_bump`: `3`
-      - `obstacle_fence`: `176`
-      - `obstacle_hole`: `149`
-      - `obstacle_pole`: `200`
-    - Quellverteilung:
-      - `obstacle4`: `41`
-      - `mapillary_vistas`: `487`
-      - `od_ba_v1`: `0`
+    - builtin ops only: `true`
+    - BA-v1-Labelreihenfolge blieb erhalten
+    - Operatoren bleiben auf dem bekannten Lite2-Pfad:
+      - `QUANTIZE`
+      - `CONV_2D`
+      - `DEPTHWISE_CONV_2D`
+      - `ADD`
+      - `MAX_POOL_2D`
+      - `RESIZE_NEAREST_NEIGHBOR`
+      - `RESHAPE`
+      - `CONCATENATION`
+      - `LOGISTIC`
+      - `DEQUANTIZE`
+      - `TFLite_Detection_PostProcess`
 
-- Crop-COCO real validiert:
+- Neue TFLite-Eval auf dem identischen Stage-3-`TEST`-Split real ausgefuehrt:
 ```bash
-PYTHONPATH=src python -m owli_train dataset validate --coco work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json --images-dir work/datasets/ba_mvp_stage3_crops/images
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/reports/eval_efficientdet_tflite_stage3_test.json
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - `OK COCO: images=528, ann=3001, cats=10`
+    - `408` Bilder evaluiert
+    - AP `0.1280`
+    - AP50 `0.2276`
+    - AP75 `0.1202`
+    - AR100 `0.2142`
+    - precision `0.2083`
+    - recall `0.3684`
+    - FP `5424`
+    - FP/100 bei `0.10`: `1329.41`
 
-- Crop-CSV fuer den spaeteren Trainingseinsatz real exportiert:
-```bash
-PYTHONPATH=src python -m owli_train dataset export modelmaker-csv --coco work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json --images-dir work/datasets/ba_mvp_stage3_crops/images --out work/datasets/ba_mvp_stage3_crops/modelmaker.csv
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - `3001` CSV-Zeilen
-    - `work/datasets/ba_mvp_stage3_crops/modelmaker.csv`
-
-- Unabhaengige Box-Pruefung gegen den Stage-3-Train-COCO real ausgefuehrt:
+- Direkten Vergleich gegen die vorhandene Stage-3-Baseline real aus dem Reportmaterial nachgerechnet:
 ```bash
 python - <<'PY'
-# alle Crop-Annotationen gegen instances_train.json und die gespeicherten crop_box-Ausschnitte nachgerechnet
-PY
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - `3001` Crop-Annotationen nachgerechnet
-    - `0` Box-Fehler
-
-- `Stage-3-plus-crops`-Merge real erzeugt:
-```bash
-PYTHONPATH=src python -m owli_train dataset merge coco --manifest configs/merge_ba_mvp_stage3_plus_crops.yaml --out work/datasets/ba_mvp_stage3_plus_crops/instances_combined.json --report-out work/datasets/ba_mvp_stage3_plus_crops/instances_combined.report.json
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - `4594` Bilder
-    - `41400` Annotationen
-    - `10` Kategorien
-    - keine verbleibenden Merge-Drops:
-      - `duplicate_gt_same_class: 0`
-      - alle anderen Drop-Zaehler `0`
-
-- `Stage-3-plus-crops`-Images real materialisiert:
-```bash
-PYTHONPATH=src python -m owli_train dataset materialize-images --coco work/datasets/ba_mvp_stage3_plus_crops/instances_combined.json --merge-manifest configs/merge_ba_mvp_stage3_plus_crops.yaml --out-images-dir work/datasets/ba_mvp_stage3_plus_crops/images --out-coco work/datasets/ba_mvp_stage3_plus_crops/instances_materialized.json --mode auto
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - initialer Lauf: `4594` Symlinks geschrieben
-    - finaler Lauf nach Dedupe-Fix: COCO aktualisiert, Bilder unveraendert wiederverwendet
-
-- Materialisierten `Stage-3-plus-crops`-Datensatz real validiert:
-```bash
-PYTHONPATH=src python -m owli_train dataset validate --coco work/datasets/ba_mvp_stage3_plus_crops/instances_materialized.json --images-dir work/datasets/ba_mvp_stage3_plus_crops/images
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - `OK COCO: images=4594, ann=41400, cats=10`
-
-- Kombiniertes Model-Maker-CSV fuer `Stage-3-plus-crops` real geschrieben:
-```bash
-python - <<'PY'
+import json
 from pathlib import Path
-out = Path('work/datasets/ba_mvp_stage3_plus_crops')
-out.mkdir(parents=True, exist_ok=True)
-base_csv = Path('work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv').read_text(encoding='utf-8')
-crop_csv = Path('work/datasets/ba_mvp_stage3_crops/modelmaker.csv').read_text(encoding='utf-8')
-(out / 'modelmaker.csv').write_text(base_csv + crop_csv, encoding='utf-8')
-(out / 'modelmaker.class_names.json').write_text(
-    Path('work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.class_names.json').read_text(encoding='utf-8'),
-    encoding='utf-8',
-)
-print(sum(1 for _ in (out / 'modelmaker.csv').open('r', encoding='utf-8')))
+base = json.loads(Path('work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test.json').read_text())
+new = json.loads(Path('work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/reports/eval_efficientdet_tflite_stage3_test.json').read_text())
+print(base['metrics']['AP'], new['metrics']['AP'])
 PY
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - `work/datasets/ba_mvp_stage3_plus_crops/modelmaker.csv`
-    - `41400` CSV-Zeilen
+    - globale Metriken fallen leicht gegen Stage-3:
+      - AP `0.1307 -> 0.1280`
+      - AP50 `0.2325 -> 0.2276`
+      - AP75 `0.1270 -> 0.1202`
+      - AR100 `0.2170 -> 0.2142`
+      - recall `0.3735 -> 0.3684`
+    - aggregate precision steigt leicht:
+      - `0.2050 -> 0.2083`
+    - low-threshold FP-Last sinkt leicht:
+      - FP bei `0.10`: `5612 -> 5424`
+    - auffaellige Per-Class-Änderungen:
+      - `obstacle_fence` verbessert sich klar
+      - `obstacle_pole` gewinnt etwas recall, aber mit mehr FP
+      - `obstacle_hole` senkt FP, verliert aber recall
+      - `obstacle_bump` verschlechtert sich
 
-- Repo-weite Pflicht-Checks real ausgefuehrt:
+- `golden detect` auf dem bisherigen Referenzbild real ausgefuehrt:
 ```bash
-python -m ruff format .
-python -m ruff check .
-python -m pytest
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/reports/golden_obstacle4.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
 ```
-  - Exit-Codes: alle `0`
+  - Exit-Code: `0`
   - Ergebnis:
-    - `ruff format .`: `2 files reformatted`
-    - `ruff check .`: erfolgreich
-    - `pytest`: `149 passed, 5 skipped`
+    - `15` Detections geschrieben
+    - Klassenmix:
+      - `obstacle_pole`: `7`
+      - `car`: `3`
+      - `obstacle_hole`: `3`
+      - `obstacle_fence`: `1`
+      - `obstacle_bump`: `1`
 
 - Nur statisch geprueft:
-  - keine neue Lite2-Trainingsausfuehrung mit `configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml`
-  - keine neue TFLite-Eval gegen `Stage-3` oder `Stage-3-plus-crops`
-  - die Doku-Updates selbst wurden nur inhaltlich/statisch geprueft
+  - keine Code- oder Config-Aenderung war fuer diesen Vergleichslauf noetig
+  - die Doku-Aenderungen selbst wurden nur inhaltlich/statisch geprueft
+  - es wurde kein zusaetzlicher `Obstacle4`-Full-Eval-Lauf fuer das neue Modell gestartet
 
 ## Tests
-- Gezielte Crop-Tests:
-  - `python -m pytest tests/test_dataset_export_coco_crops.py tests/test_mvp_data_prep.py`
-  - Exit-Code: `0`
-  - Resultat: `14 passed`
-- Gezielte Ruff-Pruefung:
-  - `python -m ruff check src/owli_train/data/coco_crops.py src/owli_train/cli.py tests/test_dataset_export_coco_crops.py tests/test_mvp_data_prep.py`
-  - Exit-Code: `0`
-- Repo-weite Pflicht-Checks:
-  - `python -m ruff format .`
-  - `python -m ruff check .`
-  - `python -m pytest`
-  - Exit-Codes: alle `0`
-  - Resultat: `149 passed, 5 skipped`
+- In diesem Task wurden keine Codeaenderungen gemacht.
+- Deshalb wurden keine neuen `ruff`- oder `pytest`-Laeufe gestartet.
+- Reale Verifikation lag in den ausgefuehrten GPU-/Train-/Inspect-/Eval-/Golden-Kommandos.
 
 ## Relevante Run-Kommandos
-- Crop-Export:
+- GPU check:
 ```bash
-PYTHONPATH=src python -m owli_train dataset export coco-crops --config configs/crop_ba_mvp_stage3_small_obstacles.yaml
+.venv-modelmaker-py39/bin/python -c "import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices('GPU'))"
 ```
-- Crop-Validate:
+- Train:
 ```bash
-PYTHONPATH=src python -m owli_train dataset validate --coco work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json --images-dir work/datasets/ba_mvp_stage3_crops/images
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml \
+  --run-name ba-mvp-stage3-plus-crops-20260309 \
+  --require-gpu
 ```
-- Crop-CSV:
+- Inspect:
 ```bash
-PYTHONPATH=src python -m owli_train dataset export modelmaker-csv --coco work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json --images-dir work/datasets/ba_mvp_stage3_crops/images --out work/datasets/ba_mvp_stage3_crops/modelmaker.csv
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite
 ```
-- `Stage-3-plus-crops`-Merge:
+- Eval on the Stage-3 `TEST` split:
 ```bash
-PYTHONPATH=src python -m owli_train dataset merge coco --manifest configs/merge_ba_mvp_stage3_plus_crops.yaml --out work/datasets/ba_mvp_stage3_plus_crops/instances_combined.json --report-out work/datasets/ba_mvp_stage3_plus_crops/instances_combined.report.json
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/reports/eval_efficientdet_tflite_stage3_test.json
 ```
-- `Stage-3-plus-crops`-Materialize:
+- Golden:
 ```bash
-PYTHONPATH=src python -m owli_train dataset materialize-images --coco work/datasets/ba_mvp_stage3_plus_crops/instances_combined.json --merge-manifest configs/merge_ba_mvp_stage3_plus_crops.yaml --out-images-dir work/datasets/ba_mvp_stage3_plus_crops/images --out-coco work/datasets/ba_mvp_stage3_plus_crops/instances_materialized.json --mode auto
-```
-- `Stage-3-plus-crops`-Validate:
-```bash
-PYTHONPATH=src python -m owli_train dataset validate --coco work/datasets/ba_mvp_stage3_plus_crops/instances_materialized.json --images-dir work/datasets/ba_mvp_stage3_plus_crops/images
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/20260309-072510-ba-mvp-stage3-plus-crops-20260309/reports/golden_obstacle4.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
 ```
 
 ## Offene Risiken
-- Der neue Pfad ist als Datenzweig vorbereitet, aber noch nicht ueber einen echten Lite2-Trainingslauf gegen Stage-3 evaluiert.
-- Die erste feste Heuristik zieht fast alle Crop-Samen aus `Mapillary`; `OD` bleibt unter der aktuellen Prioritaet und den Caps faktisch ungenutzt.
-- `obstacle_bump` bleibt im aktuellen Stage-3-Train-Bestand auch nach Crop-Heuristik sehr duenn (`3` Crop-Ziele).
-- Das kombinierte `Stage-3-plus-crops`-CSV wird bewusst aus dem bestehenden Stage-3-CSV plus Crop-CSV zusammengesetzt; dieser Pfad ist real geschrieben, aber noch nicht durch ein anschliessendes Training verifiziert.
+- Die globale Metrik bewegt sich leicht nach unten; der aktuelle Crop-Zweig ist damit fachlich kein Baseline-Ersatz.
+- `obstacle_bump` bleibt auch mit dem Crop-Zweig zu schwach und verschlechtert sich im ersten echten Vergleichslauf.
+- `obstacle_pole` gewinnt etwas recall, aber die FP-Last steigt dort sichtbar an.
+- Es wurde in diesem Task kein zusaetzlicher Full-`Obstacle4`-Eval-Lauf fuer das neue Modell gerechnet; die direkte Hauptbewertung basiert bewusst auf dem identischen Stage-3-`TEST`-Split.
 
 ## Nächster sinnvoller Schritt
-- Starte genau einen echten `EfficientDet-Lite2`-Vergleichslauf mit `configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml` und evaluiere ihn direkt gegen denselben Stage-3-`TEST`-Split wie die aktuelle Baseline.
+- Behalte `Stage-3` als Hauptbaseline und pruefe als naechsten kleinen Schritt nur eine gezielte zweite Crop-Heuristik, die `obstacle_bump` staerkt und `obstacle_pole`-FP-Druck begrenzt, bevor ein weiterer Voll-Lauf gestartet wird.

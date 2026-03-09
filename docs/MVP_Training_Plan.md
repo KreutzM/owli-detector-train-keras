@@ -15,6 +15,7 @@
 - Current verified Stage-4 data pipeline: [BA_MVP_Stage4_Replay_Pipeline.md](./BA_MVP_Stage4_Replay_Pipeline.md)
 - Current verified Stage-4 comparison run: [BA_MVP_Stage4_Baseline.md](./BA_MVP_Stage4_Baseline.md)
 - Current verified small-object crop branch: [BA_MVP_Stage3_Crops.md](./BA_MVP_Stage3_Crops.md)
+- Current verified Stage-3-plus-crops comparison run: [BA_MVP_Stage3_Plus_Crops_Baseline.md](./BA_MVP_Stage3_Plus_Crops_Baseline.md)
 
 ## Primary MVP Sources
 The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified reference baseline, but the next training run is intended to be multi-source.
@@ -211,13 +212,28 @@ Current verified crop path on repo HEAD:
     - `work/datasets/ba_mvp_stage3_plus_crops/modelmaker.csv`
   - next training config:
     - [`configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml`](../configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml)
+- verified comparison run:
+  - [BA_MVP_Stage3_Plus_Crops_Baseline.md](./BA_MVP_Stage3_Plus_Crops_Baseline.md)
+- primary comparison result vs. the verified Stage-3 model:
+  - AP drops from `0.1307` to `0.1280`
+  - AP50 drops from `0.2325` to `0.2276`
+  - AP75 drops from `0.1270` to `0.1202`
+  - AR100 drops from `0.2170` to `0.2142`
+  - precision improves slightly from `0.2050` to `0.2083`
+  - recall drops from `0.3735` to `0.3684`
+- reading:
+  - `obstacle_fence` benefits the clearest
+  - `obstacle_pole` gains some recall but also more FP pressure
+  - low-threshold FP load improves modestly
+  - overall the effect is not strong enough to replace Stage-3 as the preferred baseline
 
 Reading:
 - the current crop branch is intentionally narrow and obstacle-focused
 - `Mapillary` supplies most small-object seeds under the fixed heuristic
 - `Obstacle4` still contributes a small tail of difficult BA-core cases
 - `OD` is allowed but does not enter the first exported crop set under the current priority and caps
-- this branch should be evaluated as `Stage-3` vs. `Stage-3-plus-crops`, not as a new promoted baseline
+- this branch has now been evaluated as `Stage-3` vs. `Stage-3-plus-crops`
+- the current preferred multi-source baseline still remains `Stage-3`
 
 ## Repo Prep Artifacts for This MVP Path
 - [`configs/label_maps/obstacle4_to_ba.yaml`](../configs/label_maps/obstacle4_to_ba.yaml)
