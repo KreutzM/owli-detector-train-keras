@@ -1,127 +1,107 @@
 # Codex Task Report
 
 ## Ziel
-- Den ersten echten `EfficientDet-Lite2`-Trainingslauf auf dem vorbereiteten BA-v2-MVP-Kandidaten real ausfuehren.
-- Die exportierten BA-v2-MVP-Artefakte mit `inspect tflite`, `eval efficientdet-tflite` und `golden detect` real verifizieren.
-- Die Resultate als erste ehrliche BA-v2-MVP-Baseline im Repo dokumentieren und gegen die historischen Baselines einordnen.
+- Den aktuellen BA-v2-`EfficientDet-Lite2` / Model-Maker-Trainingspfad technisch sauber auf echte Online-Augmentation pruefen.
+- Belegen, ob es im bestehenden Produktpfad einen kleinen, reviewbaren Hook fuer CPU-seitige Train-Augmentation mit korrekt mittransformierten Bounding Boxes gibt.
+- Wenn sinnvoll, nur den kleinsten Probe-Hook implementieren, ohne den bestehenden Produktpfad umzubauen.
 
 ## Was wurde geändert?
-- Neue Ergebnisdoku fuer die erste echte BA-v2-MVP-Baseline ergaenzt:
-  - `docs/BA_v2_MVP_Baseline.md`
-- BA-v2-MVP-Plan und Candidate-Doku auf den jetzt real abgeschlossenen Lauf nachgezogen:
+- Kleinen optionalen Augmentations-Hook im bestehenden Model-Maker-Wrapper ergaenzt:
+  - `src/owli_train/training/modelmaker_efficientdet.py`
+  - neue optionale Config `train.augmentation`
+  - Uebersetzung auf EfficientDet-`model_spec.hparams`
+  - Default-Verhalten bleibt ohne Augmentations-Config unveraendert
+- Kleine Offline-Tests fuer Config-Parsing und Hook-Verdrahtung ergaenzt:
+  - `tests/test_train_efficientdet_config.py`
+  - `tests/test_train_efficientdet_pipeline.py`
+- Kleine technische Entscheidungsnotiz ergaenzt:
+  - `docs/BA_v2_Augmentation_Feasibility.md`
+- MVP-Plan minimal auf die neue Entscheidungsnotiz verlinkt:
   - `docs/MVP_Training_Plan.md`
-  - `docs/BA_v2_MVP_Train_Candidate.md`
-- Runbook um die verifizierten BA-v2-MVP-Train/Eval/Golden-Kommandos erweitert:
-  - `docs/runbook.md`
 - Pflicht-Report fuer diesen Task aktualisiert:
   - `docs/reviews/Codex-Task-Report_last.md`
 
 ## Was wurde wirklich verifiziert?
 - Statisch geprueft:
   - `README.md`
-  - `docs/BA_v2_Hazard_Labelset.md`
-  - `docs/BA_v2_MVP_Baseline.md`
-  - `docs/BA_v2_MVP_Train_Candidate.md`
-  - `docs/MVP_Training_Plan.md`
-  - `docs/runbook.md`
-  - `docs/android-export-contract.md`
-  - `configs/label_contracts/ba_v2_hazard.yaml`
+  - `src/owli_train/training/modelmaker_efficientdet.py`
+  - `src/owli_train/data/modelmaker_csv.py`
+  - `src/owli_train/cli.py`
   - `configs/efficientdet_lite2_ba_v2_mvp.yaml`
-  - BA-v2-relevante Merge-/Materialize-/CSV-Configs unter `configs/*`
-  - Trainings-/Eval-/Golden-/TFLite-Pfade unter:
-    - `src/owli_train/training/*`
-    - `src/owli_train/eval/*`
-    - `src/owli_train/golden/*`
-    - `src/owli_train/tflite_detect.py`
+  - `docs/runbook.md`
+  - `docs/MVP_Training_Plan.md`
+  - `docs/BA_v2_MVP_Train_Candidate.md`
+  - `docs/BA_v2_MVP_Baseline.md`
+  - vorheriger Stand von `docs/reviews/Codex-Task-Report_last.md`
+- Installierte, tatsaechlich genutzte Model-Maker-Schnittstelle lokal geprueft:
+  - `requirements/modelmaker.txt` pinnt:
+    - `tensorflow==2.8.4`
+    - `tflite-model-maker==0.4.3`
+  - in `.venv-modelmaker-py39` real inspiziert:
+    - `object_detector.create(...)`
+    - `object_detector.DataLoader.from_csv(...)`
+    - EfficientDet-`InputReader`
+    - EfficientDet-`autoaugment.py`
 - Inhaltlich verifiziert:
-  - der reale BA-v2-MVP-Datensatz ist `work/datasets/ba_v2_mvp_candidate`
-  - die reale Trainingsconfig ist `configs/efficientdet_lite2_ba_v2_mvp.yaml`
-  - die BA-v2-MVP-Klassenreihenfolge blieb durch Training, Export und Eval unveraendert:
-    - `obstacle_ground`
-    - `obstacle_barrier`
-    - `obstacle_hole_dropoff`
-    - `obstacle_pole`
-    - `person`
-    - `bicycle`
-    - `motorcycle`
-    - `car`
-    - `bus`
-    - `truck`
-  - `mapping_files.json` meldet keine fehlenden BA-v2-Klassen im `TRAIN`-Split
-  - TFLite-Eval konnte die Kategorien direkt per `labels.txt` gegen den BA-v2-TEST-Split ausrichten
+  - der aktuelle Repo-Pfad ist:
+    - COCO -> Model-Maker-CSV -> `DataLoader.from_csv(...)` -> TFRecord-Cache -> EfficientDet-`InputReader`
+  - der kleinste saubere Online-Hook liegt im aktuellen Produktpfad am `model_spec.hparams`
+  - Bounding Boxes werden im verwendeten EfficientDet-Dataloader fuer `random_horizontal_flip` sowie fuer Resize/Crop-Jitter gemeinsam mit dem Bild transformiert
+  - gezielte photometrische Einzelknobs (`brightness` / `contrast` / `color`) sind im aktuellen Repo-Pfad nicht als saubere Top-Level-Schalter vorhanden; sie sind nur indirekt ueber `autoaugment_policy` erreichbar
+  - ein frei gestaltbarer Repo-eigener `tf.data`-Augmentationspfad ist im aktuellen Model-Maker-Pfad nicht minimal-invasiv integrierbar
 - Real ausgefuehrt:
-  - echter BA-v2-MVP-Lite2-Trainingslauf mit GPU und ohne `--max-steps`
-  - echtes Lite2-Export-Artefakt unter `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite`
-  - `inspect tflite` auf dem exportierten BA-v2-Modell
-  - `eval efficientdet-tflite` auf dem kompletten BA-v2-`TEST`-Split mit `381` Bildern
-  - `golden detect` auf einem BA-v2-`TEST`-Bild mit drei Hazard-Core-Klassen plus Rehearsal-Mix
-  - erzeugte Artefakte:
-    - Run dir: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309`
-    - TFLite: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite`
-    - Labels: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/labels.txt`
-    - Class names: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/class_names.json`
-    - Eval JSON: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json`
-    - Eval Markdown: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.md`
-    - Golden JSON: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/golden_ba_v2_test_mix.json`
+  - `python -m ruff format .`
+  - `python -m ruff check .`
+  - `python -m pytest`
+  - zusaetzlich gezielte Offline-Tests auf den betroffenen EfficientDet-Dateien
+  - lokale Python-Inspektion der dedizierten `.venv-modelmaker-py39`-API und der installierten Package-Quellen
 
 ## Tests
-- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet --config configs/efficientdet_lite2_ba_v2_mvp.yaml --run-name ba-v2-mvp-baseline-20260309 --require-gpu`
+- `python -m ruff format src/owli_train/training/modelmaker_efficientdet.py tests/test_train_efficientdet_config.py tests/test_train_efficientdet_pipeline.py`
   - Exit-Code: `0`
-  - Ergebnis: echter BA-v2-MVP-Lauf mit `20` Epochen, Export von `model.tflite`, `labels.txt`, `class_names.json`
-- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite`
+  - Ergebnis: betroffene Dateien formatiert
+- `python -m ruff check src/owli_train/training/modelmaker_efficientdet.py tests/test_train_efficientdet_config.py tests/test_train_efficientdet_pipeline.py`
+  - Exit-Code: `1` beim ersten Lauf
+  - Ergebnis: ein einzelner Annotation-Style-Fix (`UP037`) in `modelmaker_efficientdet.py`
+- `python -m pytest tests/test_train_efficientdet_config.py tests/test_train_efficientdet_pipeline.py tests/test_train_efficientdet_cli.py`
   - Exit-Code: `0`
-  - Ergebnis: `builtin_ops_only=true`, Input `448x448x3 uint8`, erwartete EfficientDet-Lite2-Operatoren
-- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_v2_hazard_slice02_mapillary_od_ground/instances_test.json --images-dir work/datasets/ba_v2_mvp_candidate/images --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json`
+  - Ergebnis: `18 passed`
+- `python -m ruff format .`
   - Exit-Code: `0`
-  - Ergebnis: kompletter BA-v2-`TEST`-Split (`381` Bilder) ausgewertet, AP `0.1184`, AP50 `0.2149`, AP75 `0.1120`, AR100 `0.2005`
-- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite --image work/datasets/ba_v2_mvp_candidate/images/mapillary_vistas/training/ppvi1a8kNPmFjkS6Lhbnsg.jpg --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/golden_ba_v2_test_mix.json --score-threshold 0.1 --max-results 20 --num-threads 8`
+  - Ergebnis: Repo nach Abschluss des Patches formatiert
+- `python -m ruff check .`
   - Exit-Code: `0`
-  - Ergebnis: `20` Detections geschrieben; Klassenmix `person=11`, `car=8`, `truck=1`
-- Nicht ausgefuehrt:
-  - `ruff format`, `ruff check`, `pytest`
-  - Grund: nach dem Lauf wurden nur Doku-/Report-Dateien aktualisiert; die reale Verifikation fuer diesen Task lag bewusst auf dem echten Train/Eval/Golden-Pfad
+  - Ergebnis: alle Checks sauber
+- `python -m pytest`
+  - Exit-Code: `0`
+  - Ergebnis: `185 passed, 5 skipped`
 
 ## Relevante Run-Kommandos
-- Train BA-v2 MVP baseline:
+- Aktuelle BA-v2-Feasibility-Note:
+```bash
+sed -n '1,260p' docs/BA_v2_Augmentation_Feasibility.md
+```
+- Optionaler minimaler Online-Augmentations-Hook im bestehenden Produktpfad:
+```yaml
+train:
+  augmentation:
+    rand_hflip: true
+    jitter_min: 0.9
+    jitter_max: 1.1
+    autoaugment_policy: v1
+```
+- WSL2-Trainingskommando im bestehenden Pfad bleibt unveraendert:
 ```bash
 PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
   --config configs/efficientdet_lite2_ba_v2_mvp.yaml \
-  --run-name ba-v2-mvp-baseline-20260309 \
   --require-gpu
-```
-- Inspect exported BA-v2 Lite2 model:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
-  --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite
-```
-- Eval exported BA-v2 Lite2 model on the held-out BA-v2 `TEST` split:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
-  --coco work/splits/ba_v2_hazard_slice02_mapillary_od_ground/instances_test.json \
-  --images-dir work/datasets/ba_v2_mvp_candidate/images \
-  --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite \
-  --score-threshold 0.1 \
-  --noise-thresholds 0.05,0.1,0.3 \
-  --num-threads 8 \
-  --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json
-```
-- Generate BA-v2 golden detect sample:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
-  --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite \
-  --image work/datasets/ba_v2_mvp_candidate/images/mapillary_vistas/training/ppvi1a8kNPmFjkS6Lhbnsg.jpg \
-  --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/golden_ba_v2_test_mix.json \
-  --score-threshold 0.1 \
-  --max-results 20 \
-  --num-threads 8
 ```
 
 ## Offene Risiken
-- `obstacle_ground` bleibt datenmaessig ein schmaler Legacy-Bootstrap aus `Obstacle4` und ist quantitativ noch nicht brauchbar.
-- `obstacle_barrier` und `obstacle_hole_dropoff` zeigen zwar Lernsignal, sind aber weiter klar zu schwach und zu FP-lastig fuer einen produktnahen Hazard-Readout.
-- `obstacle_pole` bleibt trotz vieler Annotationen schwierig; die aktuelle BA-v2-Baseline deutet eher auf Ambiguitaet / Hintergrundclutter als auf ein reines Mengenproblem.
-- Die qualitative Golden-Probe auf einem Bild mit drei Hazard-Core-Klassen wird im Top-20-Output von `person` / `car` dominiert und zeigt keine Hazard-Core-Dimension im geschriebenen Sample.
-- Der historische Stage-3-BA-v1-Lauf bleibt der staerkere technische Vergleichsanker; die neue BA-v2-Baseline ist in erster Linie Produktlogik-Evidenz plus erster echter End-to-End-Nachweis.
+- Der neue Hook beweist die technische Integrationsstelle, aber nicht den Modellnutzen; es wurde bewusst kein neuer groesserer Trainingslauf gestartet.
+- `autoaugment_policy` ist technisch verfuegbar, mischt aber photometrische und geometrische Ops und ist deshalb deutlich weniger kontrollierbar als `rand_hflip` plus moderates `jitter`.
+- Eine saubere, frei definierbare Repo-eigene Online-Augmentationspipeline vor Model Maker bleibt ohne groesseren Umbau weiter ausser Reichweite.
+- Explizite Translate-only- oder Brightness-only-Schalter sind im aktuellen Produktpfad weiter nicht sauber exponiert.
 
 ## Nächster sinnvoller Schritt
-- Verbessere innerhalb des bestehenden BA-v2-MVP-Contracts gezielt die Hazard-Core-Datenqualitaet und FP-Kontrolle, statt den Scope erneut zu erweitern.
+- Fahre genau einen kleinen BA-v2-Vergleichslauf im bestehenden Produktpfad mit nur `rand_hflip` plus moderatem `jitter` gegen die aktuelle Baseline, bevor `autoaugment_policy` oder ein groesserer Trainingsumbau ueberhaupt erwogen wird.

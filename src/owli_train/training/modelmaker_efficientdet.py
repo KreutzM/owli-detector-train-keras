@@ -4,7 +4,7 @@ import csv
 import json
 import random
 import shutil
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -38,6 +38,7 @@ class EfficientDetTrainConfig:
     batch_size: int = 8
     train_whole_model: bool = False
     allow_missing_train_classes: bool = False
+    augmentation: EfficientDetAugmentationConfig | None = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,17 @@ class TrainSplitClassCoverage:
     missing_class_names: list[str]
 
 
+@dataclass(frozen=True)
+class EfficientDetAugmentationConfig:
+    rand_hflip: bool | None = None
+    jitter_min: float | None = None
+    jitter_max: float | None = None
+    autoaugment_policy: str | None = None
+
+
+_VALID_AUTOAUGMENT_POLICIES = frozenset({"v0", "v1", "v2", "v3", "test", "randaug"})
+
+
 def _as_mapping(obj: Any, label: str) -> dict[str, Any]:
     if not isinstance(obj, dict):
         raise ValueError(f"{label} must be an object.")
@@ -101,6 +113,79 @@ def _as_optional_path(value: Any) -> Path | None:
     if isinstance(value, str) and value.strip():
         return Path(value)
     raise ValueError("Optional path values must be non-empty strings when provided.")
+
+
+def _load_augmentation_config(value: Any) -> EfficientDetAugmentationConfig | None:
+    if value is None:
+        return None
+
+    raw = _as_mapping(value, "train.augmentation")
+
+    rand_hflip_raw = raw.get("rand_hflip")
+    if rand_hflip_raw is not None and not isinstance(rand_hflip_raw, bool):
+        raise ValueError("train.augmentation.rand_hflip must be a boolean when provided.")
+    rand_hflip = rand_hflip_raw if isinstance(rand_hflip_raw, bool) else None
+
+    jitter_min_raw = raw.get("jitter_min")
+    jitter_max_raw = raw.get("jitter_max")
+    if (jitter_min_raw is None) != (jitter_max_raw is None):
+        raise ValueError(
+            "train.augmentation.jitter_min and train.augmentation.jitter_max must be set together."
+        )
+    jitter_min = float(jitter_min_raw) if jitter_min_raw is not None else None
+    jitter_max = float(jitter_max_raw) if jitter_max_raw is not None else None
+    if jitter_min is not None and jitter_min <= 0:
+        raise ValueError("train.augmentation.jitter_min must be > 0.")
+    if jitter_max is not None and jitter_max <= 0:
+        raise ValueError("train.augmentation.jitter_max must be > 0.")
+    if jitter_min is not None and jitter_max is not None and jitter_min > jitter_max:
+        raise ValueError("train.augmentation.jitter_min must be <= train.augmentation.jitter_max.")
+
+    autoaugment_policy_raw = raw.get("autoaugment_policy")
+    autoaugment_policy = None
+    if autoaugment_policy_raw is not None:
+        if not isinstance(autoaugment_policy_raw, str) or not autoaugment_policy_raw.strip():
+            raise ValueError(
+                "train.augmentation.autoaugment_policy must be a non-empty string when provided."
+            )
+        autoaugment_policy = autoaugment_policy_raw.strip()
+        if autoaugment_policy not in _VALID_AUTOAUGMENT_POLICIES:
+            allowed = ", ".join(sorted(_VALID_AUTOAUGMENT_POLICIES))
+            raise ValueError(f"train.augmentation.autoaugment_policy must be one of: {allowed}.")
+
+    augmentation = EfficientDetAugmentationConfig(
+        rand_hflip=rand_hflip,
+        jitter_min=jitter_min,
+        jitter_max=jitter_max,
+        autoaugment_policy=autoaugment_policy,
+    )
+    if all(value is None for value in asdict(augmentation).values()):
+        return None
+    return augmentation
+
+
+def _format_hparam_value(value: bool | float | str) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, float):
+        return f"{value:g}"
+    return value
+
+
+def _build_model_spec_hparams(augmentation: EfficientDetAugmentationConfig | None) -> str:
+    if augmentation is None:
+        return ""
+
+    items: list[tuple[str, bool | float | str]] = []
+    if augmentation.rand_hflip is not None:
+        items.append(("input_rand_hflip", augmentation.rand_hflip))
+    if augmentation.jitter_min is not None:
+        items.append(("jitter_min", augmentation.jitter_min))
+    if augmentation.jitter_max is not None:
+        items.append(("jitter_max", augmentation.jitter_max))
+    if augmentation.autoaugment_policy is not None:
+        items.append(("autoaugment_policy", augmentation.autoaugment_policy))
+    return ",".join(f"{key}={_format_hparam_value(value)}" for key, value in items)
 
 
 def load_efficientdet_config(path: Path) -> EfficientDetConfig:
@@ -123,6 +208,7 @@ def load_efficientdet_config(path: Path) -> EfficientDetConfig:
         batch_size=int(train_raw.get("batch_size", 8)),
         train_whole_model=bool(train_raw.get("train_whole_model", False)),
         allow_missing_train_classes=bool(train_raw.get("allow_missing_train_classes", False)),
+        augmentation=_load_augmentation_config(train_raw.get("augmentation")),
     )
     if train.epochs <= 0:
         raise ValueError("train.epochs must be > 0.")
@@ -566,9 +652,11 @@ def train_efficientdet_from_config(
             expected=canonical_csv.present_class_names, actual=resolved_labels
         )
 
+    model_spec_hparams = _build_model_spec_hparams(cfg.train.augmentation)
     model_spec = variant_factory(
         epochs=effective_epochs,
         batch_size=effective_batch_size,
+        hparams=model_spec_hparams,
         model_dir=str(logs_dir),
     )
     try:
@@ -625,6 +713,13 @@ def train_efficientdet_from_config(
             "batch_size": effective_batch_size,
             "max_steps": max_steps,
             "subset_seed": subset_seed if max_steps is not None else None,
+        },
+        "augmentation": {
+            "config": asdict(cfg.train.augmentation)
+            if cfg.train.augmentation is not None
+            else None,
+            "model_spec_hparams": model_spec_hparams or None,
+            "applied_via": "model_spec.hparams",
         },
         "label_alignment": {
             "source": "label_map_json" if label_map_spec is not None else "train_data.label_map",
