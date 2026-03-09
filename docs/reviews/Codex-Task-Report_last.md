@@ -1,38 +1,33 @@
 # Codex Task Report
 
 ## Ziel
-- Die bestehende WebUI-Compare-Seite um kleine, kuratierte Per-Class-Vergleiche erweitern.
-- Neben globalen Metriken auch die wichtigsten BA-Core- und ausgewaehlten Rehearsal-Klassen direkt im Browser vergleichbar machen.
-- Den Ausbau bewusst klein halten: bestehende Eval-JSONs nutzen, keine neue Analyseplattform, keine neue Persistenz.
+- Die bestehende WebUI-Compare-Seite um kleine Delta-Spalten gegen einen Baseline-Run erweitern.
+- Neben den vorhandenen globalen und kuratierten Per-Class-Metriken auch die relative Einordnung gegen eine Referenz direkt im Browser sichtbar machen.
+- Den Ausbau bewusst klein halten: nur einfache Differenzen, keine neue Analyseplattform und keine neue Persistenz.
 
 ## Was wurde geändert?
-- Compare-View-Modelle um kuratierte Per-Class-Daten erweitert:
-  - Scope-Auswahl fuer `BA core only` und `BA core + rehearsal`
-  - Per-Class-Zellen und -Zeilen fuer die Compare-Seite
+- Compare-View-Modelle um Baseline- und Delta-Felder erweitert:
+  - Baseline-Optionen fuer `/compare/runs`
+  - globale Delta-Metriken pro Zeile
+  - kuratierte Per-Class-Delta-Metriken pro Zelle
+  - Baseline-Markierung fuer globale und Per-Class-Zeilen
   - Datei: `src/owli_train/webui/models.py`
-- Reader-Layer minimal um Per-Class-Compare-Aufbereitung erweitert:
-  - liest `per_class` direkt aus bestehenden `eval*.json`-Reports
-  - extrahiert `precision`, `recall`, `tp`, `fp`, `fn`
-  - fuehrt nur defensive Alias-Gruppierung innerhalb einzelner kuratierter Zeilen aus:
-    - `obstacle_fence` / `obstacle_fence_rail`
-    - `obstacle_hole` / `obstacle_hole_dropoff`
-  - haelt `obstacle_ground` und `obstacle_barrier` getrennt statt sie heuristisch zusammenzuwerfen
-  - rendert nur solche kuratierten Klassenzeilen, fuer die mindestens ein selektierter Eval-Report Daten liefert
+- Reader-Layer minimal um Baseline- und Delta-Aufbereitung erweitert:
+  - Baseline-Regel: explizit gewaehlter Baseline-Run oder sonst erster selektierter Run oder sonst erste angezeigte Zeile
+  - Deltas nur bei numerischen Werten auf beiden Seiten
+  - einfache rohe Differenzen fuer `AP`, `AP50`, `AP75`, `AR100`, `precision`, `recall`
+  - einfache rohe Differenzen fuer kuratierte Per-Class-Metriken `precision`, `recall`, `tp`, `fp`, `fn`
+  - defensive Alias-Nutzung bleibt unveraendert nur innerhalb kuratierter Klassenzeilen
   - Datei: `src/owli_train/webui/readers.py`
-- Compare-Route um den kleinen Query-Parameter `class_scope` erweitert:
+- Compare-Route um den kleinen Query-Parameter `baseline` erweitert:
   - Datei: `src/owli_train/webui/app.py`
-- Compare-Template um eine zweite kompakte Per-Class-Tabelle erweitert:
-  - globale Vergleichstabelle bleibt bestehen
-  - darunter kuratierte Per-Class-Sicht mit Scope-Auswahl und klaren `-`-Werten bei fehlenden Klassen
+- Compare-Template um Baseline-Auswahl, Baseline-Hinweis, Delta-Spalten und leichte Baseline-Hervorhebung erweitert:
   - Datei: `src/owli_train/webui/templates/compare_runs.html`
-- Kleine Phase-6-Textanpassungen in Navigation und Dashboard:
-  - `src/owli_train/webui/templates/base.html`
-  - `src/owli_train/webui/templates/dashboard.html`
-- Fixtures und Tests gezielt fuer Alias-Namen, fehlende Klassen und Scope-Umschalter erweitert:
-  - `tests/webui_test_utils.py`
+  - Datei: `src/owli_train/webui/templates/base.html`
+- Tests gezielt fuer Delta-Berechnung, Baseline-Standardregel, manuelle Baseline-Auswahl und Rendern der Delta-Sicht erweitert:
   - `tests/test_webui_reader.py`
   - `tests/test_webui_app.py`
-- Doku auf den kleinen Phase-6-Scope aktualisiert:
+- Doku auf den kleinen Delta-Scope aktualisiert:
   - `README.md`
   - `docs/webui.md`
   - `docs/runbook.md`
@@ -44,31 +39,34 @@
   - `docs/runbook.md`
   - `docs/review-templates/Codex-Task-Report.md`
   - bestehende WebUI-Dateien unter `src/owli_train/webui/`
-  - vorhandene Eval-Report-Struktur in `src/owli_train/eval/efficientdet_tflite.py`
 - Inhaltlich verifiziert:
-  - die globale Compare-Tabelle bleibt unveraendert erhalten
-  - die neue Per-Class-Sicht nutzt nur die vorhandenen `per_class`-Felder aus den Eval-JSONs
-  - historische Alias-Namen werden nur innerhalb kuratierter Klassenzeilen gematcht
-  - fehlende Klassen oder fehlende `per_class`-Bloecke fuehren zu klaren `-`-Werten oder zu einer leeren Per-Class-Sektion statt zu Fehlern
-  - der Scope-Umschalter `BA core only` vs `BA core + rehearsal` arbeitet ueber denselben Compare-Pfad
+  - die bisherige globale Compare-Tabelle bleibt erhalten und zeigt zusaetzlich Delta-Spalten
+  - die Baseline-Auswahl bleibt klein und nutzt nur einen einzelnen Referenz-Run
+  - Delta-Werte werden nur bei numerisch vorhandenen Werten auf beiden Seiten berechnet
+  - fehlende globale oder Per-Class-Werte bleiben als `-` sichtbar
+  - Baseline-Zeilen und -Zellen werden klar markiert und zeigen `baseline` statt einer Differenz
+  - die bestehende defensive Alias-Behandlung fuer `obstacle_fence` / `obstacle_fence_rail` und `obstacle_hole` / `obstacle_hole_dropoff` bleibt erhalten
 - Real ausgefuehrt:
-  - gezielte WebUI-Reader- und Route-Tests fuer die Per-Class-Sicht
+  - gezielte WebUI-Reader- und Route-Tests fuer Delta-Logik und Baseline-Auswahl
   - `ruff format`, `ruff check`, kompletter `pytest`-Lauf
   - lokaler Uvicorn-Start gegen das echte Repo
-  - echte HTTP-GETs auf `/` und `/compare/runs` gegen das echte Repo
-  - lokaler Uvicorn-Start gegen ein temporaeres Sample-Repo mit mehreren Compare-Runs und Per-Class-Daten
+  - echte HTTP-GETs auf `/compare/runs` gegen das echte Repo
+  - lokaler Uvicorn-Start gegen ein temporaeres Sample-Repo mit mehreren Compare-Runs
   - echte HTTP-GETs auf `/compare/runs` gegen das Sample-Repo fuer:
-    - Default-Per-Class-Sicht
-    - `BA core + rehearsal`
-    - gefilterte Stage-4-Ansicht mit `class_scope`
+    - Default-Baseline
+    - explizite Baseline-Auswahl
+    - BA-core-plus-rehearsal-Sicht mit Delta-Spalten
 - Nicht real verifiziert:
-  - eine Multi-Run-Per-Class-Ansicht gegen echte lokale Repo-Artefakte unter `work/runs`, weil dieses Verzeichnis im aktuellen Repo-Workspace weiterhin fehlt
-  - eine vollstaendige beliebige Per-Class-Auswahl, weil diese bewusst nicht Teil des kleinen Scopes ist
+  - eine Multi-Run-Delta-Ansicht gegen echte lokale Repo-Artefakte unter `work/runs`, weil dieses Verzeichnis im aktuellen Repo-Workspace weiterhin fehlt
+  - eine komplexere Mehrfach-Baseline-Logik, weil sie bewusst nicht Teil des Scopes ist
 
 ## Tests
 - `python -m pytest tests/test_webui_reader.py tests/test_webui_app.py`
   - Exit-Code: `0`
-  - Ergebnis: `16 passed in 2.66s`
+  - Ergebnis: `20 passed in 2.87s`
+- `python -m pytest tests/test_webui_app.py`
+  - Exit-Code: `0`
+  - Ergebnis: `8 passed in 1.81s`
 - `python -m ruff format .`
   - Exit-Code: `0`
   - Ergebnis: `2 files reformatted, 79 files left unchanged`
@@ -77,25 +75,27 @@
   - Ergebnis: `All checks passed!`
 - `python -m pytest`
   - Exit-Code: `0`
-  - Ergebnis: `188 passed, 5 skipped in 7.74s`
+  - Ergebnis: `195 passed, 5 skipped in 7.81s`
 - `PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000`
   - Exit-Code: `0` nach sauberem `CTRL+C`
   - Ergebnis: WebUI startete lokal gegen das echte Repo
-- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8000'\npaths = ['/', '/compare/runs']\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\n        if path == '/compare/runs':\n            print('compare_title', 'Run / Eval Compare' in response.text)\n            print('per_class_title', 'Curated per-class view' in response.text)\nPY`
+- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8000'\npaths = ['/compare/runs']\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\n        print('compare_title', 'Run / Eval Compare' in response.text)\n        print('delta_header', 'Delta AP50' in response.text)\n        print('baseline_note', 'Baseline reference:' in response.text)\nPY`
   - Exit-Code: `0`
   - Ergebnis:
-    - `/` -> `200`
     - `/compare/runs` -> `200`
-    - Compare- und Per-Class-Ueberschrift im HTML vorhanden
-- `PYTHONPATH=src:. python - <<'PY'\nimport tempfile\nfrom pathlib import Path\n\nimport uvicorn\n\nfrom owli_train.webui.app import create_app\nfrom tests.webui_test_utils import build_sample_repo\n\nrepo_root = build_sample_repo(Path(tempfile.mkdtemp(prefix='owli-webui-per-class-')))\nprint(repo_root)\nuvicorn.run(create_app(repo_root=repo_root), host='127.0.0.1', port=8001)\nPY`
+    - `compare_title=True`
+    - `delta_header=False`
+    - `baseline_note=False`
+    - Grund: Im aktuellen echten Repo fehlen weiter `work/runs`-Artefakte, daher rendert die leere Compare-Seite ohne Datenzeilen und ohne Delta-Header
+- `PYTHONPATH=src:. python - <<'PY'\nimport tempfile\nfrom pathlib import Path\n\nimport uvicorn\n\nfrom owli_train.webui.app import create_app\nfrom tests.webui_test_utils import build_sample_repo\n\nrepo_root = build_sample_repo(Path(tempfile.mkdtemp(prefix='owli-webui-delta-')))\nprint(repo_root)\nuvicorn.run(create_app(repo_root=repo_root), host='127.0.0.1', port=8001)\nPY`
   - Exit-Code: `0` nach sauberem `CTRL+C`
-  - Ergebnis: WebUI startete lokal gegen ein temporaeres Sample-Repo mit Per-Class-Compare-Daten
-- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8001'\npaths = [\n    '/compare/runs',\n    '/compare/runs?class_scope=ba_core_rehearsal',\n    '/compare/runs?run=work/runs/20260308-211806-ba-mvp-stage4-20260308&target=split:ba_mvp_stage4_with_coco_replay:test&class_scope=ba_core_rehearsal',\n]\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\n        print('per_class_title', 'Curated per-class view' in response.text)\n        print('fence_alias', 'obstacle_fence_rail' in response.text)\n        print('rehearsal_scope', 'BA core + rehearsal' in response.text)\n        print('truck_row', 'truck' in response.text)\n        print('selection_summary', 'Showing 1 eval rows across 1 runs' in response.text)\nPY`
+  - Ergebnis: WebUI startete lokal gegen ein temporaeres Sample-Repo mit mehreren Compare-Runs
+- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8001'\npaths = [\n    '/compare/runs',\n    '/compare/runs?baseline=work/runs/20260308-211806-ba-mvp-stage4-20260308',\n    '/compare/runs?class_scope=ba_core_rehearsal',\n]\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\n        print('delta_header', 'Delta AP50' in response.text)\n        print('baseline_note', 'Baseline reference:' in response.text)\n        print('delta_value', '+0.0035' in response.text or '-0.0035' in response.text)\n        print('per_class_delta', '<code>tp</code>: baseline' in response.text)\nPY`
   - Exit-Code: `0`
   - Ergebnis:
-    - Default-Compare rendert mit Per-Class-Sicht und Alias-Hinweis
-    - `BA core + rehearsal` rendert mit zusaetzlichen Rehearsal-Zeilen wie `truck`
-    - gefilterte Stage-4-Ansicht rendert mit `200` und passender Auswahlzusammenfassung
+    - Default-Compare rendert mit Delta-Spalten
+    - explizite Baseline-Auswahl rendert mit angepasster Referenz
+    - BA-core-plus-rehearsal-Sicht rendert mit Per-Class-Delta-Zellen
 
 ## Relevante Run-Kommandos
 - WebUI lokal in WSL2 starten:
@@ -107,19 +107,19 @@ PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --por
 ```text
 http://127.0.0.1:8000/compare/runs
 ```
-- Optional die Per-Class-Sicht auf BA-Core plus Rehearsal erweitern:
+- Optional eine explizite Baseline waehlen:
+```text
+http://127.0.0.1:8000/compare/runs?baseline=work/runs/<run-id>
+```
+- Optional die kuratierte Per-Class-Sicht mit Rehearsal-Klassen aktivieren:
 ```text
 http://127.0.0.1:8000/compare/runs?class_scope=ba_core_rehearsal
 ```
-- Optional eine gefilterte Compare-Ansicht mit Ziel und Scope aufrufen:
-```text
-http://127.0.0.1:8000/compare/runs?run=work/runs/<run-id>&target=<target-key>&class_scope=ba_core_rehearsal
-```
 
 ## Offene Risiken
-- Die Per-Class-Sicht bleibt bewusst klein und kuratiert; sie ist keine generische Contract- oder Klassen-Explorer-Oberflaeche.
-- Historische Alias-Namen werden nur innerhalb einzelner kuratierter Reihen defensiv zusammengefuehrt; weitergehende Semantik-Mappings zwischen BA-v1 und BA-v2 werden absichtlich nicht erfunden.
-- Im echten Repo-Workspace konnte wegen fehlender `work/runs`-Artefakte nur das Rendern der leeren Compare-/Per-Class-Seite live gegen das aktuelle Repo verifiziert werden; die Multi-Run-Per-Class-Ansicht wurde live gegen das Test-Sample verifiziert.
+- Die Delta-Sicht bleibt bewusst bei einfachen rohen Differenzen; sie bewertet nicht automatisch, ob ein positives oder negatives Vorzeichen fachlich besser ist.
+- Pro Compare-Ansicht wird bewusst nur eine Baseline gleichzeitig unterstuetzt.
+- Im echten Repo-Workspace konnte wegen fehlender `work/runs`-Artefakte nur das Rendern der leeren Compare-Seite live gegen das aktuelle Repo verifiziert werden; die Multi-Run-Delta-Ansicht wurde live gegen das Test-Sample verifiziert.
 
 ## Nächster sinnvoller Schritt
-- Ergaenze optional auf `/compare/runs` eine kleine, feste Delta-Spalte gegen den zuerst selektierten Baseline-Run fuer die kuratierten Per-Class-Metriken, ohne den UI-Scope auf freie Benchmark-Analysen auszuweiten.
+- Ergaenze optional auf `/compare/runs` eine kleine feste Sortierung nach einem ausgewaehlten Delta-Feld, ohne den UI-Scope auf eine generische Benchmark-Plattform auszuweiten.

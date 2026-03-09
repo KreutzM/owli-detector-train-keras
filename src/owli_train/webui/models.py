@@ -204,6 +204,13 @@ class CompareTargetOptionView:
 
 
 @dataclass(frozen=True)
+class CompareBaselineOptionView:
+    run_relative_path: str
+    label: str
+    selected: bool
+
+
+@dataclass(frozen=True)
 class CompareClassScopeOptionView:
     key: str
     label: str
@@ -224,12 +231,16 @@ class CompareRowView:
     eval_label: str
     golden_relative_path: str | None
     metrics: dict[str, str]
+    delta_metrics: dict[str, str]
+    is_baseline: bool
 
 
 @dataclass(frozen=True)
 class ComparePerClassCellView:
     matched_class_name: str | None
     metrics: dict[str, str]
+    delta_metrics: dict[str, str]
+    is_baseline: bool
 
 
 @dataclass(frozen=True)
@@ -246,6 +257,9 @@ class RunsCompareView:
     selected_target_label: str | None
     target_options: list[CompareTargetOptionView]
     run_options: list[CompareRunOptionView]
+    selected_baseline_run_path: str | None
+    selected_baseline_run_label: str | None
+    baseline_options: list[CompareBaselineOptionView]
     class_scope_key: str
     class_scope_options: list[CompareClassScopeOptionView]
     metric_keys: list[str]
