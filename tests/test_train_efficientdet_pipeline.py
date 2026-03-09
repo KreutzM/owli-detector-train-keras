@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 
 from owli_train.training.modelmaker_efficientdet import (
+    EfficientDetAugmentationConfig,
     EfficientDetTrainingError,
+    _build_model_spec_hparams,
     _canonicalize_csv_by_class_order,
     _collect_train_split_class_coverage,
     _enforce_train_split_class_contract,
@@ -266,6 +268,19 @@ def test_validate_resolved_label_order_raises_on_mismatch() -> None:
         _validate_resolved_label_order(expected=["person", "car"], actual=["car", "person"])
 
 
+def test_build_model_spec_hparams_serializes_supported_augmentation_fields() -> None:
+    hparams = _build_model_spec_hparams(
+        EfficientDetAugmentationConfig(
+            rand_hflip=False,
+            jitter_min=0.8,
+            jitter_max=1.2,
+            autoaugment_policy="v2",
+        )
+    )
+
+    assert hparams == ("input_rand_hflip=false,jitter_min=0.8,jitter_max=1.2,autoaugment_policy=v2")
+
+
 def test_visible_gpu_count_reads_tf_config() -> None:
     class _Config:
         @staticmethod
@@ -287,3 +302,114 @@ def test_gpu_missing_error_message_includes_actionable_hints() -> None:
     assert "No TensorFlow GPU device detected" in message
     assert "tensorflow=2.8.4" in message
     assert "MODELMAKER_PYTHON_EXE" in message
+
+
+def test_train_efficientdet_from_config_passes_augmentation_hparams_to_model_spec(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from owli_train.training import modelmaker_efficientdet as mm
+
+    cfg_path = tmp_path / "effdet.yaml"
+    dataset_csv = tmp_path / "dataset.csv"
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    _write_csv(
+        dataset_csv,
+        [["TRAIN", "a.jpg", "person", "0", "0", "", "", "1", "1"]],
+    )
+    cfg_path.write_text(
+        f"""
+model:
+  variant: lite2
+data:
+  csv: {dataset_csv}
+  images_dir: {images_dir}
+train:
+  epochs: 1
+  batch_size: 1
+  augmentation:
+    rand_hflip: false
+    jitter_min: 0.8
+    jitter_max: 1.2
+    autoaugment_policy: v1
+outputs:
+  work_dir: {tmp_path / "work"}
+  out_dir: {tmp_path / "outputs"}
+""",
+        encoding="utf-8",
+    )
+
+    captured: dict[str, object] = {}
+
+    class FakeTrainData:
+        label_map = {1: "person"}
+
+    class FakeDataLoader:
+        @staticmethod
+        def from_csv(*, filename: str, images_dir: str):
+            captured["from_csv"] = {"filename": filename, "images_dir": images_dir}
+            return FakeTrainData(), None, None
+
+    class FakeModel:
+        def export(
+            self,
+            *,
+            export_dir: str,
+            tflite_filename: str,
+            with_metadata: bool,
+            export_metadata_json_file: bool,
+        ) -> None:
+            captured["export"] = {
+                "export_dir": export_dir,
+                "tflite_filename": tflite_filename,
+                "with_metadata": with_metadata,
+                "export_metadata_json_file": export_metadata_json_file,
+            }
+            Path(export_dir, tflite_filename).write_text("fake-model", encoding="utf-8")
+
+    class FakeObjectDetector:
+        DataLoader = FakeDataLoader
+
+        @staticmethod
+        def create(**kwargs):
+            captured["create"] = kwargs
+            return FakeModel()
+
+    class FakeTF:
+        class config:
+            @staticmethod
+            def list_physical_devices(_kind: str):
+                return []
+
+    def fake_variant_factory(**kwargs):
+        captured["variant_kwargs"] = kwargs
+        return "fake-model-spec"
+
+    monkeypatch.setattr(mm, "ensure_modelmaker_dependencies", lambda: (FakeTF, FakeObjectDetector))
+    monkeypatch.setattr(
+        mm,
+        "_resolve_variant_factory",
+        lambda _object_detector, _variant: (fake_variant_factory, "lite2"),
+    )
+
+    artifacts = mm.train_efficientdet_from_config(config_path=cfg_path)
+
+    assert artifacts.tflite_path.name == "model.tflite"
+    assert captured["variant_kwargs"] == {
+        "epochs": 1,
+        "batch_size": 1,
+        "hparams": "input_rand_hflip=false,jitter_min=0.8,jitter_max=1.2,autoaugment_policy=v1",
+        "model_dir": str(artifacts.run_dir / "logs" / "modelmaker"),
+    }
+
+    mapping_payload = json.loads(artifacts.mapping_snapshot_path.read_text(encoding="utf-8"))
+    assert mapping_payload["augmentation"] == {
+        "config": {
+            "rand_hflip": False,
+            "jitter_min": 0.8,
+            "jitter_max": 1.2,
+            "autoaugment_policy": "v1",
+        },
+        "model_spec_hparams": "input_rand_hflip=false,jitter_min=0.8,jitter_max=1.2,autoaugment_policy=v1",
+        "applied_via": "model_spec.hparams",
+    }

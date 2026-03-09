@@ -13,6 +13,7 @@
 - Ground-bootstrap extension: [BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md](./BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md)
 - First BA-v2 MVP training candidate: [BA_v2_MVP_Train_Candidate.md](./BA_v2_MVP_Train_Candidate.md)
 - First real BA-v2 MVP baseline: [BA_v2_MVP_Baseline.md](./BA_v2_MVP_Baseline.md)
+- Online augmentation feasibility note: [BA_v2_Augmentation_Feasibility.md](./BA_v2_Augmentation_Feasibility.md)
 - Verified interim baseline contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
 - Historical interim rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
 - Important boundary:

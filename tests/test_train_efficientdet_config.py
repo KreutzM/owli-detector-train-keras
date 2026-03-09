@@ -20,6 +20,11 @@ train:
   batch_size: 2
   train_whole_model: true
   allow_missing_train_classes: true
+  augmentation:
+    rand_hflip: false
+    jitter_min: 0.8
+    jitter_max: 1.2
+    autoaugment_policy: v1
 outputs:
   work_dir: work
   out_dir: outputs
@@ -34,6 +39,11 @@ outputs:
     assert cfg.train.batch_size == 2
     assert cfg.train.train_whole_model is True
     assert cfg.train.allow_missing_train_classes is True
+    assert cfg.train.augmentation is not None
+    assert cfg.train.augmentation.rand_hflip is False
+    assert cfg.train.augmentation.jitter_min == 0.8
+    assert cfg.train.augmentation.jitter_max == 1.2
+    assert cfg.train.augmentation.autoaugment_policy == "v1"
 
 
 def test_load_efficientdet_config_validates_batch_size(tmp_path: Path):
@@ -50,4 +60,22 @@ train:
     )
 
     with pytest.raises(ValueError, match="batch_size"):
+        load_efficientdet_config(cfg_path)
+
+
+def test_load_efficientdet_config_rejects_invalid_augmentation_policy(tmp_path: Path):
+    cfg_path = tmp_path / "effdet_invalid_aug.yaml"
+    cfg_path.write_text(
+        """
+data:
+  csv: a.csv
+  images_dir: images
+train:
+  augmentation:
+    autoaugment_policy: nope
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="autoaugment_policy"):
         load_efficientdet_config(cfg_path)
