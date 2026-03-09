@@ -50,7 +50,8 @@ Phase-6 analysis support:
 - run artifact and report listings
 - eval JSON metrics and per-class tables where present
 - compare view for shared eval targets across multiple runs with AP, AP50, AP75, AR100, precision, and recall
-- compare view with a curated per-class section for BA core and optional rehearsal classes using precision, recall, tp, fp, fn
+- compare view with one baseline selector and raw delta columns for AP, AP50, AP75, AR100, precision, and recall
+- compare view with a curated per-class section for BA core and optional rehearsal classes using precision, recall, tp, fp, fn and matching raw delta columns
 - golden JSON metadata and detection tables
 - dataset detail -> open supported dataset in local FiftyOne
 - eval detail -> open referenced dataset in local FiftyOne when eval JSON records repo-local paths
@@ -60,6 +61,7 @@ Phase-6 boundaries:
 - no pseudo-label teacher runs
 - no large benchmark platform
 - no generic full-contract per-class analysis suite
+- no multi-baseline or chart-heavy delta system
 - no FiftyOne prediction/eval overlays in this phase
 - no multi-user session management
 - no arbitrary shell command entry

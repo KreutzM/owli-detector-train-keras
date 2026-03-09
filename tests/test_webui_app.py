@@ -53,6 +53,9 @@ def test_webui_routes_render_dashboard_contracts_and_artifacts(tmp_path):
     assert "Run / Eval Compare" in compare_runs.text
     assert "Stage-3 baseline" in compare_runs.text
     assert "ba_mvp_stage3_balanced_multisource / TEST" in compare_runs.text
+    assert "Baseline reference:" in compare_runs.text
+    assert "Delta AP50" in compare_runs.text
+    assert "baseline" in compare_runs.text
     assert "Curated per-class view" in compare_runs.text
     assert "obstacle_fence / obstacle_fence_rail" in compare_runs.text
     assert "using <code>obstacle_fence_rail</code>" in compare_runs.text
@@ -119,6 +122,21 @@ def test_compare_runs_route_supports_per_class_scope_switch(tmp_path):
     assert "person" in response.text
     assert "bicycle" in response.text
     assert "truck" in response.text
+
+
+def test_compare_runs_route_supports_explicit_baseline_selection(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    client = TestClient(create_app(repo_root=repo_root))
+
+    response = client.get(
+        "/compare/runs",
+        params={"baseline": "work/runs/20260308-211806-ba-mvp-stage4-20260308"},
+    )
+
+    assert response.status_code == 200
+    assert "Baseline reference: <strong>Stage-4 replay baseline</strong>." in response.text
+    assert "Delta AP50" in response.text
+    assert "+0.0035" in response.text
 
 
 def test_fiftyone_launch_route_renders_ready_state_with_local_link(tmp_path):

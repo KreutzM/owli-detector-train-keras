@@ -11,6 +11,7 @@ import yaml
 
 from owli_train.webui.models import (
     ArtifactDirectoryView,
+    CompareBaselineOptionView,
     CompareClassScopeOptionView,
     ComparePerClassCellView,
     ComparePerClassRowView,
@@ -150,6 +151,7 @@ class _CompareCandidate:
     eval_sort_value: str
     golden_relative_path: str | None
     metrics: dict[str, str]
+    metric_values: dict[str, int | float | None]
     per_class: dict[str, dict[str, Any]]
 
 
@@ -452,10 +454,12 @@ class RepositoryReader:
         *,
         selected_run_paths: list[str] | None = None,
         target_key: str | None = None,
+        baseline_run_path: str | None = None,
         class_scope_key: str | None = None,
     ) -> RunsCompareView:
         candidates = self._load_compare_candidates()
-        selected_paths = {path for path in (selected_run_paths or []) if path.strip()}
+        selected_path_order = [path for path in (selected_run_paths or []) if path.strip()]
+        selected_paths = set(selected_path_order)
         run_paths = {candidate.run_relative_path for candidate in candidates}
         filtered_candidates = [
             candidate
@@ -476,15 +480,32 @@ class RepositoryReader:
             (item for item in target_options if item.selected),
             None,
         )
-        rows = [
-            self._candidate_to_compare_row(candidate)
-            for candidate in filtered_candidates
-            if selected_target is not None and candidate.target_key == selected_target.key
-        ]
         selected_candidates = [
             candidate
             for candidate in filtered_candidates
             if selected_target is not None and candidate.target_key == selected_target.key
+        ]
+        baseline_options = self._build_compare_baseline_options(
+            candidates=selected_candidates,
+            selected_path_order=selected_path_order,
+            requested_baseline_run_path=baseline_run_path,
+        )
+        selected_baseline = next(
+            (item for item in baseline_options if item.selected),
+            None,
+        )
+        baseline_candidate = self._select_baseline_candidate(
+            candidates=selected_candidates,
+            baseline_run_path=selected_baseline.run_relative_path
+            if selected_baseline is not None
+            else None,
+        )
+        rows = [
+            self._candidate_to_compare_row(
+                candidate,
+                baseline_candidate=baseline_candidate,
+            )
+            for candidate in selected_candidates
         ]
         class_scope_options = self._build_compare_class_scope_options(
             requested_scope_key=class_scope_key
@@ -495,6 +516,7 @@ class RepositoryReader:
         )
         per_class_rows = self._build_compare_per_class_rows(
             candidates=selected_candidates,
+            baseline_candidate=baseline_candidate,
             scope_key=selected_class_scope.key,
         )
 
@@ -523,6 +545,13 @@ class RepositoryReader:
             selected_target_label=selected_target.label if selected_target is not None else None,
             target_options=target_options,
             run_options=run_options,
+            selected_baseline_run_path=selected_baseline.run_relative_path
+            if selected_baseline is not None
+            else None,
+            selected_baseline_run_label=selected_baseline.label
+            if selected_baseline is not None
+            else None,
+            baseline_options=baseline_options,
             class_scope_key=selected_class_scope.key,
             class_scope_options=class_scope_options,
             metric_keys=list(COMPARE_METRIC_KEYS),
@@ -696,6 +725,7 @@ class RepositoryReader:
                         payload=payload,
                     )
                 )
+                metric_values = self._extract_compare_metric_values(payload)
                 candidates.append(
                     _CompareCandidate(
                         run_id=run_dir.name,
@@ -714,7 +744,11 @@ class RepositoryReader:
                         or self._format_mtime(eval_path)
                         or eval_path.name,
                         golden_relative_path=golden_relative_path,
-                        metrics=self._extract_compare_metrics(payload),
+                        metrics={
+                            key: self._format_number(metric_values.get(key))
+                            for key in COMPARE_METRIC_KEYS
+                        },
+                        metric_values=metric_values,
                         per_class=self._extract_compare_per_class(payload),
                     )
                 )
@@ -775,6 +809,41 @@ class RepositoryReader:
             for key, (label, count) in ordered
         ]
 
+    def _build_compare_baseline_options(
+        self,
+        *,
+        candidates: list[_CompareCandidate],
+        selected_path_order: list[str],
+        requested_baseline_run_path: str | None,
+    ) -> list[CompareBaselineOptionView]:
+        ordered_runs: list[tuple[str, str]] = []
+        seen_paths: set[str] = set()
+        for candidate in candidates:
+            if candidate.run_relative_path in seen_paths:
+                continue
+            seen_paths.add(candidate.run_relative_path)
+            ordered_runs.append((candidate.run_relative_path, candidate.run_display_name))
+
+        default_path = (
+            requested_baseline_run_path if requested_baseline_run_path in seen_paths else None
+        )
+        if default_path is None:
+            for path in selected_path_order:
+                if path in seen_paths:
+                    default_path = path
+                    break
+        if default_path is None and ordered_runs:
+            default_path = ordered_runs[0][0]
+
+        return [
+            CompareBaselineOptionView(
+                run_relative_path=run_relative_path,
+                label=label,
+                selected=run_relative_path == default_path,
+            )
+            for run_relative_path, label in ordered_runs
+        ]
+
     def _build_compare_class_scope_options(
         self,
         *,
@@ -797,6 +866,7 @@ class RepositoryReader:
         self,
         *,
         candidates: list[_CompareCandidate],
+        baseline_candidate: _CompareCandidate | None,
         scope_key: str,
     ) -> list[ComparePerClassRowView]:
         rows: list[ComparePerClassRowView] = []
@@ -805,7 +875,11 @@ class RepositoryReader:
             if row_scope == "ba_core_rehearsal" and not include_rehearsal:
                 continue
             cells = [
-                self._build_compare_per_class_cell(candidate, aliases=aliases)
+                self._build_compare_per_class_cell(
+                    candidate,
+                    aliases=aliases,
+                    baseline_candidate=baseline_candidate,
+                )
                 for candidate in candidates
             ]
             if not any(cell.matched_class_name is not None for cell in cells):
@@ -828,24 +902,62 @@ class RepositoryReader:
         candidate: _CompareCandidate,
         *,
         aliases: tuple[str, ...],
+        baseline_candidate: _CompareCandidate | None,
     ) -> ComparePerClassCellView:
+        is_baseline = (
+            baseline_candidate is not None
+            and candidate.run_relative_path == baseline_candidate.run_relative_path
+        )
+        matched_payload: dict[str, Any] | None = None
         for alias in aliases:
             payload = candidate.per_class.get(alias.lower())
             if payload is None:
                 continue
+            matched_payload = payload
+            break
+        if matched_payload is None:
             return ComparePerClassCellView(
-                matched_class_name=str(payload.get("__matched_name__", alias)),
-                metrics={
-                    key: self._format_number(payload.get(key))
+                matched_class_name=None,
+                metrics={key: "-" for key in COMPARE_PER_CLASS_METRIC_KEYS},
+                delta_metrics={
+                    key: self._format_delta(current=None, baseline=None, is_baseline=is_baseline)
                     for key in COMPARE_PER_CLASS_METRIC_KEYS
                 },
+                is_baseline=is_baseline,
             )
+        baseline_payload = (
+            self._resolve_baseline_per_class_payload(baseline_candidate, aliases=aliases)
+            if baseline_candidate is not None
+            else None
+        )
+        delta_metrics = {
+            key: self._format_delta(
+                current=matched_payload.get(key),
+                baseline=baseline_payload.get(key) if baseline_payload is not None else None,
+                is_baseline=is_baseline,
+            )
+            for key in COMPARE_PER_CLASS_METRIC_KEYS
+        }
         return ComparePerClassCellView(
-            matched_class_name=None,
-            metrics={key: "-" for key in COMPARE_PER_CLASS_METRIC_KEYS},
+            matched_class_name=str(matched_payload.get("__matched_name__", aliases[0])),
+            metrics={
+                key: self._format_number(matched_payload.get(key))
+                for key in COMPARE_PER_CLASS_METRIC_KEYS
+            },
+            delta_metrics=delta_metrics,
+            is_baseline=is_baseline,
         )
 
-    def _candidate_to_compare_row(self, candidate: _CompareCandidate) -> CompareRowView:
+    def _candidate_to_compare_row(
+        self,
+        candidate: _CompareCandidate,
+        *,
+        baseline_candidate: _CompareCandidate | None,
+    ) -> CompareRowView:
+        is_baseline = (
+            baseline_candidate is not None
+            and candidate.run_relative_path == baseline_candidate.run_relative_path
+        )
         return CompareRowView(
             run_id=candidate.run_id,
             run_relative_path=candidate.run_relative_path,
@@ -859,7 +971,31 @@ class RepositoryReader:
             eval_label=candidate.eval_label,
             golden_relative_path=candidate.golden_relative_path,
             metrics=candidate.metrics,
+            delta_metrics={
+                key: self._format_delta(
+                    current=candidate.metric_values.get(key),
+                    baseline=baseline_candidate.metric_values.get(key)
+                    if baseline_candidate is not None
+                    else None,
+                    is_baseline=is_baseline,
+                )
+                for key in COMPARE_METRIC_KEYS
+            },
+            is_baseline=is_baseline,
         )
+
+    def _select_baseline_candidate(
+        self,
+        *,
+        candidates: list[_CompareCandidate],
+        baseline_run_path: str | None,
+    ) -> _CompareCandidate | None:
+        if baseline_run_path is None:
+            return candidates[0] if candidates else None
+        for candidate in candidates:
+            if candidate.run_relative_path == baseline_run_path:
+                return candidate
+        return candidates[0] if candidates else None
 
     def _compare_candidate_sort_key(self, candidate: _CompareCandidate) -> tuple[object, ...]:
         curated_order = {
@@ -918,21 +1054,29 @@ class RepositoryReader:
             self._infer_curated_compare_label(fallback),
         )
 
-    def _extract_compare_metrics(self, payload: dict[str, Any]) -> dict[str, str]:
+    def _extract_compare_metric_values(
+        self, payload: dict[str, Any]
+    ) -> dict[str, int | float | None]:
         metrics = payload.get("metrics")
         counts = payload.get("summary_counts")
         metric_map = metrics if isinstance(metrics, dict) else {}
         count_map = counts if isinstance(counts, dict) else {}
 
         return {
-            "AP": self._format_number(metric_map.get("AP", metric_map.get("mAP"))),
-            "AP50": self._format_number(metric_map.get("AP50", metric_map.get("mAP50"))),
-            "AP75": self._format_number(metric_map.get("AP75")),
-            "AR100": self._format_number(metric_map.get("AR100")),
-            "precision": self._format_number(
+            "AP": self._coerce_numeric(metric_map.get("AP", metric_map.get("mAP"))),
+            "AP50": self._coerce_numeric(metric_map.get("AP50", metric_map.get("mAP50"))),
+            "AP75": self._coerce_numeric(metric_map.get("AP75")),
+            "AR100": self._coerce_numeric(metric_map.get("AR100")),
+            "precision": self._coerce_numeric(
                 count_map.get("precision", metric_map.get("precision"))
             ),
-            "recall": self._format_number(count_map.get("recall", metric_map.get("recall"))),
+            "recall": self._coerce_numeric(count_map.get("recall", metric_map.get("recall"))),
+        }
+
+    def _extract_compare_metrics(self, payload: dict[str, Any]) -> dict[str, str]:
+        return {
+            key: self._format_number(value)
+            for key, value in self._extract_compare_metric_values(payload).items()
         }
 
     def _extract_compare_per_class(self, payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -952,6 +1096,30 @@ class RepositoryReader:
                 **{key: values.get(key) for key in COMPARE_PER_CLASS_METRIC_KEYS if key in values},
             }
         return extracted
+
+    def _resolve_baseline_per_class_payload(
+        self,
+        baseline_candidate: _CompareCandidate,
+        *,
+        aliases: tuple[str, ...],
+    ) -> dict[str, Any] | None:
+        for alias in aliases:
+            payload = baseline_candidate.per_class.get(alias.lower())
+            if payload is not None:
+                return payload
+        return None
+
+    def _format_delta(self, *, current: Any, baseline: Any, is_baseline: bool) -> str:
+        if is_baseline:
+            return "baseline"
+        current_value = self._coerce_numeric(current)
+        baseline_value = self._coerce_numeric(baseline)
+        if current_value is None or baseline_value is None:
+            return "-"
+        delta = current_value - baseline_value
+        if isinstance(current_value, int) and isinstance(baseline_value, int):
+            return f"{delta:+d}"
+        return f"{delta:+.4f}".rstrip("0").rstrip(".")
 
     def _resolve_run_config_reference(self, run_dir: Path) -> tuple[str | None, str | None]:
         snapshot_candidates = (
@@ -1447,6 +1615,27 @@ class RepositoryReader:
         if value is None:
             return "-"
         return str(value)
+
+    @staticmethod
+    def _coerce_numeric(value: Any) -> int | float | None:
+        if isinstance(value, bool) or value is None:
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return value
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return None
+            try:
+                number = float(text)
+            except ValueError:
+                return None
+            if text.isdigit() or (text.startswith("-") and text[1:].isdigit()):
+                return int(number)
+            return number
+        return None
 
     @staticmethod
     def _format_bbox(value: Any) -> str:

@@ -17,10 +17,13 @@
 - a small compare page for structured eval JSON reports with:
   - target-group selection based on shared eval dataset/split
   - simple run selection
+  - one selected baseline run, defaulting to the first selected run or first displayed row
   - side-by-side AP, AP50, AP75, AR100, precision, and recall
+  - raw delta columns for those global metrics against the selected baseline
   - a curated per-class table with:
     - `BA core only` or `BA core + rehearsal`
     - `precision`, `recall`, `tp`, `fp`, `fn`
+    - raw delta columns for those per-class metrics against the selected baseline
     - defensive alias handling for historical names such as `obstacle_fence_rail` and `obstacle_hole_dropoff`
   - links back to run, eval, and golden details
 - dataset detail pages with:
@@ -151,7 +154,12 @@ Main routes:
   - matched config path when the run-local config snapshot equals one checked-in repo config
   - dataset / split context from `coco_path` when that path resolves inside the repo
   - global metrics: `AP`, `AP50`, `AP75`, `AR100`, `precision`, `recall`
+  - delta columns with simple raw differences against one baseline run
   - links to run, eval, and golden detail pages
+- The baseline run:
+  - defaults to the first selected run when run filters are present
+  - otherwise defaults to the first displayed row for the current target group
+  - can be changed with the small baseline selector on the page
 - The per-class section:
   - uses the existing `per_class` block from the same eval JSON files
   - shows only a small curated class set, not the full contract
@@ -159,11 +167,15 @@ Main routes:
   - treats `obstacle_fence` and `obstacle_fence_rail` as one curated row only for display
   - treats `obstacle_hole` and `obstacle_hole_dropoff` as one curated row only for display
   - does not collapse unrelated classes such as `obstacle_barrier` into those historical rows
+- Delta values are only shown when both current and baseline values are numeric.
+- Baseline cells render as `baseline`, and missing values stay visible as `-`.
 - Missing metrics stay visible as `-` instead of hiding the whole row.
 - Curated per-class rows are only rendered when at least one selected eval report provides data for that class row.
 - Intentionally not supported yet:
   - arbitrary per-class compare builders
   - cross-run charts
+  - multiple simultaneous baselines
+  - percentage-normalized delta views
   - database-backed experiment metadata
 
 ## FiftyOne runtime model

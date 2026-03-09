@@ -9,6 +9,9 @@
       {% if compare_view.selected_target_label %}
         Current target: <strong>{{ compare_view.selected_target_label }}</strong>.
       {% endif %}
+      {% if compare_view.selected_baseline_run_label %}
+        Baseline reference: <strong>{{ compare_view.selected_baseline_run_label }}</strong>.
+      {% endif %}
     </div>
     <form method="get" action="{{ url_for('compare_runs_page') }}" style="margin-top: 1rem;">
       <div class="inline-form">
@@ -22,6 +25,23 @@
             {% endfor %}
           </select>
         </div>
+        {% if compare_view.baseline_options %}
+          <div style="min-width: 250px; flex: 1 1 250px;">
+            <label for="baseline">Baseline run</label>
+            <select id="baseline" name="baseline">
+              {% for option in compare_view.baseline_options %}
+                <option value="{{ option.run_relative_path }}" {% if option.selected %}selected{% endif %}>
+                  {{ option.label }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        {% else %}
+          <div style="min-width: 250px; flex: 1 1 250px;">
+            <label>Baseline run</label>
+            <div class="meta">No baseline candidates for the current selection yet.</div>
+          </div>
+        {% endif %}
         <div style="min-width: 220px; flex: 1 1 220px;">
           <label for="class_scope">Per-class scope</label>
           <select id="class_scope" name="class_scope">
@@ -55,6 +75,7 @@
 
   <section class="panel">
     <h2>Comparison table</h2>
+    <p class="meta">Delta columns show raw differences against the selected baseline run. Missing numeric values stay visible as "-".</p>
     {% if compare_view.rows %}
       <table>
         <thead>
@@ -64,18 +85,22 @@
             <th>Dataset / stage</th>
             {% for metric_key in compare_view.metric_keys %}
               <th>{{ metric_key }}</th>
+              <th>Delta {{ metric_key }}</th>
             {% endfor %}
             <th>Links</th>
           </tr>
         </thead>
         <tbody>
           {% for row in compare_view.rows %}
-            <tr>
+            <tr{% if row.is_baseline %} class="baseline-row"{% endif %}>
               <td>
                 <strong>{{ row.run_display_name }}</strong>
                 <div class="path">{{ row.run_relative_path }}</div>
                 {% if row.curated_label and row.curated_label != row.run_display_name %}
                   <div class="chips"><span class="chip">{{ row.curated_label }}</span></div>
+                {% endif %}
+                {% if row.is_baseline %}
+                  <div class="baseline-badge">Baseline</div>
                 {% endif %}
               </td>
               <td>
@@ -91,6 +116,7 @@
               </td>
               {% for metric_key in compare_view.metric_keys %}
                 <td>{{ row.metrics[metric_key] }}</td>
+                <td>{{ row.delta_metrics[metric_key] }}</td>
               {% endfor %}
               <td>
                 <div class="actions">
@@ -116,6 +142,7 @@
   <section class="panel">
     <h2>Curated per-class view</h2>
     <p class="meta">{{ compare_view.per_class_note }}</p>
+    <p class="meta">Per-class deltas also use raw differences. For <code>fp</code> and <code>fn</code>, a negative delta means fewer errors than the baseline.</p>
     {% if compare_view.per_class_rows and compare_view.rows %}
       <table>
         <thead>
@@ -126,6 +153,7 @@
                 {{ row.run_display_name }}
                 <div class="meta">{{ row.eval_label }}</div>
               </th>
+              <th>Delta</th>
             {% endfor %}
           </tr>
         </thead>
@@ -140,7 +168,7 @@
                 {% endif %}
               </td>
               {% for cell in per_class_row.cells %}
-                <td>
+                <td{% if cell.is_baseline %} class="baseline-row"{% endif %}>
                   {% if cell.matched_class_name %}
                     <div class="meta">
                       using <code>{{ cell.matched_class_name }}</code>
@@ -150,6 +178,11 @@
                   {% endif %}
                   {% for metric_key in compare_view.per_class_metric_keys %}
                     <div><code>{{ metric_key }}</code>: {{ cell.metrics[metric_key] }}</div>
+                  {% endfor %}
+                </td>
+                <td{% if cell.is_baseline %} class="baseline-row"{% endif %}>
+                  {% for metric_key in compare_view.per_class_metric_keys %}
+                    <div><code>{{ metric_key }}</code>: {{ cell.delta_metrics[metric_key] }}</div>
                   {% endfor %}
                 </td>
               {% endfor %}

@@ -84,6 +84,7 @@ but it now includes:
 - run detail pages with linked eval and golden reports
 - eval detail pages for global metrics and per-class counts where JSON reports exist
 - a small run/eval comparison page for comparable baselines and experiment rows
+- baseline delta columns for the compare page's global and curated per-class metrics
 - curated per-class compare rows for key BA-core and selected rehearsal classes
 - golden detail pages for model/image metadata and detection summaries
 - a first local FiftyOne bridge for opening supported datasets from dataset detail pages and eval-linked dataset references
@@ -116,7 +117,7 @@ Current pages:
 - `/` dashboard for repo docs, contracts, artifact roots, detected datasets, and detected runs
 - `/contracts` for BA-v1 and BA-v2 ontology display
 - `/artifacts` for curated dataset/run/config path visibility
-- `/compare/runs` for side-by-side comparison of structured eval JSON reports from detected runs, including curated per-class rows
+- `/compare/runs` for side-by-side comparison of structured eval JSON reports from detected runs, including baseline delta columns and curated per-class rows
 - `/datasets/view?path=...` for dataset details
 - `/runs/view?path=...` for run details
 - `/evals/view?path=...` for eval report details
@@ -136,6 +137,7 @@ Deliberately not supported from the WebUI yet:
 - teacher pseudo-labeling
 - large benchmark dashboards or interactive chart suites
 - arbitrary full-contract per-class compare builders
+- multi-baseline or percentage-heavy delta analysis
 - prediction/eval overlays imported into FiftyOne
 - multi-user or long-lived session management
 - eval / golden batch pipelines
