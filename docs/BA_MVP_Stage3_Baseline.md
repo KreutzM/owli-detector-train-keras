@@ -231,6 +231,8 @@ Reading:
 
 ## Next Step Boundary
 - `COCO replay` is still intentionally absent here.
+- The current product-near operating-point check for this baseline is documented in
+  [BA_MVP_Stage3_Product_Gate.md](./BA_MVP_Stage3_Product_Gate.md).
 - The next obstacle-focused experiment branch is now the small-object crop path in
   [BA_MVP_Stage3_Crops.md](./BA_MVP_Stage3_Crops.md).
 - The first direct `Stage-3` vs. `Stage-3-plus-crops` result is now documented in

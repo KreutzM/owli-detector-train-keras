@@ -12,6 +12,7 @@
 - Labelset rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
 - Current verified baseline: [Obstacle4_E2E_Results.md](./Obstacle4_E2E_Results.md)
 - Current verified multi-source baseline: [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
+- Current Stage-3 product-near gate: [BA_MVP_Stage3_Product_Gate.md](./BA_MVP_Stage3_Product_Gate.md)
 - Current verified Stage-4 data pipeline: [BA_MVP_Stage4_Replay_Pipeline.md](./BA_MVP_Stage4_Replay_Pipeline.md)
 - Current verified Stage-4 comparison run: [BA_MVP_Stage4_Baseline.md](./BA_MVP_Stage4_Baseline.md)
 - Current verified small-object crop branch: [BA_MVP_Stage3_Crops.md](./BA_MVP_Stage3_Crops.md)
