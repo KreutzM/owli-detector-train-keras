@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,9 @@ import yaml
 
 from owli_train.webui.models import (
     ArtifactDirectoryView,
+    CompareRowView,
+    CompareRunOptionView,
+    CompareTargetOptionView,
     ConfigGroupView,
     ConfigReferenceView,
     ContractClassView,
@@ -28,6 +32,7 @@ from owli_train.webui.models import (
     RepoPathView,
     RepositoryViewModel,
     RunDetailView,
+    RunsCompareView,
 )
 
 CURATED_DOCS: tuple[tuple[str, str, str], ...] = (
@@ -58,6 +63,61 @@ CURATED_ARTIFACT_ROOTS: tuple[tuple[str, str, str], ...] = (
 )
 
 CONTRACT_ORDER: tuple[str, ...] = ("ba_v1", "ba_v2_hazard")
+COMPARE_METRIC_KEYS: tuple[str, ...] = ("AP", "AP50", "AP75", "AR100", "precision", "recall")
+CURATED_COMPARE_LABELS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "Stage-3 baseline",
+        (
+            "ba-mvp-stage3-",
+            "ba_mvp_stage3",
+            "stage3_balanced_multisource",
+        ),
+    ),
+    (
+        "Stage-4 replay baseline",
+        (
+            "ba-mvp-stage4-",
+            "ba_mvp_stage4",
+            "stage4_with_coco_replay",
+            "coco_replay",
+        ),
+    ),
+    (
+        "Stage-3-plus-crops baseline",
+        (
+            "ba-mvp-stage3-plus-crops",
+            "ba_mvp_stage3_plus_crops",
+            "stage3-plus-crops",
+            "stage3_plus_crops",
+        ),
+    ),
+    (
+        "BA-v2 hazard",
+        (
+            "ba-v2-hazard",
+            "ba_v2_hazard",
+        ),
+    ),
+)
+
+
+@dataclass(frozen=True)
+class _CompareCandidate:
+    run_id: str
+    run_relative_path: str
+    run_display_name: str
+    curated_label: str | None
+    stage_label: str | None
+    dataset_label: str
+    target_key: str
+    target_label: str
+    config_path: str | None
+    config_note: str | None
+    eval_relative_path: str
+    eval_label: str
+    eval_sort_value: str
+    golden_relative_path: str | None
+    metrics: dict[str, str]
 
 
 def infer_repo_root(start: Path | None = None) -> Path:
@@ -181,7 +241,9 @@ class RepositoryReader:
                 "artifacts/labels.txt",
                 "reports/*.json",
                 "reports/*.md",
+                "config.yaml",
                 "config_snapshot.yaml",
+                "mapping_files.json",
                 "mapping_snapshot.json",
             ),
         )
@@ -314,7 +376,9 @@ class RepositoryReader:
         artifact_files = self._list_known_files(run_dir / "artifacts")
         report_files = self._list_known_files(run_dir / "reports")
         config_candidates = [
+            run_dir / "config.yaml",
             run_dir / "config_snapshot.yaml",
+            run_dir / "mapping_files.json",
             run_dir / "mapping_snapshot.json",
             run_dir / "class_names.json",
         ]
@@ -348,6 +412,67 @@ class RepositoryReader:
             report_files=report_files,
             eval_reports=eval_reports,
             golden_reports=golden_reports,
+        )
+
+    def load_runs_compare(
+        self,
+        *,
+        selected_run_paths: list[str] | None = None,
+        target_key: str | None = None,
+    ) -> RunsCompareView:
+        candidates = self._load_compare_candidates()
+        selected_paths = {path for path in (selected_run_paths or []) if path.strip()}
+        run_paths = {candidate.run_relative_path for candidate in candidates}
+        filtered_candidates = [
+            candidate
+            for candidate in candidates
+            if not selected_paths or candidate.run_relative_path in selected_paths
+        ]
+
+        run_options = self._build_compare_run_options(
+            all_run_paths=run_paths,
+            candidates=candidates,
+            selected_paths=selected_paths,
+        )
+        target_options = self._build_compare_target_options(
+            candidates=filtered_candidates,
+            requested_target_key=target_key,
+        )
+        selected_target = next(
+            (item for item in target_options if item.selected),
+            None,
+        )
+        rows = [
+            self._candidate_to_compare_row(candidate)
+            for candidate in filtered_candidates
+            if selected_target is not None and candidate.target_key == selected_target.key
+        ]
+
+        if selected_target is None:
+            selection_summary = "No comparable eval JSON reports were found under work/runs."
+        elif rows:
+            selection_summary = (
+                f"Showing {len(rows)} eval rows across {len({row.run_relative_path for row in rows})} "
+                f"runs for {selected_target.label}."
+            )
+        elif selected_paths and selected_paths.isdisjoint(run_paths):
+            selection_summary = "The selected run paths were not found under work/runs."
+        else:
+            selection_summary = "No eval rows match the current run and target selection."
+
+        scope_note = (
+            "This page compares structured eval JSON reports only. It intentionally stays small: "
+            "global metrics, dataset/stage context, and links back to run, eval, and golden details."
+        )
+        return RunsCompareView(
+            selected_target_key=selected_target.key if selected_target is not None else None,
+            selected_target_label=selected_target.label if selected_target is not None else None,
+            target_options=target_options,
+            run_options=run_options,
+            metric_keys=list(COMPARE_METRIC_KEYS),
+            rows=rows,
+            selection_summary=selection_summary,
+            scope_note=scope_note,
         )
 
     def load_eval_detail(self, relative_path: str) -> EvalDetailView | None:
@@ -484,6 +609,279 @@ class RepositoryReader:
             detections=detections,
             related_run_path=self._infer_run_path(report_path),
         )
+
+    def _load_compare_candidates(self) -> list[_CompareCandidate]:
+        runs_root = self.repo_root / "work" / "runs"
+        if not runs_root.is_dir():
+            return []
+
+        candidates: list[_CompareCandidate] = []
+        for run_dir in sorted(
+            (path for path in runs_root.iterdir() if path.is_dir()), reverse=True
+        ):
+            run_relative_path = self._relative_path(run_dir)
+            config_path, config_note = self._resolve_run_config_reference(run_dir)
+            golden_relative_path = self._find_primary_golden_report(run_dir)
+            curated_label = self._infer_curated_compare_label(
+                run_dir.name,
+                run_relative_path,
+                config_path,
+            )
+            for eval_path in sorted((run_dir / "reports").glob("eval*.json")):
+                payload = self._load_json(eval_path)
+                if not payload:
+                    continue
+                target_key, target_label, dataset_label, stage_label = (
+                    self._describe_compare_target(
+                        eval_path=eval_path,
+                        payload=payload,
+                    )
+                )
+                candidates.append(
+                    _CompareCandidate(
+                        run_id=run_dir.name,
+                        run_relative_path=run_relative_path,
+                        run_display_name=curated_label or run_dir.name,
+                        curated_label=curated_label,
+                        stage_label=stage_label or curated_label,
+                        dataset_label=dataset_label,
+                        target_key=target_key,
+                        target_label=target_label,
+                        config_path=config_path,
+                        config_note=config_note,
+                        eval_relative_path=self._relative_path(eval_path),
+                        eval_label=eval_path.name,
+                        eval_sort_value=self._optional_text(payload.get("created_at"))
+                        or self._format_mtime(eval_path)
+                        or eval_path.name,
+                        golden_relative_path=golden_relative_path,
+                        metrics=self._extract_compare_metrics(payload),
+                    )
+                )
+        candidates.sort(key=self._compare_candidate_sort_key)
+        return candidates
+
+    def _build_compare_run_options(
+        self,
+        *,
+        all_run_paths: set[str],
+        candidates: list[_CompareCandidate],
+        selected_paths: set[str],
+    ) -> list[CompareRunOptionView]:
+        run_details: dict[str, tuple[str, str | None, int]] = {}
+        for candidate in candidates:
+            current = run_details.get(candidate.run_relative_path)
+            count = 1 if current is None else current[2] + 1
+            run_details[candidate.run_relative_path] = (
+                candidate.run_id,
+                candidate.curated_label,
+                count,
+            )
+        return [
+            CompareRunOptionView(
+                run_id=run_details[path][0],
+                relative_path=path,
+                selected=not selected_paths or path in selected_paths,
+                eval_count=run_details[path][2],
+                curated_label=run_details[path][1],
+            )
+            for path in sorted(all_run_paths, reverse=True)
+            if path in run_details
+        ]
+
+    def _build_compare_target_options(
+        self,
+        *,
+        candidates: list[_CompareCandidate],
+        requested_target_key: str | None,
+    ) -> list[CompareTargetOptionView]:
+        grouped: dict[str, tuple[str, int]] = {}
+        for candidate in candidates:
+            label, count = grouped.get(candidate.target_key, (candidate.target_label, 0))
+            grouped[candidate.target_key] = (label, count + 1)
+
+        ordered = sorted(grouped.items(), key=lambda item: (-item[1][1], item[1][0].lower()))
+        default_target_key = requested_target_key if requested_target_key in grouped else None
+        if default_target_key is None and ordered:
+            default_target_key = ordered[0][0]
+
+        return [
+            CompareTargetOptionView(
+                key=key,
+                label=label,
+                count=count,
+                selected=key == default_target_key,
+            )
+            for key, (label, count) in ordered
+        ]
+
+    def _candidate_to_compare_row(self, candidate: _CompareCandidate) -> CompareRowView:
+        return CompareRowView(
+            run_id=candidate.run_id,
+            run_relative_path=candidate.run_relative_path,
+            run_display_name=candidate.run_display_name,
+            curated_label=candidate.curated_label,
+            stage_label=candidate.stage_label,
+            dataset_label=candidate.dataset_label,
+            config_path=candidate.config_path,
+            config_note=candidate.config_note,
+            eval_relative_path=candidate.eval_relative_path,
+            eval_label=candidate.eval_label,
+            golden_relative_path=candidate.golden_relative_path,
+            metrics=candidate.metrics,
+        )
+
+    def _compare_candidate_sort_key(self, candidate: _CompareCandidate) -> tuple[object, ...]:
+        curated_order = {
+            label: index for index, (label, _tokens) in enumerate(CURATED_COMPARE_LABELS, start=1)
+        }
+        return (
+            candidate.target_label.lower(),
+            curated_order.get(candidate.curated_label or "", 999),
+            candidate.run_id.lower(),
+            candidate.eval_sort_value,
+            candidate.eval_label.lower(),
+        )
+
+    def _describe_compare_target(
+        self,
+        *,
+        eval_path: Path,
+        payload: dict[str, Any],
+    ) -> tuple[str, str, str, str | None]:
+        coco_value = self._optional_text(payload.get("coco_path"))
+        resolved_coco = self._resolve_repo_recorded_path(coco_value)
+        if resolved_coco is not None:
+            relative = self._relative_path(resolved_coco)
+            parts = resolved_coco.parts
+            if len(parts) >= 4 and parts[-4:-2] == ("work", "splits"):
+                dataset_name = parts[-2]
+                split_name = self._infer_split_name_from_path(resolved_coco)
+                label = f"{dataset_name} / {split_name.upper()}"
+                return (
+                    f"split:{dataset_name}:{split_name}",
+                    label,
+                    dataset_name,
+                    self._infer_curated_compare_label(relative, dataset_name),
+                )
+            if len(parts) >= 4 and parts[-4:-2] == ("work", "datasets"):
+                dataset_name = parts[-2]
+                label = dataset_name
+                return (
+                    f"dataset:{dataset_name}:{resolved_coco.name}",
+                    label,
+                    dataset_name,
+                    self._infer_curated_compare_label(relative, dataset_name),
+                )
+            return (
+                f"path:{relative}",
+                relative,
+                relative,
+                self._infer_curated_compare_label(relative),
+            )
+
+        fallback = eval_path.stem.replace("_", " ")
+        return (
+            f"report:{eval_path.name}",
+            fallback,
+            fallback,
+            self._infer_curated_compare_label(fallback),
+        )
+
+    def _extract_compare_metrics(self, payload: dict[str, Any]) -> dict[str, str]:
+        metrics = payload.get("metrics")
+        counts = payload.get("summary_counts")
+        metric_map = metrics if isinstance(metrics, dict) else {}
+        count_map = counts if isinstance(counts, dict) else {}
+
+        return {
+            "AP": self._format_number(metric_map.get("AP", metric_map.get("mAP"))),
+            "AP50": self._format_number(metric_map.get("AP50", metric_map.get("mAP50"))),
+            "AP75": self._format_number(metric_map.get("AP75")),
+            "AR100": self._format_number(metric_map.get("AR100")),
+            "precision": self._format_number(
+                count_map.get("precision", metric_map.get("precision"))
+            ),
+            "recall": self._format_number(count_map.get("recall", metric_map.get("recall"))),
+        }
+
+    def _resolve_run_config_reference(self, run_dir: Path) -> tuple[str | None, str | None]:
+        snapshot_candidates = (
+            run_dir / "config.yaml",
+            run_dir / "config_snapshot.yaml",
+        )
+        snapshot_path = next((path for path in snapshot_candidates if path.is_file()), None)
+        if snapshot_path is None:
+            return None, "No run-local config snapshot found."
+
+        try:
+            snapshot_text = snapshot_path.read_text(encoding="utf-8")
+        except OSError:
+            return self._relative_path(snapshot_path), "Config snapshot could not be read."
+
+        matches = self._config_text_index().get(snapshot_text, [])
+        if len(matches) == 1:
+            return self._relative_path(matches[0]), "Matched repo config from the run snapshot."
+        if len(matches) > 1:
+            return (
+                self._relative_path(snapshot_path),
+                f"Snapshot matches {len(matches)} repo configs; showing the run-local copy.",
+            )
+        return self._relative_path(snapshot_path), "Showing the run-local config snapshot."
+
+    def _find_primary_golden_report(self, run_dir: Path) -> str | None:
+        golden_path = next(iter(sorted((run_dir / "reports").glob("golden*.json"))), None)
+        return self._relative_path(golden_path) if golden_path is not None else None
+
+    def _config_text_index(self) -> dict[str, list[Path]]:
+        cached = getattr(self, "_cached_config_text_index", None)
+        if cached is not None:
+            return cached
+
+        index: dict[str, list[Path]] = {}
+        config_root = self.repo_root / "configs"
+        if config_root.is_dir():
+            for path in sorted(config_root.rglob("*.yaml")):
+                try:
+                    text = path.read_text(encoding="utf-8")
+                except OSError:
+                    continue
+                index.setdefault(text, []).append(path)
+        self._cached_config_text_index = index
+        return index
+
+    def _infer_curated_compare_label(self, *values: str | None) -> str | None:
+        haystack = " ".join(value for value in values if value).lower()
+        best_label: str | None = None
+        best_length = -1
+        for label, tokens in CURATED_COMPARE_LABELS:
+            matching_lengths = [len(token) for token in tokens if token in haystack]
+            if not matching_lengths:
+                continue
+            label_best = max(matching_lengths)
+            if label_best > best_length:
+                best_label = label
+                best_length = label_best
+        return best_label
+
+    def _resolve_repo_recorded_path(self, value: str | None) -> Path | None:
+        if not value:
+            return None
+        candidate = Path(value)
+        if not candidate.is_absolute():
+            candidate = (self.repo_root / candidate).resolve()
+        try:
+            candidate.relative_to(self.repo_root)
+        except ValueError:
+            return None
+        return candidate if candidate.exists() else None
+
+    def _infer_split_name_from_path(self, path: Path) -> str:
+        stem = path.stem.lower()
+        for split_name in ("train", "val", "test"):
+            if stem.endswith(f"_{split_name}"):
+                return split_name
+        return stem
 
     def _load_dataset_config_references(self) -> list[ConfigReferenceView]:
         config_dir = self.repo_root / "configs"
