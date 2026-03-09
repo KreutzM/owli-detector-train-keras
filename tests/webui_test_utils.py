@@ -153,6 +153,20 @@ outputs:
         json.dumps(coco_payload, indent=2),
         encoding="utf-8",
     )
+    (root / "work" / "datasets" / "demo-dataset" / "qc_report.json").write_text(
+        json.dumps(
+            {
+                "summary": {
+                    "images": 1,
+                    "annotations": 1,
+                    "categories": 1,
+                    "small_bbox_filtered": 0,
+                }
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     (root / "work" / "datasets" / "demo-dataset" / "modelmaker.csv").write_text(
         "TRAIN,image.jpg,person,0,0,,,1,1\n",
         encoding="utf-8",
@@ -165,8 +179,86 @@ outputs:
         "demo\n",
         encoding="utf-8",
     )
+    (root / "work" / "runs" / "20260309-123000-demo" / "config_snapshot.yaml").write_text(
+        "model:\n  variant: lite2\n",
+        encoding="utf-8",
+    )
+    (root / "work" / "runs" / "20260309-123000-demo" / "mapping_snapshot.json").write_text(
+        json.dumps({"person": 0}, indent=2),
+        encoding="utf-8",
+    )
     (root / "work" / "runs" / "20260309-123000-demo" / "reports" / "eval.md").write_text(
         "# Eval\n",
+        encoding="utf-8",
+    )
+    (root / "work" / "runs" / "20260309-123000-demo" / "reports" / "eval_demo.json").write_text(
+        json.dumps(
+            {
+                "created_at": "2026-03-09T12:30:00Z",
+                "run_dir": "work/runs/20260309-123000-demo",
+                "model_path": "work/runs/20260309-123000-demo/artifacts/model.tflite",
+                "coco_path": "work/datasets/demo-dataset/instances_materialized.json",
+                "images_dir": "tests/smoke_coco/images",
+                "score_threshold": 0.1,
+                "num_eval_images": 1,
+                "num_detections": 1,
+                "metrics": {"mAP50": 0.75, "precision": 1.0, "recall": 1.0},
+                "summary_counts": {"tp": 1, "fp": 0, "fn": 0, "precision": 1.0, "recall": 1.0},
+                "per_class": {
+                    "person": {
+                        "category_id": 1,
+                        "tp": 1,
+                        "fp": 0,
+                        "fn": 0,
+                        "precision": 1.0,
+                        "recall": 1.0,
+                        "predictions": 1,
+                        "ground_truth": 1,
+                    }
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (root / "work" / "runs" / "20260309-123000-demo" / "reports" / "eval_demo_alt.json").write_text(
+        json.dumps(
+            {
+                "created_at": "2026-03-09T12:31:00Z",
+                "metrics": {"mAP50": 0.62, "precision": 0.8, "recall": 0.9},
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (
+        root / "work" / "runs" / "20260309-123000-demo" / "reports" / "golden_obstacle4.json"
+    ).write_text(
+        json.dumps(
+            {
+                "created_at": "2026-03-09T12:32:00Z",
+                "model_path": "work/runs/20260309-123000-demo/artifacts/model.tflite",
+                "image_path": "tests/smoke_coco/images/smoke1.jpg",
+                "contract": {
+                    "class_labels_source": "configs/label_contracts/ba_v2_hazard.yaml",
+                    "score_threshold": 0.1,
+                    "max_results": 5,
+                    "bbox_format": "xywh",
+                    "coordinates": "absolute_pixels",
+                },
+                "model_metadata": {"name": "demo-model", "label_count": 1},
+                "inspect_tflite": {"input_shape": [1, 320, 320, 3], "dtype": "uint8"},
+                "detections": [
+                    {
+                        "class_index": 0,
+                        "class_name": "person",
+                        "score": 0.91,
+                        "bbox": [1, 1, 5, 5],
+                    }
+                ],
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
 

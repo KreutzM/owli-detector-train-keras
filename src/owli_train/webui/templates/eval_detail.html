@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Eval Detail</h2>
+    <div class="path">{{ eval_detail.relative_path }}</div>
+    <table style="margin-top: 1rem;">
+      <tbody>
+        {% for item in eval_detail.summary %}
+          <tr><th>{{ item.label }}</th><td>{{ item.value }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="meta">
+      {% if eval_detail.related_run_path %}
+        <a href="{{ url_for('run_detail_page') }}?path={{ eval_detail.related_run_path }}">Back to run detail</a>
+      {% else %}
+        <a href="{{ url_for('artifacts_page') }}">Back to artifacts</a>
+      {% endif %}
+    </p>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Global metrics</h2>
+      {% if eval_detail.metrics %}
+        <table>
+          <thead>
+            <tr><th>Metric</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            {% for item in eval_detail.metrics %}
+              <tr><td><code>{{ item.key }}</code></td><td>{{ item.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No structured metrics were found in this report.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Summary counts</h2>
+      {% if eval_detail.summary_counts %}
+        <table>
+          <thead>
+            <tr><th>Count</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            {% for item in eval_detail.summary_counts %}
+              <tr><td><code>{{ item.key }}</code></td><td>{{ item.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">This report does not provide summary count metrics.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Per-class metrics</h2>
+    {% if eval_detail.per_class_rows %}
+      <table>
+        <thead>
+          <tr>
+            <th>Class</th>
+            {% for header in eval_detail.per_class_headers %}
+              <th>{{ header }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in eval_detail.per_class_rows %}
+            <tr>
+              <td><code>{{ row.class_name }}</code></td>
+              {% for header in eval_detail.per_class_headers %}
+                <td>{{ row.values[header] }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No per-class metrics were found in this report.</div>
+    {% endif %}
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Other eval reports nearby</h2>
+      {% if eval_detail.sibling_reports %}
+        <ul class="item-list">
+          {% for item in eval_detail.sibling_reports %}
+            <li>
+              <strong>{{ item.label }}</strong>
+              <div class="path">{{ item.relative_path }}</div>
+              <p class="meta">{{ item.note or "Structured JSON report." }}</p>
+              <div class="actions">
+                <a href="{{ url_for('eval_detail_page') }}?path={{ item.relative_path }}">Open</a>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">No sibling eval JSON reports were found in the same directory.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Raw excerpt</h2>
+      {% if eval_detail.raw_excerpt %}
+        <pre class="log-output">{{ eval_detail.raw_excerpt }}</pre>
+      {% else %}
+        <div class="empty">This page is using structured JSON fields instead of a raw text excerpt.</div>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

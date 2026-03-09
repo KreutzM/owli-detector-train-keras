@@ -51,7 +51,12 @@
             {% for artifact in job_artifacts %}
               <tr>
                 <td>{{ artifact.label }}</td>
-                <td><code>{{ artifact.relative_path }}</code></td>
+                <td>
+                  <code>{{ artifact.relative_path }}</code>
+                  {% if artifact.relative_path.startswith('work/datasets/') or artifact.relative_path.startswith('work/webui/materialized/') or artifact.relative_path.startswith('work/webui/splits/') %}
+                    <br /><a href="{{ url_for('dataset_detail_page') }}?path={{ artifact.relative_path.rsplit('/', 1)[0] }}">Open dataset detail</a>
+                  {% endif %}
+                </td>
                 <td>{{ "present" if artifact.exists else "missing" }}</td>
               </tr>
             {% endfor %}

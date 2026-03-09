@@ -1,29 +1,49 @@
-# WebUI Phase 2
+# WebUI Phase 3
 
 ## Purpose
 - Add a small local browser entry point over the existing repo and artifact layout.
 - Keep the current CLI and filesystem pipeline as the source of truth.
 - Add a first practical control seam for a few small whitelisted CLI jobs without building a full queue or worker platform.
+- Add useful dataset, run, eval, and golden detail pages so the UI works as a diagnosis surface, not only as a launcher list.
 
 ## Current scope
 - FastAPI + Uvicorn app with server-rendered templates
 - read-only dashboard for repo docs, label contracts, artifact roots, datasets, and runs
 - read-only contracts page for BA-v1 and BA-v2 hazard ontology visibility
 - read-only artifacts page for curated dataset/run/config path visibility
+- dataset detail pages with:
+  - COCO summary counts
+  - class distribution
+  - split counts
+  - QC summary if `qc_report.json` exists
+  - related config references where the dataset path is referenced
+- run detail pages with:
+  - artifact and report listings
+  - config snapshot visibility
+  - links into eval and golden detail pages
+- eval detail pages with:
+  - global metrics
+  - summary counts
+  - per-class metrics when present in JSON reports
+  - nearby eval-report references in the same run
+- golden detail pages with:
+  - image/model summary metadata
+  - contract and inspect-TFLite fields
+  - detection tables
 - jobs page with:
   - recent job list
   - job detail pages
   - persisted job status and logs
   - small launch forms for selected dataset-prep commands
 
-## Supported job types in phase 2
+## Supported job types in phase 3
 - `dataset validate`
 - `dataset split`
 - `dataset merge coco`
 - `dataset export modelmaker-csv`
 - `dataset materialize-images` with manifest-backed source resolution only
 
-## Explicit non-goals in phase 2
+## Explicit non-goals in phase 3
 - no training start/stop actions
 - no heavy GPU jobs
 - no teacher pseudo-labeling
@@ -62,6 +82,10 @@ Main routes:
 - `/`
 - `/contracts`
 - `/artifacts`
+- `/datasets/view?path=...`
+- `/runs/view?path=...`
+- `/evals/view?path=...`
+- `/goldens/view?path=...`
 - `/jobs`
 - `/jobs/{job_id}`
 
@@ -71,6 +95,8 @@ Main routes:
 - curated artifact roots such as `work/datasets`, `work/runs`, `work/splits`, `work/reports`, `outputs`
 - config references under `configs/*.yaml`
 - persisted job files and logs under `work/webui/jobs/`
+- eval and golden JSON artifacts under `work/runs/*/reports/` when present
+- QC reports such as `work/datasets/*/qc_report.json` when present
 
 ## Job runtime model
 - jobs are launched only from a small internal whitelist

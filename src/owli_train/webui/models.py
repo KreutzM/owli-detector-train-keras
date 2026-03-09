@@ -101,3 +101,94 @@ class JobView:
     parameters: dict[str, object] = field(default_factory=dict)
     artifacts: list[JobArtifactView] = field(default_factory=list)
     log_text: str | None = None
+
+
+@dataclass(frozen=True)
+class LabelValueView:
+    label: str
+    value: str
+
+
+@dataclass(frozen=True)
+class CountRowView:
+    label: str
+    value: int
+
+
+@dataclass(frozen=True)
+class MetricRowView:
+    key: str
+    value: str
+
+
+@dataclass(frozen=True)
+class PerClassMetricRowView:
+    class_name: str
+    values: dict[str, str]
+
+
+@dataclass(frozen=True)
+class LinkedArtifactView:
+    label: str
+    relative_path: str
+    exists: bool
+    note: str | None = None
+
+
+@dataclass(frozen=True)
+class DatasetDetailView:
+    title: str
+    relative_path: str
+    primary_coco_path: str | None
+    images_dir: str | None
+    summary: list[LabelValueView]
+    class_distribution: list[CountRowView]
+    split_counts: list[CountRowView]
+    qc_summary: list[LabelValueView]
+    related_files: list[RepoPathView]
+    related_configs: list[ConfigReferenceView]
+
+
+@dataclass(frozen=True)
+class RunDetailView:
+    run_id: str
+    relative_path: str
+    summary: list[LabelValueView]
+    config_files: list[RepoPathView]
+    artifact_files: list[RepoPathView]
+    report_files: list[RepoPathView]
+    eval_reports: list[LinkedArtifactView]
+    golden_reports: list[LinkedArtifactView]
+
+
+@dataclass(frozen=True)
+class EvalDetailView:
+    title: str
+    relative_path: str
+    summary: list[LabelValueView]
+    metrics: list[MetricRowView]
+    summary_counts: list[MetricRowView]
+    per_class_headers: list[str]
+    per_class_rows: list[PerClassMetricRowView]
+    related_run_path: str | None
+    sibling_reports: list[LinkedArtifactView]
+    raw_excerpt: str | None = None
+
+
+@dataclass(frozen=True)
+class GoldenDetectionView:
+    class_name: str
+    score: str
+    bbox: str
+
+
+@dataclass(frozen=True)
+class GoldenDetailView:
+    title: str
+    relative_path: str
+    summary: list[LabelValueView]
+    contract: list[LabelValueView]
+    model_metadata: list[LabelValueView]
+    inspect_tflite: list[LabelValueView]
+    detections: list[GoldenDetectionView]
+    related_run_path: str | None

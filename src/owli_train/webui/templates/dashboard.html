@@ -5,13 +5,16 @@
     <article class="panel">
       <h2>Project focus</h2>
       <p class="meta">
-        This UI surfaces stable repo contracts, curated docs, and detected artifact roots, and now
-        adds a small whitelisted launcher for lightweight dataset-prep jobs without replacing the CLI.
+        This UI now surfaces stable repo contracts, curated docs, dataset details, run details,
+        eval reports, golden artifacts, and a small whitelisted launcher for lightweight dataset-prep
+        jobs without replacing the CLI.
       </p>
       <div class="chips">
         <span class="chip">dataset prep</span>
         <span class="chip">modelmaker export</span>
         <span class="chip">job list + logs</span>
+        <span class="chip">dataset diagnostics</span>
+        <span class="chip">run/eval/golden detail pages</span>
         <span class="chip">whitelisted commands only</span>
         <span class="chip">no training from UI</span>
       </div>
@@ -94,6 +97,9 @@
               <strong>{{ dataset.label }}</strong>
               <div class="path">{{ dataset.relative_path }}</div>
               <p class="meta">{{ dataset.summary }}{% if dataset.modified_at %}. Updated {{ dataset.modified_at }}{% endif %}</p>
+              <div class="actions">
+                <a href="{{ url_for('dataset_detail_page') }}?path={{ dataset.relative_path }}">Open dataset detail</a>
+              </div>
               {% if dataset.highlights %}
                 <div class="chips">
                   {% for item in dataset.highlights %}
@@ -118,6 +124,9 @@
               <strong>{{ run.label }}</strong>
               <div class="path">{{ run.relative_path }}</div>
               <p class="meta">{{ run.summary }}{% if run.modified_at %}. Updated {{ run.modified_at }}{% endif %}</p>
+              <div class="actions">
+                <a href="{{ url_for('run_detail_page') }}?path={{ run.relative_path }}">Open run detail</a>
+              </div>
               {% if run.highlights %}
                 <div class="chips">
                   {% for item in run.highlights %}

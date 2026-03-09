@@ -216,6 +216,17 @@
         color: var(--accent);
       }
 
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 0.7rem;
+      }
+
+      .actions a {
+        text-decoration: none;
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
@@ -312,12 +323,12 @@
     <div class="shell">
       <section class="hero">
         <h1>Owli Control UI</h1>
-        <p>Phase 1 read-only browser visibility over the existing CLI and filesystem pipeline.</p>
+        <p>Phase 3 analysis and small safe control surface over the existing CLI and filesystem pipeline.</p>
         <small>Repo root: {{ model.repo_root }}</small>
         <div class="badges">
           <span class="badge">FastAPI + Uvicorn</span>
           <span class="badge">Server-rendered templates</span>
-          <span class="badge">Read-only analysis</span>
+          <span class="badge">Dataset + run diagnostics</span>
           <span class="badge">Whitelisted job launchers</span>
         </div>
       </section>
@@ -333,7 +344,7 @@
         {% block content %}{% endblock %}
       </main>
 
-      <footer>Read-only phase 1. Existing CLI workflows remain the source of truth.</footer>
+      <footer>Phase 3 keeps the CLI as the source of truth and adds read-mostly diagnostics plus small safe job launchers.</footer>
     </div>
   </body>
 </html>

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Run Detail</h2>
+    <div class="path">{{ run.relative_path }}</div>
+    <table style="margin-top: 1rem;">
+      <tbody>
+        {% for item in run.summary %}
+          <tr><th>{{ item.label }}</th><td>{{ item.value }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="meta"><a href="{{ url_for('artifacts_page') }}">Back to artifacts</a></p>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Eval reports</h2>
+      {% if run.eval_reports %}
+        <ul class="item-list">
+          {% for item in run.eval_reports %}
+            <li>
+              <strong>{{ item.label }}</strong>
+              <div class="path">{{ item.relative_path }}</div>
+              <p class="meta">{{ item.note or "JSON metrics available." }}</p>
+              <div class="actions">
+                <a href="{{ url_for('eval_detail_page') }}?path={{ item.relative_path }}">Open eval detail</a>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">No JSON eval reports were found for this run.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Golden reports</h2>
+      {% if run.golden_reports %}
+        <ul class="item-list">
+          {% for item in run.golden_reports %}
+            <li>
+              <strong>{{ item.label }}</strong>
+              <div class="path">{{ item.relative_path }}</div>
+              <p class="meta">{{ item.note or "Golden detections available." }}</p>
+              <div class="actions">
+                <a href="{{ url_for('golden_detail_page') }}?path={{ item.relative_path }}">Open golden detail</a>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">No golden JSON reports were found for this run.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Config snapshots</h2>
+      {% if run.config_files %}
+        <table>
+          <thead>
+            <tr><th>File</th><th>Path</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for item in run.config_files %}
+              <tr><td>{{ item.label }}</td><td><code>{{ item.relative_path }}</code></td><td>{{ "present" if item.exists else "missing" }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No config snapshots were found in this run directory.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Artifacts</h2>
+      {% if run.artifact_files %}
+        <table>
+          <thead>
+            <tr><th>Artifact</th><th>Path</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for item in run.artifact_files %}
+              <tr><td>{{ item.label }}</td><td><code>{{ item.relative_path }}</code></td><td>{{ "present" if item.exists else "missing" }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No artifacts were found under this run.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>All report files</h2>
+    {% if run.report_files %}
+      <table>
+        <thead>
+          <tr><th>Report</th><th>Path</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for item in run.report_files %}
+            <tr><td>{{ item.label }}</td><td><code>{{ item.relative_path }}</code></td><td>{{ "present" if item.exists else "missing" }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No report files were found under this run.</div>
+    {% endif %}
+  </section>
+{% endblock %}

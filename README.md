@@ -75,12 +75,16 @@ See `docs/MVP_Training_Plan.md` for the current transition from the historical B
 
 GPU note (RTX-3060 on Windows): TensorFlow GPU is generally smoothest in WSL2.
 
-## WebUI (Phase 2, read-only + safe job launchers)
+## WebUI (Phase 3, analysis + safe job launchers)
 
 The first local WebUI lives under `src/owli_train/webui/` and adds a small FastAPI +
 Uvicorn control surface over the existing repo state. It still does not replace the CLI,
-but it now includes a small whitelist of lightweight dataset-prep jobs with persistent
-status and log visibility.
+but it now includes:
+- read-only dataset detail pages with class distribution, split counts, and QC visibility
+- run detail pages with linked eval and golden reports
+- eval detail pages for global metrics and per-class counts where JSON reports exist
+- golden detail pages for model/image metadata and detection summaries
+- a small whitelist of lightweight dataset-prep jobs with persistent status and log visibility
 
 Use the main tooling venv for this UI, not the dedicated Model Maker or teacher venvs.
 If you already installed `requirements/dev.txt`, the WebUI dependencies are included.
@@ -107,9 +111,13 @@ Current pages:
 - `/` dashboard for repo docs, contracts, artifact roots, detected datasets, and detected runs
 - `/contracts` for BA-v1 and BA-v2 ontology display
 - `/artifacts` for curated dataset/run/config path visibility
+- `/datasets/view?path=...` for dataset details
+- `/runs/view?path=...` for run details
+- `/evals/view?path=...` for eval report details
+- `/goldens/view?path=...` for golden artifact details
 - `/jobs` for job list, job detail links, and safe launchers for selected CLI commands
 
-Phase-2 job whitelist:
+Phase-3 job whitelist:
 - `dataset validate`
 - `dataset split`
 - `dataset merge coco`
@@ -119,7 +127,9 @@ Phase-2 job whitelist:
 Deliberately not supported from the WebUI yet:
 - training jobs
 - teacher pseudo-labeling
-- eval / golden chains
+- eval / golden batch pipelines
 - arbitrary shell commands
+- browser annotation tooling
+- a large queue / worker / database platform
 
 See `docs/webui.md` for the local start path and current scope.

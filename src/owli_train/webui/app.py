@@ -23,8 +23,8 @@ def create_app(repo_root: Path | None = None) -> FastAPI:
     resolved_repo_root = infer_repo_root(repo_root)
     app = FastAPI(
         title="Owli Control UI",
-        description="Phase 2 visibility and small whitelisted job control over contracts, datasets, runs, and artifacts.",
-        version="0.1.0",
+        description="Phase 3 visibility, diagnostics, and small whitelisted job control over contracts, datasets, runs, eval reports, and artifacts.",
+        version="0.3.0",
     )
     app.state.repo_root = resolved_repo_root
 
@@ -52,6 +52,50 @@ def create_app(repo_root: Path | None = None) -> FastAPI:
     @app.get("/artifacts", response_class=HTMLResponse, name="artifacts_page")
     def artifacts_page(request: Request) -> HTMLResponse:
         return templates.TemplateResponse(request, "artifacts.html", _context(request, "Artifacts"))
+
+    @app.get("/datasets/view", response_class=HTMLResponse, name="dataset_detail_page")
+    def dataset_detail_page(request: Request, path: str) -> HTMLResponse:
+        detail = _reader().load_dataset_detail(path)
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Unknown dataset path.")
+        context = {
+            **_context(request, "Dataset Detail"),
+            "dataset": detail,
+        }
+        return templates.TemplateResponse(request, "dataset_detail.html", context)
+
+    @app.get("/runs/view", response_class=HTMLResponse, name="run_detail_page")
+    def run_detail_page(request: Request, path: str) -> HTMLResponse:
+        detail = _reader().load_run_detail(path)
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Unknown run path.")
+        context = {
+            **_context(request, "Run Detail"),
+            "run": detail,
+        }
+        return templates.TemplateResponse(request, "run_detail.html", context)
+
+    @app.get("/evals/view", response_class=HTMLResponse, name="eval_detail_page")
+    def eval_detail_page(request: Request, path: str) -> HTMLResponse:
+        detail = _reader().load_eval_detail(path)
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Unknown eval report path.")
+        context = {
+            **_context(request, "Eval Detail"),
+            "eval_detail": detail,
+        }
+        return templates.TemplateResponse(request, "eval_detail.html", context)
+
+    @app.get("/goldens/view", response_class=HTMLResponse, name="golden_detail_page")
+    def golden_detail_page(request: Request, path: str) -> HTMLResponse:
+        detail = _reader().load_golden_detail(path)
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Unknown golden report path.")
+        context = {
+            **_context(request, "Golden Detail"),
+            "golden": detail,
+        }
+        return templates.TemplateResponse(request, "golden_detail.html", context)
 
     def _jobs_context(
         request: Request,
