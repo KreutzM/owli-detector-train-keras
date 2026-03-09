@@ -5,6 +5,9 @@
 - Goal:
   - establish the first honest BA-v2 hazard-centered baseline on current repo HEAD
   - keep the run small and reviewable rather than tuned for a final optimum
+- Follow-up comparison:
+  - [BA_v2_MVP_Augmentation_Baseline.md](./BA_v2_MVP_Augmentation_Baseline.md)
+  - result: the first small online-augmentation comparison did not beat this baseline and does not replace it as the preferred BA-v2 MVP reference
 
 ## Run Identity
 - Config: [`configs/efficientdet_lite2_ba_v2_mvp.yaml`](../configs/efficientdet_lite2_ba_v2_mvp.yaml)

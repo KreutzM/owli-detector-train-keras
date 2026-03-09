@@ -1,0 +1,20 @@
+model:
+  variant: lite2
+
+data:
+  csv: work/datasets/ba_v2_mvp_candidate/modelmaker.csv
+  images_dir: work/datasets/ba_v2_mvp_candidate/images
+  label_map_json: configs/label_contracts/ba_v2_hazard.class_names.json
+
+train:
+  epochs: 20
+  batch_size: 16
+  train_whole_model: false
+  augmentation:
+    rand_hflip: true
+    jitter_min: 0.9
+    jitter_max: 1.1
+
+outputs:
+  work_dir: work
+  out_dir: outputs
