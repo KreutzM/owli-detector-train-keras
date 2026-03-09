@@ -3,7 +3,8 @@
 ## Purpose
 - Record the first train-ready BA-v2 MVP candidate on current repo HEAD.
 - Freeze the current MVP reading as four hazard-core classes plus six rehearsal classes.
-- Keep the actual Lite2 training run as the next separate step.
+- Keep this file focused on the pre-run candidate state.
+- Post-run baseline results now live in [BA_v2_MVP_Baseline.md](./BA_v2_MVP_Baseline.md).
 
 ## Current BA-v2 MVP Contract
 Hazard-core:
@@ -102,4 +103,5 @@ Source image mix:
 - All four current BA-v2 MVP hazard-core classes are now backed by real data on current repo HEAD.
 - The candidate is materialized and exported to Model Maker CSV.
 - This is the first real BA-v2 MVP training candidate in the repo.
-- The next step is the first BA-v2 MVP Lite2 training run.
+- The candidate has now been consumed by the first real BA-v2 MVP Lite2 baseline run:
+  - [BA_v2_MVP_Baseline.md](./BA_v2_MVP_Baseline.md)

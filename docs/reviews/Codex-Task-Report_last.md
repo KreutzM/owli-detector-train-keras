@@ -1,117 +1,127 @@
 # Codex Task Report
 
 ## Ziel
-- Die neue Produktentscheidung sauber im Repo durchziehen, dass `obstacle_overhang` vorerst nicht Teil des BA-v2 MVP ist.
-- Den BA-v2-Produktvertrag auf vier Hazard-Core-Klassen plus sechs Rehearsal-Klassen festziehen.
-- Den vorhandenen BA-v2-Datenstand bis direkt vor den ersten Lite2-Trainingslauf als echten BA-v2-MVP-Trainingskandidaten vorbereiten.
+- Den ersten echten `EfficientDet-Lite2`-Trainingslauf auf dem vorbereiteten BA-v2-MVP-Kandidaten real ausfuehren.
+- Die exportierten BA-v2-MVP-Artefakte mit `inspect tflite`, `eval efficientdet-tflite` und `golden detect` real verifizieren.
+- Die Resultate als erste ehrliche BA-v2-MVP-Baseline im Repo dokumentieren und gegen die historischen Baselines einordnen.
 
 ## Was wurde geändert?
-- BA-v2-MVP-Contract ohne `obstacle_overhang` aktualisiert:
-  - `configs/label_contracts/ba_v2_hazard.yaml`
-  - `configs/label_contracts/ba_v2_hazard.class_names.json`
-- BA-v2-MVP-Doku geschaerft:
-  - `docs/BA_v2_Hazard_Labelset.md`
-  - `docs/BA_v2_Hazard_Mapping_Strategy.md`
+- Neue Ergebnisdoku fuer die erste echte BA-v2-MVP-Baseline ergaenzt:
+  - `docs/BA_v2_MVP_Baseline.md`
+- BA-v2-MVP-Plan und Candidate-Doku auf den jetzt real abgeschlossenen Lauf nachgezogen:
   - `docs/MVP_Training_Plan.md`
-  - `docs/runbook.md`
-  - `docs/android-export-contract.md`
-- Historische Slice-Dokus minimal nachgeschaerft, damit klar bleibt, dass sie unter dem frueheren fuenf-Kern-Klassen-Stand entstanden:
-  - `docs/BA_v2_Hazard_Slice01_Mapillary_OD.md`
-  - `docs/BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md`
-- Neue Doku fuer den ersten train-ready BA-v2-MVP-Kandidaten ergaenzt:
   - `docs/BA_v2_MVP_Train_Candidate.md`
-- Neue Trainingsconfig fuer den naechsten Lite2-Lauf ergaenzt:
-  - `configs/efficientdet_lite2_ba_v2_mvp.yaml`
-- BA-v2-bezogene Label-Map-Hinweise auf den neuen MVP-Contract nachgezogen:
-  - `configs/label_maps/mapillary_vistas_to_ba_v2_hazard.yaml`
-  - `configs/label_maps/obstacle_dataset_to_ba_v2_hazard.yaml`
-  - `configs/label_maps/obstacle4_gt_to_ba_v2_hazard_ground_bootstrap.yaml`
-  - `configs/balance_ba_v2_hazard_obstacle4_ground_slice02.yaml`
-- Kleine statische Tests fuer den neuen Contract und den Trainingsconfig-Pfad ergaenzt bzw. angepasst:
-  - `tests/test_ba_v2_hazard_label_contract.py`
-  - `tests/test_ba_v2_mapping_prep.py`
+- Runbook um die verifizierten BA-v2-MVP-Train/Eval/Golden-Kommandos erweitert:
+  - `docs/runbook.md`
+- Pflicht-Report fuer diesen Task aktualisiert:
+  - `docs/reviews/Codex-Task-Report_last.md`
 
 ## Was wurde wirklich verifiziert?
 - Statisch geprueft:
+  - `README.md`
   - `docs/BA_v2_Hazard_Labelset.md`
-  - `docs/BA_v2_Hazard_Slice01_Mapillary_OD.md`
-  - `docs/BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md`
+  - `docs/BA_v2_MVP_Baseline.md`
+  - `docs/BA_v2_MVP_Train_Candidate.md`
   - `docs/MVP_Training_Plan.md`
   - `docs/runbook.md`
   - `docs/android-export-contract.md`
   - `configs/label_contracts/ba_v2_hazard.yaml`
-  - BA-v2-relevante Label-Maps und Merge-Configs unter `configs/label_maps/*` und `configs/*`
+  - `configs/efficientdet_lite2_ba_v2_mvp.yaml`
+  - BA-v2-relevante Merge-/Materialize-/CSV-Configs unter `configs/*`
   - Trainings-/Eval-/Golden-/TFLite-Pfade unter:
     - `src/owli_train/training/*`
     - `src/owli_train/eval/*`
     - `src/owli_train/golden/*`
     - `src/owli_train/tflite_detect.py`
 - Inhaltlich verifiziert:
-  - `obstacle_overhang` war auf aktuellem Repo-Stand nur noch Teil des bevorzugten BA-v2-Contracts und der dazugehoerigen Doku/Tests, nicht eines real gestuetzten Datenpfads
-  - Trainings-/Eval-/Golden-/TFLite-Pfade verwenden artefaktbasierte Klassenlisten und benoetigten keinen BA-v2-spezifischen Codeumbau fuer das Entfernen von `obstacle_overhang`
-  - der aktuelle BA-v2-Datenstand nach dem Ground-Bootstrap stuetzt real:
+  - der reale BA-v2-MVP-Datensatz ist `work/datasets/ba_v2_mvp_candidate`
+  - die reale Trainingsconfig ist `configs/efficientdet_lite2_ba_v2_mvp.yaml`
+  - die BA-v2-MVP-Klassenreihenfolge blieb durch Training, Export und Eval unveraendert:
     - `obstacle_ground`
     - `obstacle_barrier`
     - `obstacle_hole_dropoff`
     - `obstacle_pole`
-    - sowie die sechs Rehearsal-Klassen
-  - unter dem neuen vier-Klassen-MVP-Contract ist dieser Datenstand jetzt der erste echte BA-v2-MVP-Trainingskandidat
+    - `person`
+    - `bicycle`
+    - `motorcycle`
+    - `car`
+    - `bus`
+    - `truck`
+  - `mapping_files.json` meldet keine fehlenden BA-v2-Klassen im `TRAIN`-Split
+  - TFLite-Eval konnte die Kategorien direkt per `labels.txt` gegen den BA-v2-TEST-Split ausrichten
 - Real ausgefuehrt:
-  - Materialisierung des BA-v2-MVP-Kandidaten aus dem bestehenden Slice02-COCO
-  - Validierung des materialisierten BA-v2-MVP-COCO mit Bilddatei-Pruefung
-  - Export des materialisierten BA-v2-MVP-Kandidaten zu ModelMaker-CSV
-  - Repo-weite Format-/Lint-/Test-Verifikation
+  - echter BA-v2-MVP-Lite2-Trainingslauf mit GPU und ohne `--max-steps`
+  - echtes Lite2-Export-Artefakt unter `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite`
+  - `inspect tflite` auf dem exportierten BA-v2-Modell
+  - `eval efficientdet-tflite` auf dem kompletten BA-v2-`TEST`-Split mit `381` Bildern
+  - `golden detect` auf einem BA-v2-`TEST`-Bild mit drei Hazard-Core-Klassen plus Rehearsal-Mix
+  - erzeugte Artefakte:
+    - Run dir: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309`
+    - TFLite: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite`
+    - Labels: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/labels.txt`
+    - Class names: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/class_names.json`
+    - Eval JSON: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json`
+    - Eval Markdown: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.md`
+    - Golden JSON: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/golden_ba_v2_test_mix.json`
 
 ## Tests
-- `PYTHONPATH=src python -m owli_train dataset materialize-images --coco work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json --merge-manifest configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground_materialize.yaml --out-images-dir work/datasets/ba_v2_mvp_candidate/images --out-coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json --mode symlink`
+- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet --config configs/efficientdet_lite2_ba_v2_mvp.yaml --run-name ba-v2-mvp-baseline-20260309 --require-gpu`
   - Exit-Code: `0`
-  - Ergebnis: `3799` Bilder materialisiert, `3799` Symlinks geschrieben
-- `PYTHONPATH=src python -m owli_train dataset validate --coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json --images-dir work/datasets/ba_v2_mvp_candidate/images`
+  - Ergebnis: echter BA-v2-MVP-Lauf mit `20` Epochen, Export von `model.tflite`, `labels.txt`, `class_names.json`
+- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite`
   - Exit-Code: `0`
-  - Ergebnis: `images=3799`, `ann=32231`, `cats=10`
-- `PYTHONPATH=src python -m owli_train dataset export modelmaker-csv --coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json --images-dir work/datasets/ba_v2_mvp_candidate/images --splits-json work/splits/ba_v2_hazard_slice02_mapillary_od_ground/splits.json --out work/datasets/ba_v2_mvp_candidate/modelmaker.csv`
+  - Ergebnis: `builtin_ops_only=true`, Input `448x448x3 uint8`, erwartete EfficientDet-Lite2-Operatoren
+- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_v2_hazard_slice02_mapillary_od_ground/instances_test.json --images-dir work/datasets/ba_v2_mvp_candidate/images --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json`
   - Exit-Code: `0`
-  - Ergebnis: `rows=32231`, `images=3799`, `annotations=32231`
-- `python -m ruff format .`
+  - Ergebnis: kompletter BA-v2-`TEST`-Split (`381` Bilder) ausgewertet, AP `0.1184`, AP50 `0.2149`, AP75 `0.1120`, AR100 `0.2005`
+- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite --image work/datasets/ba_v2_mvp_candidate/images/mapillary_vistas/training/ppvi1a8kNPmFjkS6Lhbnsg.jpg --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/golden_ba_v2_test_mix.json --score-threshold 0.1 --max-results 20 --num-threads 8`
   - Exit-Code: `0`
-  - Ergebnis: `67 files left unchanged`
-- `python -m ruff check .`
-  - Exit-Code: `0`
-  - Ergebnis: `All checks passed!`
-- `python -m pytest`
-  - Exit-Code: `0`
-  - Ergebnis: `165 passed, 5 skipped in 5.14s`
+  - Ergebnis: `20` Detections geschrieben; Klassenmix `person=11`, `car=8`, `truck=1`
+- Nicht ausgefuehrt:
+  - `ruff format`, `ruff check`, `pytest`
+  - Grund: nach dem Lauf wurden nur Doku-/Report-Dateien aktualisiert; die reale Verifikation fuer diesen Task lag bewusst auf dem echten Train/Eval/Golden-Pfad
 
 ## Relevante Run-Kommandos
-- Materialize BA-v2-MVP candidate:
+- Train BA-v2 MVP baseline:
 ```bash
-PYTHONPATH=src python -m owli_train dataset materialize-images \
-  --coco work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json \
-  --merge-manifest configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground_materialize.yaml \
-  --out-images-dir work/datasets/ba_v2_mvp_candidate/images \
-  --out-coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json \
-  --mode symlink
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_v2_mvp.yaml \
+  --run-name ba-v2-mvp-baseline-20260309 \
+  --require-gpu
 ```
-- Validate BA-v2-MVP candidate:
+- Inspect exported BA-v2 Lite2 model:
 ```bash
-PYTHONPATH=src python -m owli_train dataset validate \
-  --coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json \
-  --images-dir work/datasets/ba_v2_mvp_candidate/images
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite
 ```
-- Export ModelMaker CSV:
+- Eval exported BA-v2 Lite2 model on the held-out BA-v2 `TEST` split:
 ```bash
-PYTHONPATH=src python -m owli_train dataset export modelmaker-csv \
-  --coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json \
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_v2_hazard_slice02_mapillary_od_ground/instances_test.json \
   --images-dir work/datasets/ba_v2_mvp_candidate/images \
-  --splits-json work/splits/ba_v2_hazard_slice02_mapillary_od_ground/splits.json \
-  --out work/datasets/ba_v2_mvp_candidate/modelmaker.csv
+  --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json
+```
+- Generate BA-v2 golden detect sample:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite \
+  --image work/datasets/ba_v2_mvp_candidate/images/mapillary_vistas/training/ppvi1a8kNPmFjkS6Lhbnsg.jpg \
+  --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/golden_ba_v2_test_mix.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
 ```
 
 ## Offene Risiken
-- `obstacle_ground` ist zwar jetzt Teil des train-ready MVP-Kandidaten, bleibt aber datenmaessig ein enger Legacy-Bootstrap ueber `Obstacle4`.
-- `obstacle_barrier` und `obstacle_hole_dropoff` bleiben im Vergleich zu `obstacle_pole` und den Rehearsal-Klassen kleiner und ungleich verteilt.
-- `obstacle_overhang` ist nicht geloest, sondern bewusst aus dem MVP entfernt; eine spaetere Rueckkehr waere eine neue Produkt- und Datenentscheidung.
-- Es wurde in diesem Task bewusst kein Lite2-Trainingslauf gestartet, daher existiert noch kein verifizierter BA-v2-MVP-Trainingsreport oder Export-Artefakt.
+- `obstacle_ground` bleibt datenmaessig ein schmaler Legacy-Bootstrap aus `Obstacle4` und ist quantitativ noch nicht brauchbar.
+- `obstacle_barrier` und `obstacle_hole_dropoff` zeigen zwar Lernsignal, sind aber weiter klar zu schwach und zu FP-lastig fuer einen produktnahen Hazard-Readout.
+- `obstacle_pole` bleibt trotz vieler Annotationen schwierig; die aktuelle BA-v2-Baseline deutet eher auf Ambiguitaet / Hintergrundclutter als auf ein reines Mengenproblem.
+- Die qualitative Golden-Probe auf einem Bild mit drei Hazard-Core-Klassen wird im Top-20-Output von `person` / `car` dominiert und zeigt keine Hazard-Core-Dimension im geschriebenen Sample.
+- Der historische Stage-3-BA-v1-Lauf bleibt der staerkere technische Vergleichsanker; die neue BA-v2-Baseline ist in erster Linie Produktlogik-Evidenz plus erster echter End-to-End-Nachweis.
 
 ## Nächster sinnvoller Schritt
-- Starte den ersten echten BA-v2-MVP-Lite2-Trainingslauf mit `configs/efficientdet_lite2_ba_v2_mvp.yaml` auf dem materialisierten Kandidaten unter `work/datasets/ba_v2_mvp_candidate`.
+- Verbessere innerhalb des bestehenden BA-v2-MVP-Contracts gezielt die Hazard-Core-Datenqualitaet und FP-Kontrolle, statt den Scope erneut zu erweitern.

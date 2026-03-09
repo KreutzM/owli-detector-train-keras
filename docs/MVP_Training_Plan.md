@@ -12,15 +12,38 @@
 - First real BA-v2 slice: [BA_v2_Hazard_Slice01_Mapillary_OD.md](./BA_v2_Hazard_Slice01_Mapillary_OD.md)
 - Ground-bootstrap extension: [BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md](./BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md)
 - First BA-v2 MVP training candidate: [BA_v2_MVP_Train_Candidate.md](./BA_v2_MVP_Train_Candidate.md)
+- First real BA-v2 MVP baseline: [BA_v2_MVP_Baseline.md](./BA_v2_MVP_Baseline.md)
 - Verified interim baseline contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
 - Historical interim rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
 - Important boundary:
   - the current verified Stage-3 / Stage-4 runs are BA-v1 historical baselines
   - the current BA-v2 MVP contract intentionally uses four hazard-core classes plus six rehearsal classes
   - `obstacle_overhang` is deliberately deferred out of the MVP because the repo still has no defendable data path for it
-  - the current Slice02 path and its materialized export now form the first real BA-v2 MVP training candidate
-  - the next real step is the first BA-v2 MVP training run
+  - the current Slice02 path and its materialized export formed the first real BA-v2 MVP training candidate
+  - the first real BA-v2 MVP Lite2 baseline now exists on current repo HEAD
+  - BA-v2 remains the preferred product ontology, but the historical Stage-3 run remains the strongest BA-v1 technical comparison anchor
   - this file keeps the verified BA-v1 evidence because the pipeline work remains relevant
+
+## Current Verified BA-v2 MVP Baseline
+- Baseline doc:
+  - [BA_v2_MVP_Baseline.md](./BA_v2_MVP_Baseline.md)
+- run:
+  - `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309`
+- primary eval:
+  - held-out `TEST` split from `work/splits/ba_v2_hazard_slice02_mapillary_od_ground/instances_test.json`
+- primary result:
+  - AP `0.1184`
+  - AP50 `0.2149`
+  - AP75 `0.1120`
+  - AR100 `0.2005`
+  - precision `0.1948`
+  - recall `0.3653`
+  - all `10` BA-v2 MVP classes produce non-zero true positives on the held-out BA-v2 test split
+- reading:
+  - this is the first real end-to-end BA-v2 hazard baseline, including export, inspect, TFLite eval, and golden detect
+  - the product contract is more convincing than the historical BA-v1 obstacle-shaped contracts
+  - hazard-core quality is still not good enough to call the current BA-v2 model product-ready
+  - the preferred forward path is now to improve BA-v2 hazard data quality inside the current MVP, not to widen the ontology again
 
 ## Historical Verified BA-v1 Baseline Contract
 - Primary model path: `EfficientDet-Lite2` via Model Maker
