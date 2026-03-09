@@ -3,7 +3,7 @@
 ## Purpose
 - Record the first real BA-v2 hazard data slice on current repo HEAD.
 - Start the BA-v2 product path with the smallest defensible real sources.
-- Prepare a next BA-v2 training candidate without starting a training run yet.
+- Prepare the first partial BA-v2 training input without starting a training run yet.
 
 ## Source Selection
 Included in this slice:
@@ -206,5 +206,6 @@ Reading:
 
 ## Outcome
 - This is a real BA-v2-compatible data slice, not just a contract doc.
-- It is small enough to review, but large enough to act as the first BA-v2 training candidate.
+- It is small enough to review and already useful as the first partial BA-v2 training input.
+- It is not yet a complete BA-v2 training candidate for the full hazard contract, because `obstacle_ground` and `obstacle_overhang` are still missing.
 - BA-v1 Stage-3 and Stage-4 remain historical baselines; this slice does not replace their evidence.

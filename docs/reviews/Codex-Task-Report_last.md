@@ -3,7 +3,7 @@
 ## Ziel
 - Den ersten echten Daten-/Mapping-Schritt auf die neue BA-v2-Hazard-Ontologie umsetzen.
 - Einen kleinen, defensiblen, real verifizierten BA-v2-Slice aus den aktuell am besten passenden Quellen erzeugen.
-- Den Pfad bis direkt vor den ersten BA-v2-Trainingskandidaten vorbereiten, ohne einen Trainingslauf zu starten.
+- Den Pfad bis direkt vor einen ersten partiellen BA-v2-Trainingsinput vorbereiten, ohne einen Trainingslauf zu starten.
 
 ## Was wurde geändert?
 - Kleine Runtime-Erweiterung fuer contract-geordnete Normalisierung ergaenzt:
@@ -49,6 +49,7 @@
   - weiterhin offen bleiben:
     - `obstacle_ground`
     - `obstacle_overhang`
+  - der erzeugte Slice ist daher noch kein vollstaendiger BA-v2-Trainingskandidat fuer den finalen Hazard-Contract
 - Real ausgefuehrt:
   - contract-geordnete BA-v2-Normalisierung fuer `Mapillary` und `OD`
   - realer BA-v2-Balance-Lauf fuer `Mapillary`
@@ -117,8 +118,8 @@ PYTHONPATH=src python -m owli_train dataset merge coco \
 - `obstacle_ground` und `obstacle_overhang` bleiben im ersten realen BA-v2-Slice ungestuetzt.
 - `obstacle_hole_dropoff` ist vorhanden, aber im Vergleich zu `obstacle_pole` und den Rehearsal-Klassen noch klein.
 - `obstacle_barrier` kommt aktuell praktisch nur ueber `Mapillary`.
-- Der Slice ist trainingsvorbereitet, aber noch nicht trainingsverifiziert; es wurde bewusst kein Lite2-Lauf gestartet.
+- Der Slice ist trainingsvorbereitet, aber wegen der zwei fehlenden Hazard-Core-Klassen noch kein vollstaendiger BA-v2-Trainingskandidat fuer den finalen Contract; ein Lite2-Lauf wurde bewusst noch nicht gestartet.
 - Bestehende Source-Artefaktdateinamen enthalten in einzelnen Zwischenordnern noch historische `instances_ba_v1.coco.json`-Namen, obwohl der Inhalt fuer diesen Slice BA-v2-konform ist.
 
 ## Nächster sinnvoller Schritt
-- Starte genau einen ersten kleinen BA-v2-Trainingskandidaten auf `work/datasets/ba_v2_hazard_slice01_mapillary_od`, ohne die Ontologie weiter zu verbreitern, und miss danach gezielt, ob `obstacle_barrier`, `obstacle_hole_dropoff` und `obstacle_pole` unter BA-v2 ueberhaupt gemeinsam stabil gelernt werden.
+- Ergaenze als naechsten kleinen BA-v2-Datenschritt gezielt belastbare Datenunterstuetzung fuer `obstacle_ground` oder `obstacle_overhang`, bevor der Slice als vollstaendiger BA-v2-Trainingskandidat behandelt wird.
