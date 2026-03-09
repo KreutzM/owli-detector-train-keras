@@ -102,21 +102,7 @@ The current primary multi-source MVP assembly plan is tracked in [MVP_Training_P
   - The local download is incomplete relative to its XML set; many XMLs reference missing images.
   - The current clean mapping only contributes `obstacle_pole` on the BA-core side; `obstacle_bump`, `obstacle_fence`, and `obstacle_hole` still need other sources.
 
-### 2. TACO
-- Expected value:
-  - Add a second non-Obstacle4 source that may improve clutter robustness and hard negatives around ground-level objects.
-  - Potentially strengthen parts of the BA core path if some classes can be mapped without forcing taxonomy inflation.
-- BA-v1 classes most likely to benefit:
-  - Assumption pending source review: mostly `obstacle_bump` / `obstacle_hole` adjacent clutter scenarios, plus general detector robustness.
-- Likely repo work:
-  - Verify whether a conservative BA-v1 mapping is justified.
-  - Add a label map only for categories that can be defended as BA-v1-relevant.
-  - Keep non-mappable categories out rather than inflating the contract.
-- Risks / unknowns:
-  - This repo does not yet verify that TACO categories align cleanly to BA-v1.
-  - A weak mapping could add noise faster than it adds signal.
-
-### 3. Later optional rehearsal source
+### 2. Later optional rehearsal source
 - Expected value:
   - Specifically improve the weak rehearsal classes `person`, `bicycle`, `motorcycle`, `bus`, `truck`.
 - BA-v1 classes most likely to benefit:

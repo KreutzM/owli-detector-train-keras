@@ -840,8 +840,6 @@ python -m owli_train dataset split \
 - Historical boundary:
   - the commands in this section still reproduce the verified BA-v1-era pipeline
   - the next new data/mapping reset should target BA-v2 hazard, not treat Obstacle4 as the final ontology anchor
-- Next BA supplemental sources to review locally after downloads complete:
-  - `TACO`
 - Mapillary status:
   - local source reviewed
   - BA-filtered converter documented in [Mapillary_Vistas_Integration.md](./Mapillary_Vistas_Integration.md)
@@ -854,12 +852,14 @@ python -m owli_train dataset split \
 
 Checked-in prep files:
 - `configs/label_maps/mapillary_vistas_to_ba.yaml`
-- `configs/label_maps/taco_to_ba.yaml`
 - `configs/label_maps/obstacle_dataset_to_ba.yaml`
 - `configs/label_maps/coco_replay_to_ba.yaml`
+- First checked-in BA-v2 hazard mapping slice:
+  - `configs/label_maps/mapillary_vistas_to_ba_v2_hazard.yaml`
+  - `configs/label_maps/obstacle_dataset_to_ba_v2_hazard.yaml`
+  - `configs/label_maps/coco_replay_to_ba_v2_hazard.yaml`
 
 Working rule:
-- Keep `TACO` conservative and BA-core-only until the local source taxonomy is reviewed from real files.
 - `Mapillary Vistas` and `OD` now have reviewed local taxonomies; keep their checked-in mappings
   conservative and explicit instead of stretching new source classes into BA-v1.
 - Use COCO only as a small replay source for the six BA-v1 rehearsal classes, not as a return to

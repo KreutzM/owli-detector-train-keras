@@ -8,16 +8,6 @@ def _load_yaml(path: Path):
         return yaml.safe_load(handle)
 
 
-def test_mapillary_and_taco_prep_stay_constrained_to_ba_core() -> None:
-    contract = _load_yaml(Path("configs/label_contracts/ba_v1.yaml"))
-    taco = _load_yaml(Path("configs/label_maps/taco_to_ba.yaml"))
-
-    assert taco["status"] == "pending_source_review"
-    assert taco["allowed_target_classes"] == contract["roles"]["ba_core"]
-    assert taco["drop_unmapped"] is True
-    assert taco["map"] == {}
-
-
 def test_mapillary_prep_maps_only_into_the_current_ba_v1_contract() -> None:
     contract = _load_yaml(Path("configs/label_contracts/ba_v1.yaml"))
     mapillary = _load_yaml(Path("configs/label_maps/mapillary_vistas_to_ba.yaml"))

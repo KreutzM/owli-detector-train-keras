@@ -1,0 +1,24 @@
+status: first_ba_v2_hazard_rehearsal_slice
+ba_contract: configs/label_contracts/ba_v2_hazard.yaml
+allowed_target_classes:
+  - person
+  - bicycle
+  - motorcycle
+  - car
+  - bus
+  - truck
+
+drop_unmapped: true
+notes:
+  - Narrow BA-v2 hazard replay mapping for COCO-derived rehearsal data.
+  - This file remains intentionally limited to the six rehearsal classes.
+  - Do not use it as a COCO-80 training map.
+  - COCO replay is still not hazard-core evidence in BA-v2.
+
+map:
+  person: person
+  bicycle: bicycle
+  motorcycle: motorcycle
+  car: car
+  bus: bus
+  truck: truck

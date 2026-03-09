@@ -1,0 +1,34 @@
+status: first_ba_v2_hazard_slice_from_reviewed_vistas_taxonomy
+ba_contract: configs/label_contracts/ba_v2_hazard.yaml
+allowed_target_classes:
+  - obstacle_barrier
+  - obstacle_hole_dropoff
+  - obstacle_pole
+  - person
+  - bicycle
+  - motorcycle
+  - car
+  - bus
+  - truck
+
+drop_unmapped: true
+notes:
+  - First narrow BA-v2 hazard slice from the locally reviewed Mapillary Vistas taxonomy.
+  - This slice keeps only the current cleanest hazard-core mappings plus exact-match rehearsal classes.
+  - "'construction--barrier--fence' is treated as partial BA-v2 support for 'obstacle_barrier', not as proof that all barriers are now covered."
+  - "'object--pothole' is treated as partial BA-v2 support for 'obstacle_hole_dropoff'."
+  - "No BA-v2 mapping is claimed here yet for obstacle_ground or obstacle_overhang."
+  - "object--manhole, rider classes, person-group, and all other uncertain source classes stay unmapped."
+
+map:
+  construction--barrier--fence: obstacle_barrier
+  object--support--pole: obstacle_pole
+  object--support--utility-pole: obstacle_pole
+  object--pothole: obstacle_hole_dropoff
+  human--person: person
+  human--person--individual: person
+  object--vehicle--bicycle: bicycle
+  object--vehicle--bus: bus
+  object--vehicle--car: car
+  object--vehicle--motorcycle: motorcycle
+  object--vehicle--truck: truck

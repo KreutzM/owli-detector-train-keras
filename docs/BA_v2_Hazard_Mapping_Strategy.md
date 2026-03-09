@@ -12,6 +12,12 @@ Important boundary:
 - This document is a planning and scoping artifact.
 - It is not a claim that the listed mappings are already implemented everywhere in the repo.
 
+Current checked-in first mapping slice:
+- `configs/label_maps/mapillary_vistas_to_ba_v2_hazard.yaml`
+- `configs/label_maps/obstacle_dataset_to_ba_v2_hazard.yaml`
+- `configs/label_maps/coco_replay_to_ba_v2_hazard.yaml`
+- These files deliberately cover only the cleanest currently defendable BA-v2 hazard mappings.
+
 ## Transitional Reading from BA-v1 to BA-v2 Hazard
 This is a product interpretation aid, not a source-taxonomy fact.
 
@@ -85,6 +91,11 @@ Reading:
 - `Mapillary` is the best current repo source for moving from a fence-only obstacle notion toward a broader barrier class.
 - It also remains the strongest current street-scene source for `person` and vehicles.
 - It is not enough on its own to claim robust `obstacle_ground` or `obstacle_overhang` support.
+- The first checked-in BA-v2 map therefore includes:
+  - `obstacle_barrier`
+  - `obstacle_hole_dropoff`
+  - `obstacle_pole`
+  - the six rehearsal classes
 
 ### 3. OD / Obstacle-Dataset
 Current repo reality:
@@ -115,6 +126,9 @@ BA-v2 hazard fit:
 Reading:
 - `OD` remains useful, but mostly for `obstacle_pole` and rehearsal continuity.
 - It is not currently a good primary source for the broader BA-v2 hazard-core reset.
+- The first checked-in BA-v2 map therefore keeps OD narrow:
+  - `obstacle_pole`
+  - the six rehearsal classes
 
 ### 4. COCO replay
 Current repo reality:
@@ -136,6 +150,8 @@ BA-v2 hazard fit:
 Reading:
 - `COCO replay` remains valid under BA-v2 hazard for the same narrow purpose as before.
 - It should not be stretched into hazard-core evidence.
+- The first checked-in BA-v2 map keeps replay identical in scope:
+  - rehearsal only
 
 ## Practical Reset Implications
 - `Obstacle4` should be demoted from ontology anchor to partial bootstrap source.
