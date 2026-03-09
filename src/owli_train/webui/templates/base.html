@@ -260,6 +260,21 @@
         background: rgba(255, 250, 242, 0.75);
       }
 
+      .baseline-row {
+        background: rgba(12, 92, 82, 0.08);
+      }
+
+      .baseline-badge {
+        display: inline-block;
+        margin-top: 0.45rem;
+        padding: 0.2rem 0.45rem;
+        border-radius: 999px;
+        background: rgba(12, 92, 82, 0.12);
+        color: var(--accent);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
       .callout-ok {
         border-color: rgba(37, 100, 74, 0.35);
         background: rgba(215, 236, 231, 0.75);
@@ -366,7 +381,7 @@
     <div class="shell">
       <section class="hero">
         <h1>Owli Control UI</h1>
-        <p>Phase 5 analysis surface with run/eval comparison, safe small job launchers, and local artifact diagnostics.</p>
+        <p>Phase 6 analysis surface with global and curated per-class run/eval comparison, safe small job launchers, and local artifact diagnostics.</p>
         <small>Repo root: {{ model.repo_root }}</small>
         <div class="badges">
           <span class="badge">FastAPI + Uvicorn</span>
@@ -389,7 +404,7 @@
         {% block content %}{% endblock %}
       </main>
 
-      <footer>Phase 5 keeps the CLI and filesystem artifacts as the source of truth and adds small comparison, diagnostics, and safe launcher seams.</footer>
+      <footer>Phase 6 keeps the CLI and filesystem artifacts as the source of truth and adds small comparison, per-class diagnostics, and safe launcher seams.</footer>
     </div>
   </body>
 </html>

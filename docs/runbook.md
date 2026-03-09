@@ -11,15 +11,15 @@ pip install -r requirements/dev.txt
 
 WSL-specific setup notes: `docs/wsl-setup.md`
 
-## Local WebUI (Phase 5, compare + diagnostics + small job control + first FiftyOne hook)
+## Local WebUI (Phase 6, compare + per-class diagnostics + small job control + first FiftyOne hook)
 
 The local control UI is intentionally small. It still exposes repo docs, label contracts,
 curated artifact roots, detected dataset directories, detected run directories, and
 config-referenced paths. It also provides dataset detail pages, run detail pages, eval
-JSON details, golden JSON details, a small run/eval comparison page, and a safe launcher
-for a few lightweight dataset-prep jobs. Phase 5 also keeps the small local FiftyOne
-bridge for supported COCO datasets. It does not replace the CLI and it does not start
-heavy training jobs.
+JSON details, golden JSON details, a small run/eval comparison page, a curated per-class
+compare add-on, and a safe launcher for a few lightweight dataset-prep jobs. Phase 6
+also keeps the small local FiftyOne bridge for supported COCO datasets. It does not
+replace the CLI and it does not start heavy training jobs.
 
 Code location:
 - `src/owli_train/webui/`
@@ -38,26 +38,30 @@ Additional note:
 - if you are not using the full dev environment, install `requirements/webui.txt`
 - for the optional FiftyOne bridge in the same venv, install `requirements/fiftyone.txt`
 
-Phase-5 job support:
+Phase-6 job support:
 - `dataset validate`
 - `dataset split`
 - `dataset merge coco`
 - `dataset export modelmaker-csv`
 - `dataset materialize-images` with merge manifest only
 
-Phase-5 analysis support:
+Phase-6 analysis support:
 - dataset COCO counts, class distribution, split counts, QC summary where present
 - run artifact and report listings
 - eval JSON metrics and per-class tables where present
 - compare view for shared eval targets across multiple runs with AP, AP50, AP75, AR100, precision, and recall
+- compare view with one baseline selector and raw delta columns for AP, AP50, AP75, AR100, precision, and recall
+- compare view with a curated per-class section for BA core and optional rehearsal classes using precision, recall, tp, fp, fn and matching raw delta columns
 - golden JSON metadata and detection tables
 - dataset detail -> open supported dataset in local FiftyOne
 - eval detail -> open referenced dataset in local FiftyOne when eval JSON records repo-local paths
 
-Phase-5 boundaries:
+Phase-6 boundaries:
 - no training from the UI
 - no pseudo-label teacher runs
 - no large benchmark platform
+- no generic full-contract per-class analysis suite
+- no multi-baseline or chart-heavy delta system
 - no FiftyOne prediction/eval overlays in this phase
 - no multi-user session management
 - no arbitrary shell command entry

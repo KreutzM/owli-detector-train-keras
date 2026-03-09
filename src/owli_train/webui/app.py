@@ -34,8 +34,8 @@ def create_app(repo_root: Path | None = None) -> FastAPI:
 
     app = FastAPI(
         title="Owli Control UI",
-        description="Phase 5 visibility, run/eval comparison, small whitelisted job control, and a first local FiftyOne bridge for datasets and eval-linked datasets.",
-        version="0.5.0",
+        description="Phase 6 visibility, baseline-aware global and curated per-class run/eval comparison, small whitelisted job control, and a first local FiftyOne bridge for datasets and eval-linked datasets.",
+        version="0.6.1",
         lifespan=lifespan,
     )
     app.state.repo_root = resolved_repo_root
@@ -74,10 +74,14 @@ def create_app(repo_root: Path | None = None) -> FastAPI:
         request: Request,
         run: list[str] | None = None,
         target: str | None = None,
+        baseline: str | None = None,
+        class_scope: str | None = None,
     ) -> HTMLResponse:
         compare_view = _reader().load_runs_compare(
             selected_run_paths=run or [],
             target_key=target,
+            baseline_run_path=baseline,
+            class_scope_key=class_scope,
         )
         context = {
             **_context(request, "Run Compare"),
