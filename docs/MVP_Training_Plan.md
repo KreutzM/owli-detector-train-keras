@@ -13,6 +13,7 @@
 - Current verified baseline: [Obstacle4_E2E_Results.md](./Obstacle4_E2E_Results.md)
 - Current verified multi-source baseline: [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
 - Current verified Stage-4 data pipeline: [BA_MVP_Stage4_Replay_Pipeline.md](./BA_MVP_Stage4_Replay_Pipeline.md)
+- Current verified Stage-4 comparison run: [BA_MVP_Stage4_Baseline.md](./BA_MVP_Stage4_Baseline.md)
 
 ## Primary MVP Sources
 The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified reference baseline, but the next training run is intended to be multi-source.
@@ -148,6 +149,34 @@ Current verified Stage-4 data path on repo HEAD:
     - [`configs/efficientdet_lite2_ba_mvp_stage4.yaml`](../configs/efficientdet_lite2_ba_mvp_stage4.yaml)
   - dedicated overview:
     - [BA_MVP_Stage4_Replay_Pipeline.md](./BA_MVP_Stage4_Replay_Pipeline.md)
+  - trained comparison result:
+    - [BA_MVP_Stage4_Baseline.md](./BA_MVP_Stage4_Baseline.md)
+
+Current verified Stage-4 training result on repo HEAD:
+- config:
+  - [`configs/efficientdet_lite2_ba_mvp_stage4.yaml`](../configs/efficientdet_lite2_ba_mvp_stage4.yaml)
+- run:
+  - `work/runs/20260308-211806-ba-mvp-stage4-20260308`
+- primary direct comparison set:
+  - held-out `TEST` split from `work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json`
+- primary comparison result vs. the verified Stage-3 model:
+  - AP drops from `0.1307` to `0.1232`
+  - AP50 drops from `0.2325` to `0.2170`
+  - AP75 drops from `0.1270` to `0.1203`
+  - AR100 drops from `0.2170` to `0.2095`
+  - precision improves slightly from `0.2050` to `0.2118`
+  - recall drops from `0.3735` to `0.3627`
+- cross-check on the Stage-4 `TEST` split:
+  - the older Stage-3 model still scores higher than the new Stage-4 model
+  - AP `0.1481` vs. `0.1427`
+  - AP50 `0.2729` vs. `0.2663`
+  - AP75 `0.1446` vs. `0.1389`
+  - AR100 `0.2348` vs. `0.2244`
+- reading:
+  - the current small replay subset lowers some low-threshold FP load
+  - `person` benefits the clearest
+  - overall rehearsal stabilization is not convincing enough yet
+  - the current preferred multi-source baseline remains Stage-3
 
 ## Repo Prep Artifacts for This MVP Path
 - [`configs/label_maps/obstacle4_to_ba.yaml`](../configs/label_maps/obstacle4_to_ba.yaml)
@@ -210,6 +239,7 @@ Current exception:
 - The new Stage-3 multi-source baseline is materially better than the Obstacle4-only run, but still not product-ready because false positives remain high.
 - BA core improvements can still be undermined by weak or lossy mappings from new sources.
 - COCO replay can distort the class balance if it is not kept intentionally small.
+- The first real Stage-4 replay run now shows that the current replay weighting is not automatically better than the Stage-3 baseline.
 - The next combined run should be treated as an MVP integration milestone, not as a final product claim.
 
 ## Current Working Rule
@@ -217,6 +247,7 @@ Current exception:
 - Treat `Mapillary Vistas` and `OD` as reviewed BA supplements with conservative mappings on current repo HEAD.
 - Use the checked-in balanced Mapillary subset for the first multi-source MVP run instead of the full raw Mapillary export.
 - Treat [`BA_MVP_Stage3_Baseline.md`](./BA_MVP_Stage3_Baseline.md) as the current verified multi-source reference before adding `COCO replay`.
+- Treat [`BA_MVP_Stage4_Baseline.md`](./BA_MVP_Stage4_Baseline.md) as the first real replay comparison result, not as a new default baseline.
 - Treat `TACO` as prep-only until its local taxonomy is verified.
 - Treat `COCO replay` as a narrow rehearsal mechanism, not as a return to general COCO training.
 - Use the checked-in Stage-4 replay subset and merge hook for the next direct Stage-3 vs. Stage-4 Lite2 comparison run.

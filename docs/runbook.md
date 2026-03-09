@@ -967,6 +967,59 @@ PYTHONPATH=src python -m owli_train dataset export modelmaker-csv \
   --out work/datasets/ba_mvp_stage4_with_coco_replay/modelmaker.csv
 ```
 
+Verified Stage-4 Lite2 comparison run on current repo HEAD:
+
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_mvp_stage4.yaml \
+  --run-name ba-mvp-stage4-20260308 \
+  --require-gpu
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images \
+  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage4_test.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage3_test.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage4_test.json
+
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/golden_obstacle4.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
+```
+
+Current reading:
+- the first real Stage-4 replay run does not outperform the verified Stage-3 baseline
+- low-threshold FP load improves slightly
+- `person` benefits the clearest
+- the current preferred multi-source baseline remains Stage-3
+
 ## Mapillary Vistas -> BA COCO Detection
 
 - Local source root: `data/DataSets/Map`

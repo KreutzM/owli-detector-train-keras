@@ -1,116 +1,219 @@
 # Codex Task Report
 
 ## Ziel
-- Den aktuellen Branch `feat/2nd_Et-Lite-2-Train` gegen den angekuendigten PR-Inhalt `stage4 coco replay pipeline` abgleichen.
-- Sichtbar machen, dass die Stage-4-Artefakte bereits real im Branch vorhanden sind.
-- Den Review-Stand mit einer klaren Stage-4-Doku und einem dazu passenden Pflicht-Report reparieren.
+- Den ersten echten `EfficientDet-Lite2`-Trainingslauf auf dem Stage-4-Datensatz mit kleinem `COCO replay` real ausfuehren.
+- Den neuen Stage-4-Lauf direkt gegen die verifizierte Stage-3-Baseline vergleichen.
+- Die Resultate im Repo-Stil dokumentieren, ohne BA-v1 oder den Produktpfad zu aendern.
 
 ## Was wurde geändert?
-- Neue sichtbare Stage-4-Uebersicht:
+- Neue Ergebnisdoku fuer den ersten echten Replay-Vergleich:
+  - `docs/BA_MVP_Stage4_Baseline.md`
+- Stage-4-Pipeline-Doku auf den neuen Ist-Stand gebracht:
   - `docs/BA_MVP_Stage4_Replay_Pipeline.md`
-- Knappe Verweise auf die neue Stage-4-Uebersicht ergaenzt:
+- Plan- und Runbook-Verweise auf den real verifizierten Stage-4-Lauf aktualisiert:
   - `docs/MVP_Training_Plan.md`
   - `docs/runbook.md`
-- `docs/reviews/Codex-Task-Report_last.md` auf diesen Reparaturtask aktualisiert
+- Pflicht-Report fuer diesen Real-Run aktualisiert:
+  - `docs/reviews/Codex-Task-Report_last.md`
 
 ## Was wurde wirklich verifiziert?
-- Realer Branch-Inhalt und letzter Commit geprueft:
+- Stage-4-Datenbasis und Label-Contract vor dem Lauf geprueft:
 ```bash
-git branch --show-current
-git rev-parse --short HEAD
-git --no-pager log --oneline -5
+sed -n '1,220p' docs/MVP_Training_Plan.md
+sed -n '1,220p' docs/BA_v1_Labelset.md
+sed -n '1,260p' docs/runbook.md
+sed -n '1,260p' docs/BA_MVP_Stage3_Baseline.md
+sed -n '1,280p' docs/BA_MVP_Stage4_Replay_Pipeline.md
+sed -n '1,220p' configs/label_contracts/ba_v1.yaml
+sed -n '1,240p' configs/efficientdet_lite2_ba_mvp_stage3.yaml
+sed -n '1,240p' configs/efficientdet_lite2_ba_mvp_stage4.yaml
+sed -n '1,260p' configs/merge_ba_mvp_stage4_with_coco_replay.yaml
+sed -n '1,240p' configs/coco_replay_ba_mvp_stage4.yaml
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - Branch: `feat/2nd_Et-Lite-2-Train`
-    - Head: `ee21838`
-    - letzter Commit: `feat: add stage4 coco replay pipeline`
+    - Stage-4-Datensatz und Split liegen real auf Disk
+    - Stage-4 nutzt dieselben Lite2-Hyperparameter wie Stage-3
+    - die BA-v1-Reihenfolge wird ueber `configs/label_contracts/ba_v1.class_names.json` erzwungen
 
-- Reale Stage-4-Dateien im Branch geprueft:
+- GPU-Sichtbarkeit im realen Model-Maker-Interpreter geprueft:
 ```bash
-rg -n "stage4|coco replay|coco_replay" configs docs src tests -S --glob '!work/**' --glob '!data/**'
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -c "import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices('GPU'))"
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - Stage-4-Config vorhanden:
-      - `configs/coco_replay_ba_mvp_stage4.yaml`
-    - Stage-4-Merge-Manifest vorhanden:
-      - `configs/merge_ba_mvp_stage4_with_coco_replay.yaml`
-    - naechste Trainingsconfig vorhanden:
-      - `configs/efficientdet_lite2_ba_mvp_stage4.yaml`
-    - Replay-Importer und Tests vorhanden:
-      - `src/owli_train/data/coco_replay.py`
-      - `tests/test_dataset_import_coco_replay.py`
+    - `tensorflow==2.8.4`
+    - `[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]`
 
-- Reale sichtbare Stage-4-Artefakte auf Disk geprueft:
+- Echter Stage-4-Trainingslauf ausgefuehrt:
 ```bash
-find work/datasets/coco_replay_ba_v1_stage4 -maxdepth 2 | sort
-find work/datasets/ba_mvp_stage4_with_coco_replay -maxdepth 2 | sort | sed -n '1,120p'
-find work/splits/ba_mvp_stage4_with_coco_replay -maxdepth 1 | sort
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_mvp_stage4.yaml \
+  --run-name ba-mvp-stage4-20260308 \
+  --require-gpu
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - Replay-Artefakte vorhanden:
-      - `work/datasets/coco_replay_ba_v1_stage4/instances_ba_v1.coco.json`
-      - `work/datasets/coco_replay_ba_v1_stage4/class_names.json`
-      - `work/datasets/coco_replay_ba_v1_stage4/qc_report.json`
-    - Stage-4-Merge-Artefakte vorhanden:
-      - `work/datasets/ba_mvp_stage4_with_coco_replay/instances_combined.json`
-      - `work/datasets/ba_mvp_stage4_with_coco_replay/instances_combined.report.json`
-      - `work/datasets/ba_mvp_stage4_with_coco_replay/instances_materialized.json`
-      - `work/datasets/ba_mvp_stage4_with_coco_replay/modelmaker.csv`
-    - Stage-4-Split-Artefakte vorhanden:
-      - `work/splits/ba_mvp_stage4_with_coco_replay/splits.json`
-      - `instances_train.json`
-      - `instances_val.json`
-      - `instances_test.json`
+    - Run dir: `work/runs/20260308-211806-ba-mvp-stage4-20260308`
+    - TFLite: `work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite`
+    - Labels: `work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/labels.txt`
+    - BA-v1-Reihenfolge unveraendert
+    - finale Validierungswerte:
+      - `val_det_loss=0.6234`
+      - `val_cls_loss=0.3775`
+      - `val_box_loss=0.0049`
+      - `val_loss=0.6309`
 
-- Inhaltliche Stage-4-Sichtbarkeit in den zentralen Docs geprueft:
+- TFLite inspect real ausgefuehrt:
 ```bash
-sed -n '1,260p' docs/MVP_Training_Plan.md
-sed -n '885,930p' docs/runbook.md
-sed -n '1,220p' docs/reviews/Codex-Task-Report_last.md
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite
 ```
   - Exit-Code: `0`
   - Ergebnis:
-    - Stage-4 war bereits in Plan und Runbook erwaehnt
-    - fuer Reviewer fehlte aber eine klar benannte eigene Stage-4-Uebersicht
-    - der Pflicht-Report war inhaltlich nicht als Reparaturtask formuliert
+    - `builtin_ops_only: true`
+    - Operators:
+      - `QUANTIZE`
+      - `CONV_2D`
+      - `DEPTHWISE_CONV_2D`
+      - `ADD`
+      - `MAX_POOL_2D`
+      - `RESIZE_NEAREST_NEIGHBOR`
+      - `RESHAPE`
+      - `CONCATENATION`
+      - `LOGISTIC`
+      - `DEQUANTIZE`
+      - `TFLite_Detection_PostProcess`
 
-- Pflicht-Checks nach dem Doku-Fix:
+- Stage-4-Modell auf dem nativen Stage-4-Testsplit real evaluiert:
 ```bash
-python -m ruff format .
-python -m ruff check .
-python -m pytest
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images \
+  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage4_test.json
 ```
-  - Exit-Codes: alle `0`
+  - Exit-Code: `0`
   - Ergebnis:
-    - `ruff format`: keine problematischen Aenderungen
-    - `ruff check`: alle Checks bestanden
-    - `pytest`: Test-Suite erfolgreich
+    - AP `0.1427`
+    - AP50 `0.2663`
+    - AP75 `0.1389`
+    - AR100 `0.2244`
+    - precision `0.2527`
+    - recall `0.4162`
 
-## Erzeugte Artefakte / Zielpfade
-- Neue Stage-4-Uebersicht:
-  - `docs/BA_MVP_Stage4_Replay_Pipeline.md`
-- Bereits vorhandene und jetzt sichtbar verlinkte Stage-4-Artefakte:
-  - `configs/coco_replay_ba_mvp_stage4.yaml`
-  - `configs/merge_ba_mvp_stage4_with_coco_replay.yaml`
-  - `configs/efficientdet_lite2_ba_mvp_stage4.yaml`
-  - `work/datasets/coco_replay_ba_v1_stage4/instances_ba_v1.coco.json`
-  - `work/datasets/ba_mvp_stage4_with_coco_replay/instances_combined.json`
-  - `work/datasets/ba_mvp_stage4_with_coco_replay/instances_materialized.json`
-  - `work/datasets/ba_mvp_stage4_with_coco_replay/modelmaker.csv`
-  - `work/splits/ba_mvp_stage4_with_coco_replay/splits.json`
+- Stage-4-Modell auf dem unveraenderten Stage-3-Testsplit real evaluiert:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
+  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage3_test.json
+```
+  - Exit-Code: `0`
+  - Ergebnis:
+    - AP `0.1232`
+    - AP50 `0.2170`
+    - AP75 `0.1203`
+    - AR100 `0.2095`
+    - precision `0.2118`
+    - recall `0.3627`
 
-## Was wurde nur statisch geprüft?
-- Es wurde in diesem Reparaturtask bewusst kein neuer Replay-, Merge- oder Trainingslauf gestartet.
-- Die bereits vorhandenen Stage-4-Artefakte wurden nur gegen den aktuellen Repo- und Disk-Stand abgeglichen.
-- Die naechste Trainingsconfig `configs/efficientdet_lite2_ba_mvp_stage4.yaml` wurde in diesem Task nicht erneut ausgefuehrt.
+- Stage-3-Modell auf dem Stage-4-Testsplit real gegengetestet:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json \
+  --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images \
+  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage4_test.json
+```
+  - Exit-Code: `0`
+  - Ergebnis:
+    - AP `0.1481`
+    - AP50 `0.2729`
+    - AP75 `0.1446`
+    - AR100 `0.2348`
+    - precision `0.2434`
+    - recall `0.4199`
+
+- Golden detect real ausgefuehrt:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite \
+  --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg \
+  --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/golden_obstacle4.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
+```
+  - Exit-Code: `0`
+  - Ergebnis:
+    - `14` Detections
+    - Klassenmix:
+      - `obstacle_pole=7`
+      - `obstacle_hole=3`
+      - `obstacle_fence=2`
+      - `car=2`
+
+- Nur statisch geprueft:
+  - die neue Doku gegen die erzeugten Artefakte und die bestehenden Stage-3-Reports gegengelesen
+  - keine weiteren Codepfade ausserhalb des real ausgefuehrten Train/Inspect/Eval/Golden-Sets
+
+## Tests
+- Keine separaten `ruff`- oder `pytest`-Laeufe nach den Doku-Aenderungen.
+- Grund:
+  - in diesem Task wurden keine Code- oder Trainingsconfig-Aenderungen benoetigt
+  - die reale Verifikation lag auf den produktnahen Kommandos fuer Training, Inspect, Eval und Golden
+- Exit-Codes der real ausgefuehrten Produkt-Kommandos:
+  - Training: `0`
+  - Inspect: `0`
+  - Eval Stage-4-Test: `0`
+  - Eval Stage-3-Test: `0`
+  - Gegen-Eval Stage-3-Modell auf Stage-4-Test: `0`
+  - Golden detect: `0`
+
+## Relevante Run-Kommandos
+- WSL2 Train:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet --config configs/efficientdet_lite2_ba_mvp_stage4.yaml --run-name ba-mvp-stage4-20260308 --require-gpu
+```
+- WSL2 Inspect:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite
+```
+- WSL2 Eval Stage-4-Test:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage4_test.json
+```
+- WSL2 Eval Stage-3-Test:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/eval_efficientdet_tflite_stage3_test.json
+```
+- WSL2 Gegen-Eval:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_mvp_stage4_with_coco_replay/instances_test.json --images-dir work/datasets/ba_mvp_stage4_with_coco_replay/images --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage4_test.json
+```
+- WSL2 Golden detect:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect --model work/runs/20260308-211806-ba-mvp-stage4-20260308/artifacts/model.tflite --image data/raw/obstacle4/extracted/valid/images/-_-_26_005_jpeg.rf.87306b8fa8d39b023b6d8c8354fc529a.jpg --out work/runs/20260308-211806-ba-mvp-stage4-20260308/reports/golden_obstacle4.json --score-threshold 0.1 --max-results 20 --num-threads 8
+```
 
 ## Offene Risiken
-- Der Branch ist jetzt sichtbarer, aber Stage-4 bleibt weiterhin nur ein vorbereiteter Datenpfad ohne neuen Lite2-Lauf.
-- Reviewer muessen fuer die eigentlichen Laufdetails weiter den vorherigen Stage-4-Task-Kontext oder die Artefakte lesen; die neue Uebersicht reduziert das, ersetzt aber keinen Trainingsvergleich.
-- `COCO replay` bleibt bewusst schmal; der reale Nutzen muss erst der naechste Stage-4-vs-Stage-3-Trainingsvergleich bestaetigen.
+- Der erste echte Stage-4-Run ist belastbar genug fuer eine Baseline-Aussage, aber noch nur ein einzelner Replay-Weighting-Punkt.
+- Der aktuelle kleine Replay-Baustein senkt einige FP-Zaehler, verschlechtert aber global AP/Recall; das ist negative Evidenz, noch keine vollstaendige Replay-Abschreibung.
+- Ohne weiteren kleinen Replay-Gewichtungsversuch bleibt offen, ob das Problem an der Idee `COCO replay` liegt oder an der aktuellen Selektion/Groesse.
+- Die aktuelle Produktempfehlung bleibt deshalb konservativ:
+  - Stage-3 behalten
+  - Stage-4 nicht promoten
 
 ## Nächster sinnvoller Schritt
-- Fuehre den echten `EfficientDet-Lite2`-Stage-4-Lauf mit `configs/efficientdet_lite2_ba_mvp_stage4.yaml` aus und dokumentiere den direkten Vergleich gegen die bestehende Stage-3-Baseline.
+- Fuehre genau einen kleinen Folgeversuch innerhalb derselben sechs Replay-Klassen aus, der nur die Replay-Gewichtung oder Replay-Selektion reduziert, und vergleiche ihn wieder direkt gegen Stage-3 auf demselben Stage-3-Testsplit.

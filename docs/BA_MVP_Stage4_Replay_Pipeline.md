@@ -2,8 +2,8 @@
 
 ## Purpose
 - Make the checked-in Stage-4 `COCO replay` step directly reviewable in one place.
-- Show that Stage-4 is currently a verified data-pipeline step, not yet a new training baseline.
-- Link the exact configs, manifests, artifacts, and next training config for the next Lite2 comparison run.
+- Keep the Stage-4 data-prep step reviewable even after the first real Lite2 comparison run exists.
+- Link the exact configs, manifests, artifacts, and the trained comparison result.
 
 ## Current Scope
 - Keep the existing Stage-3 multi-source dataset:
@@ -18,6 +18,9 @@
   - `bus`
   - `truck`
 - Do not start a new training run in this step.
+
+Trained comparison result:
+- [BA_MVP_Stage4_Baseline.md](./BA_MVP_Stage4_Baseline.md)
 
 ## Checked-In Stage-4 Files
 - Replay config:
@@ -74,10 +77,16 @@ This is intentionally narrow. The goal is rehearsal against forgetting, not a re
 - Stage-4 split:
   - `missing_train_classes=[]`
 
-## What Stage-4 Is Not Yet
-- Not a new trained Lite2 baseline.
-- Not a replacement for the current verified Stage-3 model result:
+## What This Doc Does Not Cover
+- This page stays focused on the Stage-4 replay data path.
+- The trained Lite2 result is documented separately:
+  - [BA_MVP_Stage4_Baseline.md](./BA_MVP_Stage4_Baseline.md)
+- The current preferred multi-source baseline remains the Stage-3 run:
   - [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
 
-## Next Step
-- Run `EfficientDet-Lite2` with [`configs/efficientdet_lite2_ba_mvp_stage4.yaml`](../configs/efficientdet_lite2_ba_mvp_stage4.yaml) and compare it directly against the held-out Stage-3 baseline.
+## Current Follow-Up
+- The first real Stage-4 Lite2 comparison run now exists:
+  - [BA_MVP_Stage4_Baseline.md](./BA_MVP_Stage4_Baseline.md)
+- Result on current repo HEAD:
+  - useful negative evidence
+  - current small replay subset does not outperform the verified Stage-3 baseline
