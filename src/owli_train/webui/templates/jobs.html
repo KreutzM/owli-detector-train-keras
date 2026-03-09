@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Recent jobs</h2>
+    <p class="meta">
+      Phase 2 supports only a small whitelist of lightweight dataset-prep commands. No training, no pseudo-labeling, no arbitrary shell execution.
+    </p>
+    {% if jobs %}
+      <table>
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Finished</th>
+            <th>Exit</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in jobs %}
+            <tr>
+              <td>
+                <strong>{{ job.title }}</strong><br />
+                <span class="meta">{{ job.job_id }}</span>
+              </td>
+              <td><span class="status status-{{ job.status }}">{{ job.status }}</span></td>
+              <td>{{ job.created_at }}</td>
+              <td>{{ job.finished_at or "-" }}</td>
+              <td>{{ job.exit_code if job.exit_code is not none else "-" }}</td>
+              <td><a href="{{ url_for('job_detail_page', job_id=job.job_id) }}">Open</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No WebUI jobs have been launched yet.</div>
+    {% endif %}
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>{{ job_titles['dataset_validate'] }}</h2>
+      <p class="meta">Read-only validation of an existing COCO file, optionally with image existence checks.</p>
+      {% if job_errors.get('dataset_validate') %}
+        <div class="empty">
+          {% for error in job_errors['dataset_validate'] %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('launch_job', job_type='dataset_validate') }}">
+        <label>COCO file</label>
+        <select name="coco_path">
+          {% for path in job_catalog.coco_files %}
+            <option value="{{ path }}" {% if job_values['dataset_validate']['coco_path'] == path %}selected{% endif %}>{{ path }}</option>
+          {% endfor %}
+        </select>
+        <label>Images directory (optional)</label>
+        <select name="images_dir">
+          <option value=""></option>
+          {% for path in job_catalog.image_dirs %}
+            <option value="{{ path }}" {% if job_values['dataset_validate']['images_dir'] == path %}selected{% endif %}>{{ path }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Launch validate</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <h2>{{ job_titles['dataset_split'] }}</h2>
+      <p class="meta">Deterministic split generation with a small safe parameter surface.</p>
+      {% if job_errors.get('dataset_split') %}
+        <div class="empty">
+          {% for error in job_errors['dataset_split'] %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('launch_job', job_type='dataset_split') }}">
+        <label>COCO file</label>
+        <select name="coco_path">
+          {% for path in job_catalog.coco_files %}
+            <option value="{{ path }}" {% if job_values['dataset_split']['coco_path'] == path %}selected{% endif %}>{{ path }}</option>
+          {% endfor %}
+        </select>
+        <label>Output dir under work/ (optional override)</label>
+        <input type="text" name="out_dir" value="{{ job_values['dataset_split']['out_dir'] }}" placeholder="work/webui/splits/<dataset>" />
+        <label>Seed</label>
+        <input type="number" name="seed" min="1" value="{{ job_values['dataset_split']['seed'] }}" />
+        <label><input type="checkbox" name="ensure_train_class_coverage" {% if job_values['dataset_split']['ensure_train_class_coverage'] %}checked{% endif %} /> ensure train-class coverage</label>
+        <label><input type="checkbox" name="write_coco" {% if job_values['dataset_split']['write_coco'] %}checked{% endif %} /> write split COCO files</label>
+        <button type="submit">Launch split</button>
+      </form>
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>{{ job_titles['dataset_merge_coco'] }}</h2>
+      <p class="meta">Manifest-based COCO merge only. The UI does not expose free-form merge sources.</p>
+      {% if job_errors.get('dataset_merge_coco') %}
+        <div class="empty">
+          {% for error in job_errors['dataset_merge_coco'] %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('launch_job', job_type='dataset_merge_coco') }}">
+        <label>Merge manifest</label>
+        <select name="manifest_path">
+          {% for path in job_catalog.merge_manifests %}
+            <option value="{{ path }}" {% if job_values['dataset_merge_coco']['manifest_path'] == path %}selected{% endif %}>{{ path }}</option>
+          {% endfor %}
+        </select>
+        <label>Output COCO under work/ (optional override)</label>
+        <input type="text" name="out_coco" value="{{ job_values['dataset_merge_coco']['out_coco'] }}" placeholder="work/webui/merged/<manifest>.instances.json" />
+        <button type="submit">Launch merge</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <h2>{{ job_titles['dataset_export_modelmaker_csv'] }}</h2>
+      <p class="meta">CSV export for existing COCO + images roots, optionally with known split mappings.</p>
+      {% if job_errors.get('dataset_export_modelmaker_csv') %}
+        <div class="empty">
+          {% for error in job_errors['dataset_export_modelmaker_csv'] %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('launch_job', job_type='dataset_export_modelmaker_csv') }}">
+        <label>COCO file</label>
+        <select name="coco_path">
+          {% for path in job_catalog.coco_files %}
+            <option value="{{ path }}" {% if job_values['dataset_export_modelmaker_csv']['coco_path'] == path %}selected{% endif %}>{{ path }}</option>
+          {% endfor %}
+        </select>
+        <label>Images directory</label>
+        <select name="images_dir">
+          {% for path in job_catalog.image_dirs %}
+            <option value="{{ path }}" {% if job_values['dataset_export_modelmaker_csv']['images_dir'] == path %}selected{% endif %}>{{ path }}</option>
+          {% endfor %}
+        </select>
+        <label>Splits JSON (optional)</label>
+        <select name="splits_json">
+          <option value=""></option>
+          {% for path in job_catalog.split_files %}
+            <option value="{{ path }}" {% if job_values['dataset_export_modelmaker_csv']['splits_json'] == path %}selected{% endif %}>{{ path }}</option>
+          {% endfor %}
+        </select>
+        <label>Output CSV under work/ (optional override)</label>
+        <input type="text" name="out_csv" value="{{ job_values['dataset_export_modelmaker_csv']['out_csv'] }}" placeholder="work/webui/modelmaker/<dataset>.csv" />
+        <button type="submit">Launch export</button>
+      </form>
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>{{ job_titles['dataset_materialize_images'] }}</h2>
+    <p class="meta">Manifest-backed image materialization only. The WebUI does not expose free-form source image roots.</p>
+    {% if job_errors.get('dataset_materialize_images') %}
+      <div class="empty">
+        {% for error in job_errors['dataset_materialize_images'] %}
+          <div>{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <form method="post" action="{{ url_for('launch_job', job_type='dataset_materialize_images') }}">
+      <label>COCO file</label>
+      <select name="coco_path">
+        {% for path in job_catalog.coco_files %}
+          <option value="{{ path }}" {% if job_values['dataset_materialize_images']['coco_path'] == path %}selected{% endif %}>{{ path }}</option>
+        {% endfor %}
+      </select>
+      <label>Merge manifest</label>
+      <select name="merge_manifest">
+        {% for path in job_catalog.merge_manifests %}
+          <option value="{{ path }}" {% if job_values['dataset_materialize_images']['merge_manifest'] == path %}selected{% endif %}>{{ path }}</option>
+        {% endfor %}
+      </select>
+      <label>Output images dir under work/ (optional override)</label>
+      <input type="text" name="out_images_dir" value="{{ job_values['dataset_materialize_images']['out_images_dir'] }}" placeholder="work/webui/materialized/<dataset>/images" />
+      <label>Output COCO under work/ (optional override)</label>
+      <input type="text" name="out_coco" value="{{ job_values['dataset_materialize_images']['out_coco'] }}" placeholder="work/webui/materialized/<dataset>/instances_materialized.json" />
+      <label>Mode</label>
+      <select name="mode">
+        {% for mode in job_mode_options %}
+          <option value="{{ mode }}" {% if job_values['dataset_materialize_images']['mode'] == mode %}selected{% endif %}>{{ mode }}</option>
+        {% endfor %}
+      </select>
+      <label><input type="checkbox" name="overwrite" {% if job_values['dataset_materialize_images']['overwrite'] %}checked{% endif %} /> overwrite existing outputs</label>
+      <button type="submit">Launch materialize-images</button>
+    </form>
+  </section>
+{% endblock %}

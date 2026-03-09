@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+from PIL import Image
 
 
 def build_sample_repo(root: Path) -> Path:
     (root / "docs" / "reviews").mkdir(parents=True, exist_ok=True)
     (root / "configs" / "label_contracts").mkdir(parents=True, exist_ok=True)
+    (root / "tests" / "data").mkdir(parents=True, exist_ok=True)
+    (root / "tests" / "smoke_coco" / "images").mkdir(parents=True, exist_ok=True)
     (root / "work" / "datasets" / "demo-dataset").mkdir(parents=True, exist_ok=True)
+    (root / "work" / "splits" / "demo-dataset").mkdir(parents=True, exist_ok=True)
     (root / "work" / "runs" / "20260309-123000-demo" / "artifacts").mkdir(
         parents=True, exist_ok=True
     )
@@ -23,6 +29,32 @@ def build_sample_repo(root: Path) -> Path:
         encoding="utf-8",
     )
     (root / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+
+    image_path = root / "tests" / "smoke_coco" / "images" / "smoke1.jpg"
+    Image.new("RGB", (10, 10), color=(220, 120, 80)).save(image_path)
+    coco_payload = {
+        "images": [
+            {
+                "id": 1,
+                "file_name": "smoke1.jpg",
+                "width": 10,
+                "height": 10,
+            }
+        ],
+        "annotations": [
+            {
+                "id": 1,
+                "image_id": 1,
+                "category_id": 1,
+                "bbox": [1, 1, 5, 5],
+            }
+        ],
+        "categories": [{"id": 1, "name": "person"}],
+    }
+    (root / "tests" / "data" / "coco_min.json").write_text(
+        json.dumps(coco_payload, indent=2),
+        encoding="utf-8",
+    )
 
     (root / "configs" / "label_contracts" / "ba_v1.yaml").write_text(
         """
@@ -92,8 +124,8 @@ selection:
         """
 sources:
   - name: demo_source
-    coco: ../work/datasets/demo-dataset/instances_materialized.json
-    images_dir: ../work/datasets/demo-dataset/images
+    coco: ../tests/data/coco_min.json
+    images_dir: ../tests/smoke_coco/images
     contract: label_contracts/ba_v2_hazard.yaml
 settings:
   same_class_iou: 0.75
@@ -118,11 +150,15 @@ outputs:
     )
 
     (root / "work" / "datasets" / "demo-dataset" / "instances_materialized.json").write_text(
-        "{}\n",
+        json.dumps(coco_payload, indent=2),
         encoding="utf-8",
     )
     (root / "work" / "datasets" / "demo-dataset" / "modelmaker.csv").write_text(
         "TRAIN,image.jpg,person,0,0,,,1,1\n",
+        encoding="utf-8",
+    )
+    (root / "work" / "splits" / "demo-dataset" / "splits.json").write_text(
+        json.dumps({"train": [1], "val": [], "test": []}, indent=2),
         encoding="utf-8",
     )
     (root / "work" / "runs" / "20260309-123000-demo" / "artifacts" / "model.tflite").write_text(

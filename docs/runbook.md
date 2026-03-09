@@ -11,12 +11,12 @@ pip install -r requirements/dev.txt
 
 WSL-specific setup notes: `docs/wsl-setup.md`
 
-## Local WebUI (Phase 1, read-only)
+## Local WebUI (Phase 2, read-only + small job control)
 
-The local control UI is intentionally small and read-only. It exposes repo docs,
-label contracts, curated artifact roots, detected dataset directories, detected run
-directories, and config-referenced paths. It does not replace the CLI and it does not
-start training or dataset jobs in this phase.
+The local control UI is intentionally small. It still exposes repo docs, label contracts,
+curated artifact roots, detected dataset directories, detected run directories, and
+config-referenced paths, and it now adds a small safe launcher for a few lightweight
+dataset-prep jobs. It does not replace the CLI and it does not start heavy training jobs.
 
 Code location:
 - `src/owli_train/webui/`
@@ -33,6 +33,19 @@ Default local URL:
 
 Additional note:
 - if you are not using the full dev environment, install `requirements/webui.txt`
+
+Phase-2 job support:
+- `dataset validate`
+- `dataset split`
+- `dataset merge coco`
+- `dataset export modelmaker-csv`
+- `dataset materialize-images` with merge manifest only
+
+Phase-2 boundaries:
+- no training from the UI
+- no pseudo-label teacher runs
+- no arbitrary shell command entry
+- no multi-venv orchestration in this phase
 
 Dedicated note:
 - `docs/webui.md`

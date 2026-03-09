@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ job.title }}</h2>
+    <p class="meta">Job id: {{ job.job_id }}</p>
+    <div class="chips">
+      <span class="chip">{{ job.job_type }}</span>
+      <span class="status status-{{ job.status }}">{{ job.status }}</span>
+      {% if job.exit_code is not none %}
+        <span class="chip">exit={{ job.exit_code }}</span>
+      {% endif %}
+    </div>
+    <table style="margin-top: 1rem;">
+      <tbody>
+        <tr><th>Created</th><td>{{ job.created_at }}</td></tr>
+        <tr><th>Started</th><td>{{ job.started_at or "-" }}</td></tr>
+        <tr><th>Finished</th><td>{{ job.finished_at or "-" }}</td></tr>
+        <tr><th>Log file</th><td><code>{{ job.log_path }}</code></td></tr>
+        <tr><th>Command</th><td><code>{{ job.command_preview }}</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Submitted parameters</h2>
+      <table>
+        <thead>
+          <tr><th>Parameter</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          {% for key, value in job.parameters.items() %}
+            <tr>
+              <td><code>{{ key }}</code></td>
+              <td>{{ value if value is not none else "-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </article>
+
+    <article class="panel">
+      <h2>Expected artifacts</h2>
+      {% if job_artifacts %}
+        <table>
+          <thead>
+            <tr><th>Artifact</th><th>Path</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for artifact in job_artifacts %}
+              <tr>
+                <td>{{ artifact.label }}</td>
+                <td><code>{{ artifact.relative_path }}</code></td>
+                <td>{{ "present" if artifact.exists else "missing" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">This job type does not declare output artifacts.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Log</h2>
+    <pre class="log-output">{{ job_log_text or "(log is empty so far)" }}</pre>
+    <p class="meta"><a href="{{ url_for('jobs_page') }}">Back to jobs</a> · <a href="{{ url_for('artifacts_page') }}">Go to datasets / artifacts</a></p>
+  </section>
+{% endblock %}

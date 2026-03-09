@@ -75,11 +75,12 @@ See `docs/MVP_Training_Plan.md` for the current transition from the historical B
 
 GPU note (RTX-3060 on Windows): TensorFlow GPU is generally smoothest in WSL2.
 
-## WebUI (Phase 1, read-only)
+## WebUI (Phase 2, read-only + safe job launchers)
 
 The first local WebUI lives under `src/owli_train/webui/` and adds a small FastAPI +
-Uvicorn control surface over the existing repo state. It does not replace the CLI,
-does not edit datasets, and does not start jobs yet.
+Uvicorn control surface over the existing repo state. It still does not replace the CLI,
+but it now includes a small whitelist of lightweight dataset-prep jobs with persistent
+status and log visibility.
 
 Use the main tooling venv for this UI, not the dedicated Model Maker or teacher venvs.
 If you already installed `requirements/dev.txt`, the WebUI dependencies are included.
@@ -102,9 +103,23 @@ python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000 --reload
 
 Open `http://127.0.0.1:8000/`.
 
-Phase-1 pages:
+Current pages:
 - `/` dashboard for repo docs, contracts, artifact roots, detected datasets, and detected runs
 - `/contracts` for BA-v1 and BA-v2 ontology display
 - `/artifacts` for curated dataset/run/config path visibility
+- `/jobs` for job list, job detail links, and safe launchers for selected CLI commands
+
+Phase-2 job whitelist:
+- `dataset validate`
+- `dataset split`
+- `dataset merge coco`
+- `dataset export modelmaker-csv`
+- `dataset materialize-images` via merge manifest only
+
+Deliberately not supported from the WebUI yet:
+- training jobs
+- teacher pseudo-labeling
+- eval / golden chains
+- arbitrary shell commands
 
 See `docs/webui.md` for the local start path and current scope.

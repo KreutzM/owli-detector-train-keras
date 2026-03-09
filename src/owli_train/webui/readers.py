@@ -37,6 +37,7 @@ CURATED_DOCS: tuple[tuple[str, str, str], ...] = (
 CURATED_ARTIFACT_ROOTS: tuple[tuple[str, str, str], ...] = (
     ("Datasets root", "work/datasets", "Prepared dataset outputs and intermediate artifacts."),
     ("Runs root", "work/runs", "Training and export run directories."),
+    ("WebUI jobs root", "work/webui/jobs", "Persistent Phase-2 WebUI job records and logs."),
     ("Splits root", "work/splits", "Deterministic split artifacts."),
     ("Reports root", "work/reports", "Evaluation and inspection reports."),
     ("Outputs root", "outputs", "Model outputs configured by training backends."),

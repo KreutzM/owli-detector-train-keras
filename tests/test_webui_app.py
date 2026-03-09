@@ -11,6 +11,7 @@ def test_webui_routes_render_dashboard_contracts_and_artifacts(tmp_path):
     dashboard = client.get("/")
     contracts = client.get("/contracts")
     artifacts = client.get("/artifacts")
+    jobs = client.get("/jobs")
 
     assert dashboard.status_code == 200
     assert "Owli Control UI" in dashboard.text
@@ -23,3 +24,6 @@ def test_webui_routes_render_dashboard_contracts_and_artifacts(tmp_path):
     assert artifacts.status_code == 200
     assert "efficientdet_demo.yaml" in artifacts.text
     assert "model.tflite" in artifacts.text
+
+    assert jobs.status_code == 200
+    assert "dataset validate" in jobs.text

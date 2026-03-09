@@ -77,3 +77,27 @@ class RepositoryViewModel:
     recent_datasets: list[ArtifactDirectoryView]
     recent_runs: list[ArtifactDirectoryView]
     config_groups: list[ConfigGroupView]
+
+
+@dataclass(frozen=True)
+class JobArtifactView:
+    label: str
+    relative_path: str
+    exists: bool
+
+
+@dataclass(frozen=True)
+class JobView:
+    job_id: str
+    job_type: str
+    title: str
+    status: str
+    created_at: str
+    started_at: str | None
+    finished_at: str | None
+    exit_code: int | None
+    command_preview: str
+    log_path: str
+    parameters: dict[str, object] = field(default_factory=dict)
+    artifacts: list[JobArtifactView] = field(default_factory=list)
+    log_text: str | None = None
