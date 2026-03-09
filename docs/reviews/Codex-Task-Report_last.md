@@ -1,128 +1,127 @@
 # Codex Task Report
 
 ## Ziel
-- Die bestehende WebUI um einen ersten kleinen, lokalen FiftyOne-Hook erweitern.
-- Geeignete COCO-Datasets aus der Dataset-Detailseite direkt in FiftyOne oeffnen koennen.
-- Optional einen zweiten kleinen Oeffnungspfad ueber eval-verknuepfte Dataset-Referenzen anbieten.
-- Die bestehende WebUI-Struktur beibehalten, ohne FiftyOne voll einzubetten oder neue Job-/Session-Plattformen zu bauen.
+- Den ersten echten `EfficientDet-Lite2`-Trainingslauf auf dem vorbereiteten BA-v2-MVP-Kandidaten real ausfuehren.
+- Die exportierten BA-v2-MVP-Artefakte mit `inspect tflite`, `eval efficientdet-tflite` und `golden detect` real verifizieren.
+- Die Resultate als erste ehrliche BA-v2-MVP-Baseline im Repo dokumentieren und gegen die historischen Baselines einordnen.
 
 ## Was wurde geändert?
-- Kleinen optionalen FiftyOne-Service fuer die WebUI eingefuehrt:
-  - `src/owli_train/webui/fiftyone.py`
-  - `src/owli_train/webui/fiftyone_launcher.py`
-- WebUI-App auf Phase 4 angehoben und um eine lokale Launch-Route erweitert:
-  - `src/owli_train/webui/app.py`
-- Reader-/View-Model-Layer um FiftyOne-Launch-Targets fuer Dataset- und Eval-Details erweitert:
-  - `src/owli_train/webui/readers.py`
-  - `src/owli_train/webui/models.py`
-- Dataset- und Eval-Detailseiten um kleine FiftyOne-Startpunkte und Fehlhinweise erweitert:
-  - `src/owli_train/webui/templates/dataset_detail.html`
-  - `src/owli_train/webui/templates/eval_detail.html`
-  - `src/owli_train/webui/templates/fiftyone_launch.html`
-  - `src/owli_train/webui/templates/base.html`
-- Kleine Tests fuer Reader, Route und fehlende FiftyOne-Abhaengigkeit ergaenzt:
-  - `tests/test_webui_reader.py`
-  - `tests/test_webui_app.py`
-  - `tests/test_webui_fiftyone.py`
-  - `tests/webui_test_utils.py`
-- Optionalen Installationspfad fuer FiftyOne dokumentiert:
-  - `requirements/fiftyone.txt`
-  - `pyproject.toml`
-- Doku auf den kleinen Phase-4-Scope aktualisiert:
-  - `README.md`
-  - `docs/webui.md`
+- Neue Ergebnisdoku fuer die erste echte BA-v2-MVP-Baseline ergaenzt:
+  - `docs/BA_v2_MVP_Baseline.md`
+- BA-v2-MVP-Plan und Candidate-Doku auf den jetzt real abgeschlossenen Lauf nachgezogen:
+  - `docs/MVP_Training_Plan.md`
+  - `docs/BA_v2_MVP_Train_Candidate.md`
+- Runbook um die verifizierten BA-v2-MVP-Train/Eval/Golden-Kommandos erweitert:
   - `docs/runbook.md`
+- Pflicht-Report fuer diesen Task aktualisiert:
+  - `docs/reviews/Codex-Task-Report_last.md`
 
 ## Was wurde wirklich verifiziert?
 - Statisch geprueft:
   - `README.md`
-  - `docs/webui.md`
+  - `docs/BA_v2_Hazard_Labelset.md`
+  - `docs/BA_v2_MVP_Baseline.md`
+  - `docs/BA_v2_MVP_Train_Candidate.md`
+  - `docs/MVP_Training_Plan.md`
   - `docs/runbook.md`
-  - `docs/review-templates/Codex-Task-Report.md`
-  - `docs/reviews/Codex-Task-Report_last.md` (vorheriger Stand)
-  - `src/owli_train/webui/*`
-  - relevante COCO-/Eval-Pfadnutzung in:
-    - `src/owli_train/data/merge_coco.py`
-    - `src/owli_train/eval/detect.py`
-    - `src/owli_train/data/materialize_images.py`
+  - `docs/android-export-contract.md`
+  - `configs/label_contracts/ba_v2_hazard.yaml`
+  - `configs/efficientdet_lite2_ba_v2_mvp.yaml`
+  - BA-v2-relevante Merge-/Materialize-/CSV-Configs unter `configs/*`
+  - Trainings-/Eval-/Golden-/TFLite-Pfade unter:
+    - `src/owli_train/training/*`
+    - `src/owli_train/eval/*`
+    - `src/owli_train/golden/*`
+    - `src/owli_train/tflite_detect.py`
 - Inhaltlich verifiziert:
-  - Dataset-Detailseiten markieren nur solche Datasets als FiftyOne-faehig, die einen COCO-Pfad plus lokales `<dataset>/images` haben.
-  - Eval-Detailseiten markieren nur solche Reports als FiftyOne-faehig, die repo-lokale `coco_path`- und `images_dir`-Felder enthalten.
-  - Fehlende Bilder, fehlende COCO-Pfade oder ungeeignete Artefakte fuehren zu klaren UI-Hinweisen statt zu WebUI-Startfehlern.
-  - Fehlendes `fiftyone` fuehrt nur auf der Launch-Route zu einer klaren Fehlermeldung; der normale WebUI-Start bleibt funktionsfaehig.
+  - der reale BA-v2-MVP-Datensatz ist `work/datasets/ba_v2_mvp_candidate`
+  - die reale Trainingsconfig ist `configs/efficientdet_lite2_ba_v2_mvp.yaml`
+  - die BA-v2-MVP-Klassenreihenfolge blieb durch Training, Export und Eval unveraendert:
+    - `obstacle_ground`
+    - `obstacle_barrier`
+    - `obstacle_hole_dropoff`
+    - `obstacle_pole`
+    - `person`
+    - `bicycle`
+    - `motorcycle`
+    - `car`
+    - `bus`
+    - `truck`
+  - `mapping_files.json` meldet keine fehlenden BA-v2-Klassen im `TRAIN`-Split
+  - TFLite-Eval konnte die Kategorien direkt per `labels.txt` gegen den BA-v2-TEST-Split ausrichten
 - Real ausgefuehrt:
-  - gezielte WebUI-/FiftyOne-Tests
-  - `ruff format`, `ruff check`, kompletter `pytest`-Lauf
-  - lokaler Uvicorn-Start gegen das echte Repo
-  - echte HTTP-GETs auf Dashboard-/Artifacts-/Jobs-Seiten gegen das echte Repo
-  - lokaler Uvicorn-Start gegen ein temporaeres Sample-Repo mit Mini-Artefakten
-  - echte HTTP-GETs auf Dataset-/Eval-/FiftyOne-Routen gegen das Sample-Repo
-  - lokale Pruefung, dass `fiftyone` in der aktuellen venv nicht installiert ist
-- Nicht real verifiziert:
-  - ein echter erfolgreicher FiftyOne-App-Start, weil `fiftyone` in der aktuellen lokalen venv nicht installiert ist
-  - die Runtime-Interaktion von `src/owli_train/webui/fiftyone_launcher.py` mit einer echten FiftyOne-Installation
+  - echter BA-v2-MVP-Lite2-Trainingslauf mit GPU und ohne `--max-steps`
+  - echtes Lite2-Export-Artefakt unter `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite`
+  - `inspect tflite` auf dem exportierten BA-v2-Modell
+  - `eval efficientdet-tflite` auf dem kompletten BA-v2-`TEST`-Split mit `381` Bildern
+  - `golden detect` auf einem BA-v2-`TEST`-Bild mit drei Hazard-Core-Klassen plus Rehearsal-Mix
+  - erzeugte Artefakte:
+    - Run dir: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309`
+    - TFLite: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite`
+    - Labels: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/labels.txt`
+    - Class names: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/class_names.json`
+    - Eval JSON: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json`
+    - Eval Markdown: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.md`
+    - Golden JSON: `work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/golden_ba_v2_test_mix.json`
 
 ## Tests
-- `python - <<'PY'\nimport importlib.util\nprint(importlib.util.find_spec('fiftyone'))\nPY`
+- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet --config configs/efficientdet_lite2_ba_v2_mvp.yaml --run-name ba-v2-mvp-baseline-20260309 --require-gpu`
   - Exit-Code: `0`
-  - Ergebnis: `None`
-- `python -m pytest tests/test_webui_reader.py tests/test_webui_app.py tests/test_webui_fiftyone.py`
+  - Ergebnis: echter BA-v2-MVP-Lauf mit `20` Epochen, Export von `model.tflite`, `labels.txt`, `class_names.json`
+- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite`
   - Exit-Code: `0`
-  - Ergebnis: `11 passed in 0.66s`
-- `python -m ruff check src/owli_train/webui tests/test_webui_app.py tests/test_webui_reader.py tests/test_webui_fiftyone.py tests/webui_test_utils.py`
+  - Ergebnis: `builtin_ops_only=true`, Input `448x448x3 uint8`, erwartete EfficientDet-Lite2-Operatoren
+- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite --coco work/splits/ba_v2_hazard_slice02_mapillary_od_ground/instances_test.json --images-dir work/datasets/ba_v2_mvp_candidate/images --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite --score-threshold 0.1 --noise-thresholds 0.05,0.1,0.3 --num-threads 8 --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json`
   - Exit-Code: `0`
-  - Ergebnis: `All checks passed!`
-- `python -m ruff format .`
+  - Ergebnis: kompletter BA-v2-`TEST`-Split (`381` Bilder) ausgewertet, AP `0.1184`, AP50 `0.2149`, AP75 `0.1120`, AR100 `0.2005`
+- `PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite --image work/datasets/ba_v2_mvp_candidate/images/mapillary_vistas/training/ppvi1a8kNPmFjkS6Lhbnsg.jpg --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/golden_ba_v2_test_mix.json --score-threshold 0.1 --max-results 20 --num-threads 8`
   - Exit-Code: `0`
-  - Ergebnis: `2 files reformatted, 79 files left unchanged`
-- `python -m ruff check .`
-  - Exit-Code: `0`
-  - Ergebnis: `All checks passed!`
-- `python -m pytest`
-  - Exit-Code: `0`
-  - Ergebnis: `182 passed, 5 skipped in 4.84s`
-- `PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000`
-  - Exit-Code: `0` nach sauberem `CTRL+C`
-  - Ergebnis: WebUI startete lokal gegen das echte Repo
-- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8000'\npaths = ['/', '/artifacts', '/jobs']\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\nPY`
-  - Exit-Code: `0`
-  - Ergebnis:
-    - `/` -> `200`
-    - `/artifacts` -> `200`
-    - `/jobs` -> `200`
-- `PYTHONPATH=src:. python - <<'PY'\nimport tempfile\nfrom pathlib import Path\n\nimport uvicorn\n\nfrom owli_train.webui.app import create_app\nfrom tests.webui_test_utils import build_sample_repo\n\nrepo_root = build_sample_repo(Path(tempfile.mkdtemp(prefix='owli-webui-sample-')))\nprint(repo_root)\nuvicorn.run(create_app(repo_root=repo_root), host='127.0.0.1', port=8001)\nPY`
-  - Exit-Code: `0` nach sauberem `CTRL+C`
-  - Ergebnis: WebUI startete lokal gegen ein temporaeres Sample-Repo mit geeignetem Mini-Dataset
-- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8001'\npaths = [\n    '/',\n    '/datasets/view?path=work/datasets/demo-dataset',\n    '/evals/view?path=work/runs/20260309-123000-demo/reports/eval_demo.json',\n    '/fiftyone/open?source=dataset&path=work/datasets/demo-dataset',\n]\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\n        if path.startswith('/fiftyone/open'):\n            marker = 'FiftyOne is not installed in this venv.' in response.text\n            print('missing_dependency_message', marker)\nPY`
-  - Exit-Code: `0`
-  - Ergebnis:
-    - `/` -> `200`
-    - `/datasets/view?...` -> `200`
-    - `/evals/view?...` -> `200`
-    - `/fiftyone/open?...` -> `503`
-    - `missing_dependency_message` -> `True`
+  - Ergebnis: `20` Detections geschrieben; Klassenmix `person=11`, `car=8`, `truck=1`
+- Nicht ausgefuehrt:
+  - `ruff format`, `ruff check`, `pytest`
+  - Grund: nach dem Lauf wurden nur Doku-/Report-Dateien aktualisiert; die reale Verifikation fuer diesen Task lag bewusst auf dem echten Train/Eval/Golden-Pfad
 
 ## Relevante Run-Kommandos
-- WebUI lokal in WSL2 starten:
+- Train BA-v2 MVP baseline:
 ```bash
-source .venv/bin/activate
-PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000 --reload
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
+  --config configs/efficientdet_lite2_ba_v2_mvp.yaml \
+  --run-name ba-v2-mvp-baseline-20260309 \
+  --require-gpu
 ```
-- Optionalen FiftyOne-Pfad im selben WebUI-venv installieren:
+- Inspect exported BA-v2 Lite2 model:
 ```bash
-source .venv/bin/activate
-pip install -r requirements/fiftyone.txt
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train inspect tflite \
+  --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite
 ```
-- PowerShell-Aequivalent fuer FiftyOne:
-```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements\fiftyone.txt
+- Eval exported BA-v2 Lite2 model on the held-out BA-v2 `TEST` split:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
+  --coco work/splits/ba_v2_hazard_slice02_mapillary_od_ground/instances_test.json \
+  --images-dir work/datasets/ba_v2_mvp_candidate/images \
+  --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite \
+  --score-threshold 0.1 \
+  --noise-thresholds 0.05,0.1,0.3 \
+  --num-threads 8 \
+  --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/eval_efficientdet_tflite_ba_v2_test.json
+```
+- Generate BA-v2 golden detect sample:
+```bash
+PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train golden detect \
+  --model work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/artifacts/model.tflite \
+  --image work/datasets/ba_v2_mvp_candidate/images/mapillary_vistas/training/ppvi1a8kNPmFjkS6Lhbnsg.jpg \
+  --out work/runs/20260309-111756-ba-v2-mvp-baseline-20260309/reports/golden_ba_v2_test_mix.json \
+  --score-threshold 0.1 \
+  --max-results 20 \
+  --num-threads 8
 ```
 
 ## Offene Risiken
-- Der erfolgreiche Runtime-Pfad in `src/owli_train/webui/fiftyone_launcher.py` konnte ohne lokale FiftyOne-Installation nur statisch geprueft werden.
-- Der aktuelle Scope oeffnet nur kuratierte COCO-Datasets mit klar aufloesbarem Images-Root; andere Repo-Artefakte werden absichtlich nicht heuristisch erraten.
-- Der Service verwaltet bewusst nur einen kleinen lokalen Launch-Pfad und keine robuste Mehrfach- oder Mehrbenutzer-Session-Verwaltung.
+- `obstacle_ground` bleibt datenmaessig ein schmaler Legacy-Bootstrap aus `Obstacle4` und ist quantitativ noch nicht brauchbar.
+- `obstacle_barrier` und `obstacle_hole_dropoff` zeigen zwar Lernsignal, sind aber weiter klar zu schwach und zu FP-lastig fuer einen produktnahen Hazard-Readout.
+- `obstacle_pole` bleibt trotz vieler Annotationen schwierig; die aktuelle BA-v2-Baseline deutet eher auf Ambiguitaet / Hintergrundclutter als auf ein reines Mengenproblem.
+- Die qualitative Golden-Probe auf einem Bild mit drei Hazard-Core-Klassen wird im Top-20-Output von `person` / `car` dominiert und zeigt keine Hazard-Core-Dimension im geschriebenen Sample.
+- Der historische Stage-3-BA-v1-Lauf bleibt der staerkere technische Vergleichsanker; die neue BA-v2-Baseline ist in erster Linie Produktlogik-Evidenz plus erster echter End-to-End-Nachweis.
 
 ## Nächster sinnvoller Schritt
-- Ergaenze auf der Run-Detailseite je Eval-Report einen direkten FiftyOne-Kurzlink zum dort referenzierten Dataset, damit der Umweg ueber die Eval-Detailseite fuer den haeufigsten Analysepfad entfaellt.
+- Verbessere innerhalb des bestehenden BA-v2-MVP-Contracts gezielt die Hazard-Core-Datenqualitaet und FP-Kontrolle, statt den Scope erneut zu erweitern.
