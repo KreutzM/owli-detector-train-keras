@@ -4,6 +4,7 @@ This document defines the runtime contract expected by exported detector `.tflit
 
 For the current BA-v1 detector path, the canonical class order is tracked in
 `configs/label_contracts/ba_v1.yaml` and explained in `docs/BA_v1_Labelset.md`.
+The preferred next product ontology is `configs/label_contracts/ba_v2_hazard.yaml`, but no verified BA-v2 hazard export artifact exists on current repo HEAD yet.
 
 ## 1) Input tensor contract
 
@@ -44,8 +45,11 @@ Where:
   - `work\runs\<run_id>\artifacts\detector.tflite.meta.json`
   - for the BA-v1 path, the exported `labels.txt` / `class_names.json` order is expected to match
     `configs/label_contracts/ba_v1.yaml`
+- for a future BA-v2 hazard path, the exported `labels.txt` / `class_names.json` order must instead match
+  `configs/label_contracts/ba_v2_hazard.yaml`
 
 This mapping must be kept in sync on Android when rendering labels.
+Android must not locally reorder classes for either contract.
 
 ## 5) Compatibility gate
 

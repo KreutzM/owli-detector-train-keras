@@ -1,5 +1,10 @@
 # BA-v1 Labelset
 
+Historical note:
+- BA-v1 remains the verified interim baseline on current repo HEAD.
+- The preferred forward-looking product ontology is now BA-v2 hazard in [BA_v2_Hazard_Labelset.md](./BA_v2_Hazard_Labelset.md).
+- Stage-3 and Stage-4 BA-v1 results remain useful historical baselines; they are not the new target ontology.
+
 ## Purpose
 - Freeze the first explicit product label contract for the BA detector path.
 - Keep Android/TFLite integration on a fixed class order instead of an implicit dataset-derived order.

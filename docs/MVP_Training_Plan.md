@@ -1,15 +1,26 @@
 # BA MVP Training Plan
 
 ## Purpose
-- Define the primary near-term training path for the first BA MVP detector run.
-- Keep the repo aligned on one model family, one label contract, and one multi-source data plan.
-- Make the next data-integration steps explicit without pretending that all raw downloads are already verified locally.
+- Define the current BA MVP transition state after the ontology reset.
+- Keep the verified BA-v1 training evidence separate from the preferred BA-v2 hazard product target.
+- Make the next data/mapping reset explicit without pretending that all sources already align cleanly to BA-v2 hazard.
 
-## Fixed Product Contract
+## Current Direction
+- Preferred product ontology: [`configs/label_contracts/ba_v2_hazard.yaml`](../configs/label_contracts/ba_v2_hazard.yaml)
+- Preferred labelset rationale: [BA_v2_Hazard_Labelset.md](./BA_v2_Hazard_Labelset.md)
+- Preferred source-fit readout: [BA_v2_Hazard_Mapping_Strategy.md](./BA_v2_Hazard_Mapping_Strategy.md)
+- Verified interim baseline contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
+- Historical interim rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
+- Important boundary:
+  - the current verified Stage-3 / Stage-4 runs are BA-v1 historical baselines
+  - the next real step is a BA-v2 hazard data/mapping reset
+  - this file keeps the verified BA-v1 evidence because the pipeline work remains relevant
+
+## Historical Verified BA-v1 Baseline Contract
 - Primary model path: `EfficientDet-Lite2` via Model Maker
 - Primary export target: Android-compatible `TFLite`
-- Primary label contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
-- Labelset rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
+- Historical verified label contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
+- Historical labelset rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
 - Current verified baseline: [Obstacle4_E2E_Results.md](./Obstacle4_E2E_Results.md)
 - Current verified multi-source baseline: [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
 - Current Stage-3 product-near gate: [BA_MVP_Stage3_Product_Gate.md](./BA_MVP_Stage3_Product_Gate.md)
@@ -19,6 +30,10 @@
 - Current verified Stage-3-plus-crops comparison run: [BA_MVP_Stage3_Plus_Crops_Baseline.md](./BA_MVP_Stage3_Plus_Crops_Baseline.md)
 
 ## Primary MVP Sources
+Historical note:
+- The table below documents what the repo has already verified under the BA-v1-era data path.
+- Use [BA_v2_Hazard_Mapping_Strategy.md](./BA_v2_Hazard_Mapping_Strategy.md) for the preferred BA-v2 hazard reading of the same sources.
+
 The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified reference baseline, but the next training run is intended to be multi-source.
 
 | Source | MVP role | Current repo status | Intended BA-v1 contribution |
@@ -42,6 +57,10 @@ Current concrete MVP merge hooks:
   - `work/datasets/ba_mvp_stage3_balanced_multisource/instances_combined.json`
 
 ## Planned Training Stages
+Historical note:
+- The stages below are verified BA-v1-era baselines and experiment branches.
+- They remain valuable evidence for tooling, export, eval, and source behavior.
+- They do not by themselves define the preferred BA-v2 hazard ontology.
 
 ### Stage 1. Obstacle4 + pseudo
 Status:
@@ -254,6 +273,7 @@ Interpretation:
 - `TACO` is still prep-only.
 - `OD` now has a real local import path, a checked-in partial mapping, and a verified merge hook with `Obstacle4`.
 - `COCO replay` now has a real small subset config and a verified Stage-4 merge hook.
+- For the new preferred product direction, these artifacts are transition assets. The next product-facing step is to review or replace mappings against BA-v2 hazard instead of assuming BA-v1 obstacle labels remain final.
 
 ## Minimal Execution Plan After Downloads Finish
 For each new BA supplemental source:

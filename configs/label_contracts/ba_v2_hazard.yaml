@@ -1,0 +1,86 @@
+version: ba_v2_hazard
+status: preferred_product_target_pre_training_reset
+purpose: >
+  Preferred hazard-centered detector label contract for the next BA MVP data and
+  mapping reset. This is the new product target ontology. It is intentionally
+  small and fixed, but it is not yet a verified trained/exported baseline on the
+  current repo HEAD.
+supersedes:
+  - ba_v1
+class_names:
+  - obstacle_ground
+  - obstacle_barrier
+  - obstacle_overhang
+  - obstacle_hole_dropoff
+  - obstacle_pole
+  - person
+  - bicycle
+  - motorcycle
+  - car
+  - bus
+  - truck
+roles:
+  hazard_core:
+    - obstacle_ground
+    - obstacle_barrier
+    - obstacle_overhang
+    - obstacle_hole_dropoff
+    - obstacle_pole
+  rehearsal:
+    - person
+    - bicycle
+    - motorcycle
+    - car
+    - bus
+    - truck
+classes:
+  - name: obstacle_ground
+    role: hazard_core
+    rationale: Ground-level obstacles on the walking path that are not well described by the old bump-only label.
+  - name: obstacle_barrier
+    role: hazard_core
+    rationale: Traversal-blocking barriers such as fences, rails, or similar structures in public space.
+  - name: obstacle_overhang
+    role: hazard_core
+    rationale: Head-height or upper-body collision hazards that are missing from the old Obstacle4-centered contract.
+  - name: obstacle_hole_dropoff
+    role: hazard_core
+    rationale: Holes, missing ground, or drop-off hazards that matter for safe path traversal.
+  - name: obstacle_pole
+    role: hazard_core
+    rationale: Narrow vertical collision hazards remain directly relevant and already have partial source support.
+  - name: person
+    role: rehearsal
+    rationale: Safety-critical moving actor class retained as a narrow rehearsal target.
+  - name: bicycle
+    role: rehearsal
+    rationale: Street-scene rehearsal class retained to avoid collapsing to obstacle-only behavior.
+  - name: motorcycle
+    role: rehearsal
+    rationale: Street-scene rehearsal class retained with the same narrow purpose as bicycle.
+  - name: car
+    role: rehearsal
+    rationale: Highest-signal current rehearsal vehicle class, retained for continuity.
+  - name: bus
+    role: rehearsal
+    rationale: Large-vehicle rehearsal class retained without widening beyond the small replay set.
+  - name: truck
+    role: rehearsal
+    rationale: Large-vehicle rehearsal class retained without widening beyond the small replay set.
+historical_ba_v1_labels_not_in_contract:
+  - obstacle_bump
+  - obstacle_fence
+  - obstacle_hole
+android_tflite_contract:
+  positional_label_order: true
+  resolve_labels_from_exported_artifacts: true
+  note: >
+    Android/TFLite must treat this order as canonical once a real BA-v2 hazard
+    model is trained and exported. Until then, current verified mobile artifacts
+    remain BA-v1 artifacts.
+out_of_scope:
+  - Full COCO-80 coverage.
+  - Hazard subclasses beyond the five hazard-core classes above.
+  - Traffic-sign, traffic-light, and lane semantics.
+  - Dataset-specific labels treated as product labels without a defended hazard mapping.
+  - Any claim that BA-v2 hazard is already fully data-verified on the current repo HEAD.

@@ -1,164 +1,70 @@
 # Codex Task Report
 
 ## Ziel
-- Den naechsten produktnahen Schritt auf Basis der bevorzugten `Stage-3`-Baseline ausfuehren, statt einen weiteren Trainingszweig zu starten.
-- Einen real geprueften Stage-3-Betriebspunkt fuer lokale TFLite-Checks festziehen.
-- Eine kleine deterministische Akzeptanzsuite fuer BA-Core-Hard-Cases und BA-Core-Hard-Negatives aufbauen und real gegen das vorhandene Stage-3-TFLite-Modell pruefen.
+- Den bisherigen BA-v1-Produktvertrag als historischen verifizierten Interimspfad einordnen, statt ihn weiter als bevorzugte Produktontologie zu behandeln.
+- Eine neue hazard-zentrierte BA-v2-Zielontologie fuer das MVP sauber im Repo festlegen.
+- Den Repo-Stand so vorbereiten, dass der naechste echte Daten-/Mapping-Schritt nicht mehr an den vier alten Obstacle4-Klassen haengt.
 
 ## Was wurde geändert?
-- Neue kleine Akzeptanzsuite fuer den Stage-3-Produkt-Gate-Pfad ergaenzt:
-  - `configs/acceptance/ba_mvp_stage3_rc01_suite.json`
-- Neue Doku fuer den Stage-3-Produkt-Gate-Schritt ergaenzt:
-  - `docs/BA_MVP_Stage3_Product_Gate.md`
-- Verweise auf den neuen Produkt-Gate-Schritt in bestehenden MVP-Dokus aktualisiert:
+- Neuer maschinenlesbarer BA-v2-Hazard-Contract ergaenzt:
+  - `configs/label_contracts/ba_v2_hazard.yaml`
+  - `configs/label_contracts/ba_v2_hazard.class_names.json`
+- Neue Produktdoku fuer die bevorzugte hazard-zentrierte Ontologie ergaenzt:
+  - `docs/BA_v2_Hazard_Labelset.md`
+- Neue ehrliche Quellen-/Mapping-Strategie fuer BA-v2 hazard ergaenzt:
+  - `docs/BA_v2_Hazard_Mapping_Strategy.md`
+- Historischen Status von BA-v1 minimal markiert:
+  - `docs/BA_v1_Labelset.md`
+- Bestehende Produktdoku minimal auf den Ontology-Reset geschaerft:
+  - `README.md`
   - `docs/MVP_Training_Plan.md`
-  - `docs/BA_MVP_Stage3_Baseline.md`
-- Pflichtreport auf die real ausgefuehrte Threshold-Kalibrierung und Suite-Verifikation umgestellt:
-  - `docs/reviews/Codex-Task-Report_last.md`
-- Keine Codeaenderung:
-  - kein neuer Runtime-Code
-  - keine Android-Aenderung
-  - kein neuer Trainingslauf
+  - `docs/runbook.md`
+  - `docs/android-export-contract.md`
+- Kleinen Konsistenztest fuer BA-v2 hazard ergaenzt:
+  - `tests/test_ba_v2_hazard_label_contract.py`
 
 ## Was wurde wirklich verifiziert?
-- Reale Threshold-Kalibrierung auf dem identischen Stage-3-`TEST`-Split fuer das bestehende Stage-3-TFLite-Modell ausgefuehrt:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
-  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
-  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
-  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
-  --score-threshold 0.15 \
-  --noise-thresholds 0.1,0.15,0.2,0.25,0.3 \
-  --num-threads 8 \
-  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test_thresh015.json
-
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
-  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
-  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
-  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
-  --score-threshold 0.2 \
-  --noise-thresholds 0.1,0.2,0.3,0.4 \
-  --num-threads 8 \
-  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test_thresh020.json
-
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
-  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
-  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
-  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
-  --score-threshold 0.25 \
-  --noise-thresholds 0.1,0.2,0.25,0.3,0.4 \
-  --num-threads 8 \
-  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test_thresh025.json
-
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
-  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
-  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
-  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
-  --score-threshold 0.3 \
-  --noise-thresholds 0.1,0.2,0.25,0.3,0.4 \
-  --num-threads 8 \
-  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test_thresh030.json
-```
-  - Exit-Codes: alle `0`
-  - Ergebnis:
-    - Threshold `0.10` bestehender Referenzpunkt:
-      - precision `0.2050`
-      - recall `0.3735`
-      - FP/100 `1375.49`
-    - Threshold `0.15`:
-      - precision `0.3188`
-      - recall `0.3456`
-      - FP/100 `701.23`
-    - Threshold `0.20`:
-      - precision `0.4596`
-      - recall `0.3036`
-      - FP/100 `338.97`
-    - Threshold `0.25`:
-      - precision `0.5672`
-      - recall `0.2788`
-      - FP/100 `201.96`
-    - Threshold `0.30`:
-      - precision `0.6829`
-      - recall `0.2530`
-      - FP/100 `111.52`
-
-- Die neue Akzeptanzsuite gegen den real vorhandenen Stage-3-TFLite-Pfad geprueft:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python - <<'PY'
-# lädt configs/acceptance/ba_mvp_stage3_rc01_suite.json und prüft das Stage-3-TFLite-Modell
-# auf der 13-Bilder-Suite bei 0.1, 0.15, 0.2 und 0.25;
-# schreibt:
-# work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/acceptance_stage3_rc01_multi_threshold.json
-PY
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - Suite-Groesse:
-      - `13` Bilder
-      - `8` BA-Core-Positives
-      - `5` BA-Core-Hard-Negatives auf Rehearsal-only-Bildern
-    - Multi-threshold Ergebnis:
-      - `0.10`: `4/8` Focus-Hits, `2/5` Negatives BA-core-clean
-      - `0.15`: `3/8` Focus-Hits, `3/5` Negatives BA-core-clean
-      - `0.20`: `2/8` Focus-Hits, `4/5` Negatives BA-core-clean
-      - `0.25`: `2/8` Focus-Hits, `5/5` Negatives BA-core-clean
-    - Lesart:
-      - `0.10` trifft mehr harte BA-Core-Faelle, verschmutzt aber zu viele Hard-Negatives
-      - `0.20+` saeubert die Hard-Negatives, verliert aber zu viele harte BA-Core-Faelle
-      - `0.15` ist der ehrlichste Arbeits-Kompromiss fuer lokale Produkt-Checks, aber kein Release-Signal
-
-- Die neue Akzeptanzsuite-Datei selbst indirekt real geprueft:
-```bash
-python - <<'PY'
-import json
-from pathlib import Path
-json.loads(Path('configs/acceptance/ba_mvp_stage3_rc01_suite.json').read_text())
-PY
-```
-  - Exit-Code: `0`
-  - Ergebnis:
-    - JSON ist gueltig
-    - alle im Suite-Lauf referenzierten Bilder waren lokal lesbar
-
-- Nur statisch geprueft:
-  - die neue Produkt-Gate-Doku
-  - die Verweise in `docs/MVP_Training_Plan.md` und `docs/BA_MVP_Stage3_Baseline.md`
-  - kein neuer Trainingslauf
-  - kein neuer Android-/Inference-Code
+- Statisch geprueft:
+  - geforderte BA-v1-/MVP-Dokus
+  - bestehende Label-Contracts und Label-Maps
+  - relevante Merge-/Trainingsconfigs
+  - relevante Daten-, Training-, Eval-, Golden- und TFLite-Label-Resolver im Repo
+- Inhaltlich verifiziert:
+  - BA-v1 ist im Repo heute vor allem in Doku, Label-Contracts, Label-Maps, Stage-3/4-Configs und Tests fest verankert
+  - Eval, Golden und TFLite-Labelauflosung sind positionsbasiert ueber Export-Artefakte und damit grundsaetzlich BA-v2-faehig, ohne dass in diesem Task ein grosser Runtime-Refactor noetig war
+  - die neue BA-v2 hazard Ontologie ist im Repo jetzt separat und maschinenlesbar verankert, ohne BA-v1-Historie zu zerstoeren
+- Real ausgefuehrt:
+  - `python -m ruff format .`
+  - `python -m ruff check .`
+  - `python -m pytest`
 
 ## Tests
-- In diesem Task wurden keine Code-Dateien geaendert.
-- Deshalb wurden keine neuen `ruff`- oder `pytest`-Laeufe gestartet.
-- Die reale Verifikation bestand aus:
-  - vier echten TFLite-Eval-Laeufen auf dem Stage-3-`TEST`-Split
-  - einem echten Multi-threshold-Akzeptanzlauf auf der neuen 13-Bilder-Suite
+- `python -m ruff format .`
+  - Exit-Code: `0`
+  - Ergebnis: `66 files left unchanged`
+- `python -m ruff check .`
+  - Exit-Code: `0`
+  - Ergebnis: `All checks passed!`
+- `python -m pytest`
+  - Exit-Code: `0`
+  - Ergebnis: `153 passed, 5 skipped in 4.67s`
+- Relevanter neuer Check im Testlauf:
+  - `tests/test_ba_v2_hazard_label_contract.py`
+  - prueft kanonische Reihenfolge, Rollenpartition, JSON/YAML-Konsistenz und das explizite Ausphasen der alten BA-v1-Obstacle4-Labels
 
 ## Relevante Run-Kommandos
-- Threshold-Kalibrierung:
+- Repo-weite Konsistenzchecks:
 ```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train eval efficientdet-tflite \
-  --coco work/splits/ba_mvp_stage3_balanced_multisource/instances_test.json \
-  --images-dir work/datasets/ba_mvp_stage3_balanced_multisource/images \
-  --model work/runs/20260308-183140-ba-mvp-stage3-20260308/artifacts/model.tflite \
-  --score-threshold 0.15 \
-  --noise-thresholds 0.1,0.15,0.2,0.25,0.3 \
-  --num-threads 8 \
-  --out work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/eval_efficientdet_tflite_stage3_test_thresh015.json
-```
-- Suite-Check:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python - <<'PY'
-# lädt configs/acceptance/ba_mvp_stage3_rc01_suite.json und schreibt
-# work/runs/20260308-183140-ba-mvp-stage3-20260308/reports/acceptance_stage3_rc01_multi_threshold.json
-PY
+python -m ruff format .
+python -m ruff check .
+python -m pytest
 ```
 
 ## Offene Risiken
-- `Stage-3` bleibt die beste Trainingsbaseline, aber der aktuelle TFLite-Pfad ist nach diesem Produkt-Gate noch nicht release-ready.
-- Auch beim aktuell ehrlichsten Arbeits-Threshold `0.15` bleiben die harten BA-Core-Faelle zu schwach:
-  - nur `3/8` Focus-Hits in der kleinen Hard-Case-Suite
-- `0.20+` wuerde die Hard-Negatives sauberer machen, verliert aber noch mehr harte BA-Core-Faelle.
-- Ein echter produktiver Einsatzpunkt ist damit weiterhin offen; es gibt im Moment nur einen dokumentierten Arbeits-Betriebspunkt fuer lokale Checks.
+- BA-v2 hazard ist jetzt als Produktziel sauber beschrieben, aber noch nicht datenverifiziert.
+- `obstacle_overhang` bleibt der groesste erkennbare Quellluecken-Risiko-Punkt.
+- Bestehende Importer und Merge-Pfade arbeiten weiterhin auf BA-v1-benannten Outputs; das ist in diesem Task bewusst nicht global umgebaut worden.
+- Die neue Mapping-Strategie ist absichtlich ehrlich und vorlaeufig; sie ersetzt noch keinen real ausgefuehrten Datensatz-Remap.
 
 ## Nächster sinnvoller Schritt
-- Starte als naechsten kleinen Produkt-Schritt genau eine Fehlerbild-getriebene Stage-3-Nachbesserung, die nur auf die im Produkt-Gate auffaelligen BA-Core-Hard-Cases zielt (`obstacle_bump`, `obstacle_fence`, `obstacle_hole`), und pruefe danach denselben Threshold-Kalibrierungs- und Suite-Pfad erneut.
+- Einen kleinen, quellenbezogenen BA-v2-Hazard-Mapping-Slice umsetzen und lokal verifizieren, beginnend mit den saubersten Kandidaten fuer `obstacle_barrier`, `obstacle_pole` und den sechs Rehearsal-Klassen, bevor ein neuer Trainingslauf gestartet wird.

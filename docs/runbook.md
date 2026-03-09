@@ -834,8 +834,12 @@ python -m owli_train dataset split \
 ## BA MVP multi-source prep
 
 - Primary plan: [MVP_Training_Plan.md](./MVP_Training_Plan.md)
-- Fixed class contract: `configs/label_contracts/ba_v1.yaml`
+- Preferred product ontology: `configs/label_contracts/ba_v2_hazard.yaml`
+- Historical verified baseline contract: `configs/label_contracts/ba_v1.yaml`
 - Verified baseline anchor: `Obstacle4`
+- Historical boundary:
+  - the commands in this section still reproduce the verified BA-v1-era pipeline
+  - the next new data/mapping reset should target BA-v2 hazard, not treat Obstacle4 as the final ontology anchor
 - Next BA supplemental sources to review locally after downloads complete:
   - `TACO`
 - Mapillary status:
@@ -860,6 +864,7 @@ Working rule:
   conservative and explicit instead of stretching new source classes into BA-v1.
 - Use COCO only as a small replay source for the six BA-v1 rehearsal classes, not as a return to
   broad COCO-80 training.
+- For the next preferred product path, treat the current BA-v1 prep files as historical transition assets and review them against BA-v2 hazard before the next true training dataset is assembled.
 
 ## First balanced multi-source MVP dataset
 
