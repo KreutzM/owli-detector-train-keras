@@ -11,4 +11,4 @@ selection:
 notes:
   - Pass through the full local Obstacle4 GT export after the narrow BA-v2 ground bootstrap remap.
   - Keep all currently available obstacle_ground support instead of downsampling it away in the first ground-bridging step.
-  - This is still a legacy bootstrap slice and does not claim obstacle_overhang support.
+  - This is still a legacy bootstrap slice and does not broaden the BA-v2 MVP beyond the current four hazard-core classes.

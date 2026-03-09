@@ -2,7 +2,6 @@
   "class_names": [
     "obstacle_ground",
     "obstacle_barrier",
-    "obstacle_overhang",
     "obstacle_hole_dropoff",
     "obstacle_pole",
     "person",
@@ -22,7 +21,6 @@
     7,
     8,
     9,
-    10,
-    11
+    10
   ]
 }

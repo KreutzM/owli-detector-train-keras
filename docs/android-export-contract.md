@@ -4,7 +4,7 @@ This document defines the runtime contract expected by exported detector `.tflit
 
 For the current BA-v1 detector path, the canonical class order is tracked in
 `configs/label_contracts/ba_v1.yaml` and explained in `docs/BA_v1_Labelset.md`.
-The preferred next product ontology is `configs/label_contracts/ba_v2_hazard.yaml`, but no verified BA-v2 hazard export artifact exists on current repo HEAD yet.
+The preferred next product ontology is `configs/label_contracts/ba_v2_hazard.yaml`, now interpreted as the four-hazard-core BA-v2 MVP contract. No verified BA-v2 MVP export artifact exists on current repo HEAD yet.
 
 ## 1) Input tensor contract
 

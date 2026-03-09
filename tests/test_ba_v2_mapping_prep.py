@@ -277,7 +277,7 @@ def test_ba_v1_non_obstacle4_export_remap_stays_narrow_and_skips_obstacle_bump()
     assert "obstacle_bump" not in prep["map"]
 
 
-def test_obstacle4_ground_bootstrap_map_stays_narrow_and_keeps_overhang_open() -> None:
+def test_obstacle4_ground_bootstrap_map_stays_narrow_and_mvp_aligned() -> None:
     contract = _load_yaml(Path("configs/label_contracts/ba_v2_hazard.yaml"))
     prep = _load_yaml(Path("configs/label_maps/obstacle4_gt_to_ba_v2_hazard_ground_bootstrap.yaml"))
 
@@ -291,7 +291,7 @@ def test_obstacle4_ground_bootstrap_map_stays_narrow_and_keeps_overhang_open() -
         "obstacle_hole": "obstacle_hole_dropoff",
         "obstacle_pole": "obstacle_pole",
     }
-    assert "obstacle_overhang" not in prep["allowed_target_classes"]
+    assert prep["allowed_target_classes"] == contract["roles"]["hazard_core"]
 
 
 def test_ba_v2_slice01_configs_point_to_mapillary_and_od_only() -> None:
@@ -341,6 +341,17 @@ def test_ba_v2_slice02_configs_add_ground_bootstrap_without_claiming_overhang() 
     assert "images_dir" not in merge["sources"][1]
     assert materialize["sources"][1]["images_dir"] == "../data/raw/obstacle4/extracted"
     assert materialize["sources"][1]["file_name_prefix"] == "obstacle4"
+
+
+def test_ba_v2_mvp_training_config_points_to_materialized_candidate() -> None:
+    cfg = _load_yaml(Path("configs/efficientdet_lite2_ba_v2_mvp.yaml"))
+
+    assert cfg["model"]["variant"] == "lite2"
+    assert cfg["data"]["csv"] == "work/datasets/ba_v2_mvp_candidate/modelmaker.csv"
+    assert cfg["data"]["images_dir"] == "work/datasets/ba_v2_mvp_candidate/images"
+    assert cfg["data"]["label_map_json"] == "configs/label_contracts/ba_v2_hazard.class_names.json"
+    assert cfg["train"]["batch_size"] == 16
+    assert cfg["train"]["epochs"] == 20
 
 
 def test_mapillary_import_accepts_checked_in_ba_v2_hazard_slice(tmp_path: Path) -> None:

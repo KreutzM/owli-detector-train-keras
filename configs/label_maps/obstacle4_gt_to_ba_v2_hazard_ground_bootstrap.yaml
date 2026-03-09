@@ -12,7 +12,6 @@ notes:
   - This file is used only because the local repo currently has no cleaner ground-support source.
   - "'obstacle_bump' is treated as a narrow subset bootstrap for 'obstacle_ground', not as proof that BA-v2 ground hazards are fully covered."
   - "'obstacle_fence', 'obstacle_hole', and 'obstacle_pole' are remapped only to keep the source contract-consistent during normalization."
-  - "No BA-v2 mapping is claimed here for obstacle_overhang."
   - This source remains a legacy bootstrap source, not the preferred long-term BA-v2 ontology anchor.
 
 map:

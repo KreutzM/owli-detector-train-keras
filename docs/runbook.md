@@ -184,6 +184,7 @@ python -m owli_train dataset export modelmaker-csv --coco work\datasets\coco128\
 Current dedicated note:
 - `docs/BA_v2_Hazard_Slice01_Mapillary_OD.md`
 - `docs/BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md`
+- `docs/BA_v2_MVP_Train_Candidate.md`
 
 This is the first real BA-v2 path on current repo HEAD:
 - sources:
@@ -200,8 +201,16 @@ This is the first real BA-v2 path on current repo HEAD:
 Current extension on top of that first slice:
 - add a narrow local `Obstacle4` bootstrap for:
   - `obstacle_ground`
-- still open:
-  - `obstacle_overhang`
+
+Current BA-v2 MVP reading:
+- four hazard-core classes:
+  - `obstacle_ground`
+  - `obstacle_barrier`
+  - `obstacle_hole_dropoff`
+  - `obstacle_pole`
+- `obstacle_overhang` is intentionally not part of the current MVP
+- current train-ready dataset path:
+  - `work/datasets/ba_v2_mvp_candidate`
 
 WSL example:
 

@@ -1,80 +1,77 @@
 # Codex Task Report
 
 ## Ziel
-- Den naechsten kleinen, real verifizierten BA-v2-Hazard-Datenbaustein fuer die noch ungestuetzten Hazard-Core-Klassen pruefen und wenn lokal machbar umsetzen.
-- Ehrlich klaeren, ob `obstacle_ground` und/oder `obstacle_overhang` auf dem lokalen Repo-Stand belastbar erschliessbar sind.
-- Falls nur eine Klasse lokal sauber gestuetzt werden kann, genau diesen kleinen Slice bauen und den Rest explizit offen lassen.
+- Die neue Produktentscheidung sauber im Repo durchziehen, dass `obstacle_overhang` vorerst nicht Teil des BA-v2 MVP ist.
+- Den BA-v2-Produktvertrag auf vier Hazard-Core-Klassen plus sechs Rehearsal-Klassen festziehen.
+- Den vorhandenen BA-v2-Datenstand bis direkt vor den ersten Lite2-Trainingslauf als echten BA-v2-MVP-Trainingskandidaten vorbereiten.
 
 ## Was wurde geändert?
-- Neue enge Obstacle4-GT-zu-BA-v2-Bootstrap-Map fuer `obstacle_ground` ergaenzt:
-  - `configs/label_maps/obstacle4_gt_to_ba_v2_hazard_ground_bootstrap.yaml`
-- Neue Slice02-Configs fuer den lokalen Ground-Bootstrap ergaenzt:
-  - `configs/balance_ba_v2_hazard_obstacle4_ground_slice02.yaml`
-  - `configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground.yaml`
-  - `configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground_materialize.yaml`
-- Neue dedizierte Slice02-Doku ergaenzt:
-  - `docs/BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md`
-- Bestehende Doku minimal auf Slice02 geschaerft:
+- BA-v2-MVP-Contract ohne `obstacle_overhang` aktualisiert:
+  - `configs/label_contracts/ba_v2_hazard.yaml`
+  - `configs/label_contracts/ba_v2_hazard.class_names.json`
+- BA-v2-MVP-Doku geschaerft:
+  - `docs/BA_v2_Hazard_Labelset.md`
+  - `docs/BA_v2_Hazard_Mapping_Strategy.md`
   - `docs/MVP_Training_Plan.md`
   - `docs/runbook.md`
-- Kleine Tests fuer die neue Obstacle4-Ground-Bootstrap-Map und Slice02-Configs ergaenzt:
+  - `docs/android-export-contract.md`
+- Historische Slice-Dokus minimal nachgeschaerft, damit klar bleibt, dass sie unter dem frueheren fuenf-Kern-Klassen-Stand entstanden:
+  - `docs/BA_v2_Hazard_Slice01_Mapillary_OD.md`
+  - `docs/BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md`
+- Neue Doku fuer den ersten train-ready BA-v2-MVP-Kandidaten ergaenzt:
+  - `docs/BA_v2_MVP_Train_Candidate.md`
+- Neue Trainingsconfig fuer den naechsten Lite2-Lauf ergaenzt:
+  - `configs/efficientdet_lite2_ba_v2_mvp.yaml`
+- BA-v2-bezogene Label-Map-Hinweise auf den neuen MVP-Contract nachgezogen:
+  - `configs/label_maps/mapillary_vistas_to_ba_v2_hazard.yaml`
+  - `configs/label_maps/obstacle_dataset_to_ba_v2_hazard.yaml`
+  - `configs/label_maps/obstacle4_gt_to_ba_v2_hazard_ground_bootstrap.yaml`
+  - `configs/balance_ba_v2_hazard_obstacle4_ground_slice02.yaml`
+- Kleine statische Tests fuer den neuen Contract und den Trainingsconfig-Pfad ergaenzt bzw. angepasst:
+  - `tests/test_ba_v2_hazard_label_contract.py`
   - `tests/test_ba_v2_mapping_prep.py`
 
 ## Was wurde wirklich verifiziert?
 - Statisch geprueft:
   - `docs/BA_v2_Hazard_Labelset.md`
   - `docs/BA_v2_Hazard_Slice01_Mapillary_OD.md`
+  - `docs/BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md`
   - `docs/MVP_Training_Plan.md`
   - `docs/runbook.md`
+  - `docs/android-export-contract.md`
   - `configs/label_contracts/ba_v2_hazard.yaml`
-  - bestehende BA-v2-Label-Maps und Merge-Configs
-  - relevante Datenmodule unter `src/owli_train/data/*`
-  - lokale Quellhinweise fuer die fehlenden Klassen:
-    - `data/raw/obstacle4/extracted/data.yaml`
-    - `data/processed/mapillary_ba_v2_0_sample/instances_ba_v1.coco.json`
-    - `work/datasets/od_ba_v1/qc_report.json`
+  - BA-v2-relevante Label-Maps und Merge-Configs unter `configs/label_maps/*` und `configs/*`
+  - Trainings-/Eval-/Golden-/TFLite-Pfade unter:
+    - `src/owli_train/training/*`
+    - `src/owli_train/eval/*`
+    - `src/owli_train/golden/*`
+    - `src/owli_train/tflite_detect.py`
 - Inhaltlich verifiziert:
-  - lokal ist fuer `obstacle_ground` nur ein enger Bootstrap ueber `Obstacle4` belastbar
-  - lokal wurde keine belastbare Quelle fuer `obstacle_overhang` gefunden
-  - `Mapillary` und `OD` bleiben fuer `obstacle_overhang` auf aktuellem Repo-Stand unzureichend
-  - der neue reale Slice02 stuetzt jetzt:
+  - `obstacle_overhang` war auf aktuellem Repo-Stand nur noch Teil des bevorzugten BA-v2-Contracts und der dazugehoerigen Doku/Tests, nicht eines real gestuetzten Datenpfads
+  - Trainings-/Eval-/Golden-/TFLite-Pfade verwenden artefaktbasierte Klassenlisten und benoetigten keinen BA-v2-spezifischen Codeumbau fuer das Entfernen von `obstacle_overhang`
+  - der aktuelle BA-v2-Datenstand nach dem Ground-Bootstrap stuetzt real:
     - `obstacle_ground`
     - `obstacle_barrier`
     - `obstacle_hole_dropoff`
     - `obstacle_pole`
-    - sowie die sechs Rehearsal-Klassen aus Slice01
-  - `obstacle_overhang` bleibt auf aktuellem Repo-Stand ungestuetzt
+    - sowie die sechs Rehearsal-Klassen
+  - unter dem neuen vier-Klassen-MVP-Contract ist dieser Datenstand jetzt der erste echte BA-v2-MVP-Trainingskandidat
 - Real ausgefuehrt:
-  - echte BA-v2-Normalisierung des lokalen `Obstacle4`-GT-Exports mit enger Ground-Bootstrap-Map
-  - echter BA-v2-Pass-through mit QC fuer den lokalen `Obstacle4`-Ground-Slice
-  - echter Merge von `Slice01` plus lokalem `Obstacle4`-Ground-Bootstrap zu einem neuen BA-v2-Slice02
-  - echte Nachnormalisierung des kombinierten Slice02 auf kanonische BA-v2-Contract-Reihenfolge
-  - echter Split mit `ensure_train_class_coverage`
-  - echte COCO-Validierung des kombinierten Slice02 ohne Bilddatei-Existenzpruefung
-  - ein realer `materialize_images`-Versuch fuer den vergroesserten Slice02 wurde gestartet, lief lokal aber wiederholt in WSL-Dateisystem-I/O-Waits und wurde deshalb abgebrochen
+  - Materialisierung des BA-v2-MVP-Kandidaten aus dem bestehenden Slice02-COCO
+  - Validierung des materialisierten BA-v2-MVP-COCO mit Bilddatei-Pruefung
+  - Export des materialisierten BA-v2-MVP-Kandidaten zu ModelMaker-CSV
+  - Repo-weite Format-/Lint-/Test-Verifikation
 
 ## Tests
-- `PYTHONPATH=src python -c "from owli_train.data.coco import load_coco, load_label_contract_class_names, load_label_map, normalize_coco, write_coco; coco=load_coco('work/datasets/obstacle4/instances_gt.json'); label_map=load_label_map('configs/label_maps/obstacle4_gt_to_ba_v2_hazard_ground_bootstrap.yaml'); order=load_label_contract_class_names('configs/label_contracts/ba_v2_hazard.yaml'); norm=normalize_coco(coco, label_map=label_map, category_order=order); out=write_coco('work/datasets/obstacle4_ba_v2_hazard_ground_source/instances_normalized.json', norm); print(out); print(len(norm['images']), len(norm['annotations']), [c['name'] for c in norm['categories']])"`
+- `PYTHONPATH=src python -m owli_train dataset materialize-images --coco work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json --merge-manifest configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground_materialize.yaml --out-images-dir work/datasets/ba_v2_mvp_candidate/images --out-coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json --mode symlink`
   - Exit-Code: `0`
-  - Ergebnis: `1250` Bilder, `1627` Annotationen, `4` Kategorien
-- `PYTHONPATH=src python -c "from pathlib import Path; from owli_train.data.balance_coco import balance_coco_with_config; a=balance_coco_with_config(Path('configs/balance_ba_v2_hazard_obstacle4_ground_slice02.yaml')); print(a.coco_path); print(a.images, a.annotations, a.categories)"`
-  - Exit-Code: `0`
-  - Ergebnis: `1250` Bilder, `1627` Annotationen, `4` Kategorien
-- `PYTHONPATH=src python -c "from pathlib import Path; from owli_train.data.merge_coco import merge_coco_from_manifest; a=merge_coco_from_manifest(manifest_path=Path('configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground.yaml'), out_path=Path('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json'), report_out_path=Path('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.report.json')); print(a.coco_path); print(a.report_path); print(a.images, a.annotations, a.categories)"`
-  - Exit-Code: `0`
-  - Ergebnis: `3799` Bilder, `32231` Annotationen, `10` Kategorien
-- `PYTHONPATH=src python -c "from owli_train.data.coco import load_coco, load_label_contract_class_names, normalize_coco, write_coco; coco=load_coco('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json'); order=load_label_contract_class_names('configs/label_contracts/ba_v2_hazard.yaml'); norm=normalize_coco(coco, category_order=order); write_coco('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json', norm); print([c['name'] for c in norm['categories']]); print(len(norm['images']), len(norm['annotations']))"`
-  - Exit-Code: `0`
-  - Ergebnis: kanonische Kategorienreihenfolge mit `obstacle_ground` an Position `1`
-- `PYTHONPATH=src python -c "from pathlib import Path; from owli_train.data.coco import load_coco; from owli_train.data.split import split_coco_image_ids, write_splits, write_split_coco_files; coco=load_coco('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json'); splits=split_coco_image_ids(coco, seed=1337, ensure_train_class_coverage=True); out=Path('work/splits/ba_v2_hazard_slice02_mapillary_od_ground'); print(write_splits(out, splits)); write_split_coco_files(out, coco, splits); print({k: len(v) for k, v in splits.items()})"`
-  - Exit-Code: `0`
-  - Ergebnis: `TRAIN=3039`, `VAL=379`, `TEST=381`
-- `PYTHONPATH=src python -c "from owli_train.data.coco import load_coco, validate_coco; s=validate_coco(load_coco('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json')); print(s.images, s.annotations, s.categories, s.category_names)"`
+  - Ergebnis: `3799` Bilder materialisiert, `3799` Symlinks geschrieben
+- `PYTHONPATH=src python -m owli_train dataset validate --coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json --images-dir work/datasets/ba_v2_mvp_candidate/images`
   - Exit-Code: `0`
   - Ergebnis: `images=3799`, `ann=32231`, `cats=10`
-- `PYTHONPATH=src python -c "from pathlib import Path; from owli_train.data.materialize_images import materialize_coco_images; a=materialize_coco_images(coco_path=Path('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json'), merge_manifest_path=Path('configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground_materialize.yaml'), out_images_dir=Path('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/images'), out_coco_path=Path('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_materialized.json'), mode='auto'); print(a.out_coco_path); print(a.images_total, a.images_written, a.images_skipped, a.copied, a.symlinked)"`
-  - Exit-Code: kein erfolgreicher Exit-Code
-  - Ergebnis: lokal gestartet, dann wegen wiederholter WSL-Dateisystem-I/O-Waits manuell abgebrochen
+- `PYTHONPATH=src python -m owli_train dataset export modelmaker-csv --coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json --images-dir work/datasets/ba_v2_mvp_candidate/images --splits-json work/splits/ba_v2_hazard_slice02_mapillary_od_ground/splits.json --out work/datasets/ba_v2_mvp_candidate/modelmaker.csv`
+  - Exit-Code: `0`
+  - Ergebnis: `rows=32231`, `images=3799`, `annotations=32231`
 - `python -m ruff format .`
   - Exit-Code: `0`
   - Ergebnis: `67 files left unchanged`
@@ -82,30 +79,39 @@
   - Exit-Code: `0`
   - Ergebnis: `All checks passed!`
 - `python -m pytest`
-  - Exit-Code: kein erfolgreicher Exit-Code
-  - Ergebnis: lokal gestartet, dann im aktuellen WSL-Dateisystemzustand wiederholt in I/O-Wait haengengeblieben und manuell abgebrochen
+  - Exit-Code: `0`
+  - Ergebnis: `165 passed, 5 skipped in 5.14s`
 
 ## Relevante Run-Kommandos
-- Lokaler Obstacle4-Ground-Bootstrap:
+- Materialize BA-v2-MVP candidate:
 ```bash
-PYTHONPATH=src python -c "from owli_train.data.coco import load_coco, load_label_contract_class_names, load_label_map, normalize_coco, write_coco; coco=load_coco('work/datasets/obstacle4/instances_gt.json'); label_map=load_label_map('configs/label_maps/obstacle4_gt_to_ba_v2_hazard_ground_bootstrap.yaml'); order=load_label_contract_class_names('configs/label_contracts/ba_v2_hazard.yaml'); norm=normalize_coco(coco, label_map=label_map, category_order=order); out=write_coco('work/datasets/obstacle4_ba_v2_hazard_ground_source/instances_normalized.json', norm); print(out); print(len(norm['images']), len(norm['annotations']), [c['name'] for c in norm['categories']])"
+PYTHONPATH=src python -m owli_train dataset materialize-images \
+  --coco work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json \
+  --merge-manifest configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground_materialize.yaml \
+  --out-images-dir work/datasets/ba_v2_mvp_candidate/images \
+  --out-coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json \
+  --mode symlink
 ```
-- Slice02-Merge:
+- Validate BA-v2-MVP candidate:
 ```bash
-PYTHONPATH=src python -c "from pathlib import Path; from owli_train.data.merge_coco import merge_coco_from_manifest; a=merge_coco_from_manifest(manifest_path=Path('configs/merge_ba_v2_hazard_slice02_mapillary_od_obstacle4_ground.yaml'), out_path=Path('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json'), report_out_path=Path('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.report.json')); print(a.coco_path); print(a.report_path); print(a.images, a.annotations, a.categories)"
+PYTHONPATH=src python -m owli_train dataset validate \
+  --coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json \
+  --images-dir work/datasets/ba_v2_mvp_candidate/images
 ```
-- Slice02-Split:
+- Export ModelMaker CSV:
 ```bash
-PYTHONPATH=src python -c "from pathlib import Path; from owli_train.data.coco import load_coco; from owli_train.data.split import split_coco_image_ids, write_splits, write_split_coco_files; coco=load_coco('work/datasets/ba_v2_hazard_slice02_mapillary_od_ground/instances_combined.json'); splits=split_coco_image_ids(coco, seed=1337, ensure_train_class_coverage=True); out=Path('work/splits/ba_v2_hazard_slice02_mapillary_od_ground'); print(write_splits(out, splits)); write_split_coco_files(out, coco, splits); print({k: len(v) for k, v in splits.items()})"
+PYTHONPATH=src python -m owli_train dataset export modelmaker-csv \
+  --coco work/datasets/ba_v2_mvp_candidate/instances_materialized.json \
+  --images-dir work/datasets/ba_v2_mvp_candidate/images \
+  --splits-json work/splits/ba_v2_hazard_slice02_mapillary_od_ground/splits.json \
+  --out work/datasets/ba_v2_mvp_candidate/modelmaker.csv
 ```
 
 ## Offene Risiken
-- `obstacle_overhang` bleibt auf aktuellem lokalen Repo-Stand komplett ungestuetzt.
-- `obstacle_ground` ist jetzt real vorhanden, aber nur ueber einen engen Legacy-Bootstrap aus `Obstacle4`.
-- Der neue Slice02 ist inhaltlich staerker als Slice01, aber noch immer kein vollstaendiger BA-v2-Hazard-Trainingskandidat fuer den finalen Contract.
-- Der vergroesserte Slice02 wurde in diesem Task nicht bis zu einem materialisierten Ein-Root-Bildsatz und `ModelMaker`-CSV durchgezogen, weil der reale Materialisierungsschritt lokal wiederholt in WSL-Dateisystem-I/O-Waits lief.
-- Der uebliche Repo-weite `pytest`-Lauf konnte auf diesem lokalen Stand nicht sauber abgeschlossen werden, weil der Prozess im aktuellen WSL-Dateisystemzustand wiederholt in I/O-Wait haengenblieb.
-- `Obstacle4` darf durch diesen Schritt nicht wieder zum versteckten Produktanker werden; der Bootstrap muss deshalb eng und explizit begrenzt bleiben.
+- `obstacle_ground` ist zwar jetzt Teil des train-ready MVP-Kandidaten, bleibt aber datenmaessig ein enger Legacy-Bootstrap ueber `Obstacle4`.
+- `obstacle_barrier` und `obstacle_hole_dropoff` bleiben im Vergleich zu `obstacle_pole` und den Rehearsal-Klassen kleiner und ungleich verteilt.
+- `obstacle_overhang` ist nicht geloest, sondern bewusst aus dem MVP entfernt; eine spaetere Rueckkehr waere eine neue Produkt- und Datenentscheidung.
+- Es wurde in diesem Task bewusst kein Lite2-Trainingslauf gestartet, daher existiert noch kein verifizierter BA-v2-MVP-Trainingsreport oder Export-Artefakt.
 
 ## Nächster sinnvoller Schritt
-- Erschliesse als naechsten kleinen BA-v2-Datenschritt eine belastbare Quelle und enge Mapping-Regel fuer `obstacle_overhang`, bevor ein erster vollstaendiger BA-v2-Hazard-Trainingslauf gestartet wird.
+- Starte den ersten echten BA-v2-MVP-Lite2-Trainingslauf mit `configs/efficientdet_lite2_ba_v2_mvp.yaml` auf dem materialisierten Kandidaten unter `work/datasets/ba_v2_mvp_candidate`.

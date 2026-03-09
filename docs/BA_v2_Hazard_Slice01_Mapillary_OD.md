@@ -5,6 +5,10 @@
 - Start the BA-v2 product path with the smallest defensible real sources.
 - Prepare the first partial BA-v2 training input without starting a training run yet.
 
+Historical note:
+- This slice was prepared under the earlier BA-v2 five-hazard-core draft that still included `obstacle_overhang`.
+- The current BA-v2 MVP contract no longer includes `obstacle_overhang`.
+
 ## Source Selection
 Included in this slice:
 - `Mapillary Vistas`
@@ -194,7 +198,7 @@ Real BA-v2 hazard-core support in this first slice:
 - `obstacle_hole_dropoff`
 - `obstacle_pole`
 
-Still open or absent:
+Still open or absent in this historical first slice:
 - `obstacle_ground`
 - `obstacle_overhang`
 
@@ -207,5 +211,5 @@ Reading:
 ## Outcome
 - This is a real BA-v2-compatible data slice, not just a contract doc.
 - It is small enough to review and already useful as the first partial BA-v2 training input.
-- It is not yet a complete BA-v2 training candidate for the full hazard contract, because `obstacle_ground` and `obstacle_overhang` are still missing.
+- It is not the current BA-v2 MVP training candidate, because `obstacle_ground` was still missing at this stage.
 - BA-v1 Stage-3 and Stage-4 remain historical baselines; this slice does not replace their evidence.

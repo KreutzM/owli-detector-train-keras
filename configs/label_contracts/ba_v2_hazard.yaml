@@ -1,16 +1,15 @@
 version: ba_v2_hazard
-status: preferred_product_target_pre_training_reset
+status: preferred_product_target_mvp_contract
 purpose: >
-  Preferred hazard-centered detector label contract for the next BA MVP data and
-  mapping reset. This is the new product target ontology. It is intentionally
-  small and fixed, but it is not yet a verified trained/exported baseline on the
-  current repo HEAD.
+  Preferred hazard-centered detector label contract for the current BA MVP path.
+  This is the current small, fixed BA-v2 MVP ontology. obstacle_overhang is
+  intentionally excluded from the MVP because the current repo does not have a
+  defendable data path for it yet.
 supersedes:
   - ba_v1
 class_names:
   - obstacle_ground
   - obstacle_barrier
-  - obstacle_overhang
   - obstacle_hole_dropoff
   - obstacle_pole
   - person
@@ -23,7 +22,6 @@ roles:
   hazard_core:
     - obstacle_ground
     - obstacle_barrier
-    - obstacle_overhang
     - obstacle_hole_dropoff
     - obstacle_pole
   rehearsal:
@@ -40,9 +38,6 @@ classes:
   - name: obstacle_barrier
     role: hazard_core
     rationale: Traversal-blocking barriers such as fences, rails, or similar structures in public space.
-  - name: obstacle_overhang
-    role: hazard_core
-    rationale: Head-height or upper-body collision hazards that are missing from the old Obstacle4-centered contract.
   - name: obstacle_hole_dropoff
     role: hazard_core
     rationale: Holes, missing ground, or drop-off hazards that matter for safe path traversal.
@@ -71,6 +66,8 @@ historical_ba_v1_labels_not_in_contract:
   - obstacle_bump
   - obstacle_fence
   - obstacle_hole
+deferred_non_mvp_labels:
+  - obstacle_overhang
 android_tflite_contract:
   positional_label_order: true
   resolve_labels_from_exported_artifacts: true
@@ -80,7 +77,8 @@ android_tflite_contract:
     remain BA-v1 artifacts.
 out_of_scope:
   - Full COCO-80 coverage.
-  - Hazard subclasses beyond the five hazard-core classes above.
+  - obstacle_overhang for the current MVP.
+  - Hazard subclasses beyond the four hazard-core MVP classes above.
   - Traffic-sign, traffic-light, and lane semantics.
   - Dataset-specific labels treated as product labels without a defended hazard mapping.
   - Any claim that BA-v2 hazard is already fully data-verified on the current repo HEAD.

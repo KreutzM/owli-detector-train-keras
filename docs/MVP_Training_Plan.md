@@ -11,14 +11,15 @@
 - Preferred source-fit readout: [BA_v2_Hazard_Mapping_Strategy.md](./BA_v2_Hazard_Mapping_Strategy.md)
 - First real BA-v2 slice: [BA_v2_Hazard_Slice01_Mapillary_OD.md](./BA_v2_Hazard_Slice01_Mapillary_OD.md)
 - Ground-bootstrap extension: [BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md](./BA_v2_Hazard_Slice02_Obstacle4_Ground_Bootstrap.md)
+- First BA-v2 MVP training candidate: [BA_v2_MVP_Train_Candidate.md](./BA_v2_MVP_Train_Candidate.md)
 - Verified interim baseline contract: [`configs/label_contracts/ba_v1.yaml`](../configs/label_contracts/ba_v1.yaml)
 - Historical interim rationale: [BA_v1_Labelset.md](./BA_v1_Labelset.md)
 - Important boundary:
   - the current verified Stage-3 / Stage-4 runs are BA-v1 historical baselines
-  - the first real BA-v2 hazard data slice now exists
-  - the next real BA-v2 slice now also adds narrow local `obstacle_ground` support
-  - `obstacle_overhang` remains open on current repo HEAD
-  - the next real step before a full BA-v2 training candidate is a defensible local or imported `obstacle_overhang` data path
+  - the current BA-v2 MVP contract intentionally uses four hazard-core classes plus six rehearsal classes
+  - `obstacle_overhang` is deliberately deferred out of the MVP because the repo still has no defendable data path for it
+  - the current Slice02 path and its materialized export now form the first real BA-v2 MVP training candidate
+  - the next real step is the first BA-v2 MVP training run
   - this file keeps the verified BA-v1 evidence because the pipeline work remains relevant
 
 ## Historical Verified BA-v1 Baseline Contract

@@ -3,7 +3,11 @@
 ## Purpose
 - Record the next real BA-v2 hazard data step after `Slice01`.
 - Add the first real local data support for `obstacle_ground`.
-- Keep `obstacle_overhang` explicitly open because no defensible local source was found in this task.
+- Record the bridge from the earlier five-core BA-v2 draft to the current four-core BA-v2 MVP.
+
+Historical note:
+- This slice was built while `obstacle_overhang` was still treated as an open BA-v2 hazard-core gap.
+- The current BA-v2 MVP contract now excludes `obstacle_overhang` on purpose because no defensible data path was found.
 
 ## Local Source Check
 Checked local source evidence:
@@ -16,7 +20,7 @@ Checked local source evidence:
 
 Reading:
 - `obstacle_ground` can be bootstrapped locally from `Obstacle4` only.
-- No checked local source in this repo currently gives a clean `obstacle_overhang` path.
+- No checked local source in this repo gave a clean `obstacle_overhang` path, which is why that class is now deferred out of the MVP.
 
 ## Mapping Used
 Mapping file:
@@ -31,7 +35,7 @@ Used mappings:
 Important boundary:
 - `obstacle_bump -> obstacle_ground` is treated as a narrow subset bootstrap only.
 - This does not claim that `Obstacle4` now defines BA-v2.
-- No mapping is claimed here for `obstacle_overhang`.
+- The current BA-v2 MVP no longer requires an `obstacle_overhang` mapping.
 
 ## Generated Artifacts
 - `work/datasets/obstacle4_ba_v2_hazard_ground_source/instances_normalized.json`
@@ -100,14 +104,13 @@ Real BA-v2 hazard-core support after this slice:
 - `obstacle_pole`
 
 Still open:
-- `obstacle_overhang`
+- none inside the current four-class BA-v2 MVP hazard core
 
 Reading:
 - BA-v2 now has a real local path for `obstacle_ground`, but only through a narrow legacy bootstrap.
-- `obstacle_overhang` remains fully unsupported on current repo HEAD.
+- Under the current MVP decision, the four required BA-v2 hazard-core classes are now all backed by real data on current repo HEAD.
 
 ## Training Readout
-- This slice moves BA-v2 materially closer to a first training candidate.
-- It still does not make BA-v2 a full hazard-contract training candidate, because `obstacle_overhang` remains missing.
+- Under the current BA-v2 MVP contract, this slice is the first real BA-v2 MVP training candidate.
 - In this run, the combined COCO and deterministic splits were rebuilt successfully.
-- The final materialize-images / ModelMaker-CSV step for this enlarged slice was not completed in this task because the image-materialization step hit repeated WSL filesystem I/O stalls on the local machine.
+- The current repo now also contains the completed materialized MVP candidate and Model Maker CSV path documented in [BA_v2_MVP_Train_Candidate.md](./BA_v2_MVP_Train_Candidate.md).
