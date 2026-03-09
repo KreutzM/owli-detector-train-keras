@@ -22,6 +22,16 @@
             {% endfor %}
           </select>
         </div>
+        <div style="min-width: 220px; flex: 1 1 220px;">
+          <label for="class_scope">Per-class scope</label>
+          <select id="class_scope" name="class_scope">
+            {% for option in compare_view.class_scope_options %}
+              <option value="{{ option.key }}" {% if option.selected %}selected{% endif %}>
+                {{ option.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
         <div>
           <button type="submit">Update comparison</button>
         </div>
@@ -99,6 +109,58 @@
       <div class="empty">
         No comparable eval rows are available yet. This page only uses structured `eval*.json`
         artifacts under <span class="path">work/runs</span>.
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Curated per-class view</h2>
+    <p class="meta">{{ compare_view.per_class_note }}</p>
+    {% if compare_view.per_class_rows and compare_view.rows %}
+      <table>
+        <thead>
+          <tr>
+            <th>Class</th>
+            {% for row in compare_view.rows %}
+              <th>
+                {{ row.run_display_name }}
+                <div class="meta">{{ row.eval_label }}</div>
+              </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for per_class_row in compare_view.per_class_rows %}
+            <tr>
+              <td>
+                <strong>{{ per_class_row.label }}</strong>
+                <div class="meta">{{ per_class_row.role }}</div>
+                {% if per_class_row.note %}
+                  <div class="meta">{{ per_class_row.note }}</div>
+                {% endif %}
+              </td>
+              {% for cell in per_class_row.cells %}
+                <td>
+                  {% if cell.matched_class_name %}
+                    <div class="meta">
+                      using <code>{{ cell.matched_class_name }}</code>
+                    </div>
+                  {% else %}
+                    <div class="meta">not reported</div>
+                  {% endif %}
+                  {% for metric_key in compare_view.per_class_metric_keys %}
+                    <div><code>{{ metric_key }}</code>: {{ cell.metrics[metric_key] }}</div>
+                  {% endfor %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">
+        No curated per-class rows are available for the current selection. This section only uses
+        `per_class` data already present in the selected eval JSON reports.
       </div>
     {% endif %}
   </section>

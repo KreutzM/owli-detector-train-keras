@@ -1,107 +1,125 @@
 # Codex Task Report
 
 ## Ziel
-- Den aktuellen BA-v2-`EfficientDet-Lite2` / Model-Maker-Trainingspfad technisch sauber auf echte Online-Augmentation pruefen.
-- Belegen, ob es im bestehenden Produktpfad einen kleinen, reviewbaren Hook fuer CPU-seitige Train-Augmentation mit korrekt mittransformierten Bounding Boxes gibt.
-- Wenn sinnvoll, nur den kleinsten Probe-Hook implementieren, ohne den bestehenden Produktpfad umzubauen.
+- Die bestehende WebUI-Compare-Seite um kleine, kuratierte Per-Class-Vergleiche erweitern.
+- Neben globalen Metriken auch die wichtigsten BA-Core- und ausgewaehlten Rehearsal-Klassen direkt im Browser vergleichbar machen.
+- Den Ausbau bewusst klein halten: bestehende Eval-JSONs nutzen, keine neue Analyseplattform, keine neue Persistenz.
 
 ## Was wurde geändert?
-- Kleinen optionalen Augmentations-Hook im bestehenden Model-Maker-Wrapper ergaenzt:
-  - `src/owli_train/training/modelmaker_efficientdet.py`
-  - neue optionale Config `train.augmentation`
-  - Uebersetzung auf EfficientDet-`model_spec.hparams`
-  - Default-Verhalten bleibt ohne Augmentations-Config unveraendert
-- Kleine Offline-Tests fuer Config-Parsing und Hook-Verdrahtung ergaenzt:
-  - `tests/test_train_efficientdet_config.py`
-  - `tests/test_train_efficientdet_pipeline.py`
-- Kleine technische Entscheidungsnotiz ergaenzt:
-  - `docs/BA_v2_Augmentation_Feasibility.md`
-- MVP-Plan minimal auf die neue Entscheidungsnotiz verlinkt:
-  - `docs/MVP_Training_Plan.md`
-- Pflicht-Report fuer diesen Task aktualisiert:
-  - `docs/reviews/Codex-Task-Report_last.md`
+- Compare-View-Modelle um kuratierte Per-Class-Daten erweitert:
+  - Scope-Auswahl fuer `BA core only` und `BA core + rehearsal`
+  - Per-Class-Zellen und -Zeilen fuer die Compare-Seite
+  - Datei: `src/owli_train/webui/models.py`
+- Reader-Layer minimal um Per-Class-Compare-Aufbereitung erweitert:
+  - liest `per_class` direkt aus bestehenden `eval*.json`-Reports
+  - extrahiert `precision`, `recall`, `tp`, `fp`, `fn`
+  - fuehrt nur defensive Alias-Gruppierung innerhalb einzelner kuratierter Zeilen aus:
+    - `obstacle_fence` / `obstacle_fence_rail`
+    - `obstacle_hole` / `obstacle_hole_dropoff`
+  - haelt `obstacle_ground` und `obstacle_barrier` getrennt statt sie heuristisch zusammenzuwerfen
+  - rendert nur solche kuratierten Klassenzeilen, fuer die mindestens ein selektierter Eval-Report Daten liefert
+  - Datei: `src/owli_train/webui/readers.py`
+- Compare-Route um den kleinen Query-Parameter `class_scope` erweitert:
+  - Datei: `src/owli_train/webui/app.py`
+- Compare-Template um eine zweite kompakte Per-Class-Tabelle erweitert:
+  - globale Vergleichstabelle bleibt bestehen
+  - darunter kuratierte Per-Class-Sicht mit Scope-Auswahl und klaren `-`-Werten bei fehlenden Klassen
+  - Datei: `src/owli_train/webui/templates/compare_runs.html`
+- Kleine Phase-6-Textanpassungen in Navigation und Dashboard:
+  - `src/owli_train/webui/templates/base.html`
+  - `src/owli_train/webui/templates/dashboard.html`
+- Fixtures und Tests gezielt fuer Alias-Namen, fehlende Klassen und Scope-Umschalter erweitert:
+  - `tests/webui_test_utils.py`
+  - `tests/test_webui_reader.py`
+  - `tests/test_webui_app.py`
+- Doku auf den kleinen Phase-6-Scope aktualisiert:
+  - `README.md`
+  - `docs/webui.md`
+  - `docs/runbook.md`
 
 ## Was wurde wirklich verifiziert?
 - Statisch geprueft:
   - `README.md`
-  - `src/owli_train/training/modelmaker_efficientdet.py`
-  - `src/owli_train/data/modelmaker_csv.py`
-  - `src/owli_train/cli.py`
-  - `configs/efficientdet_lite2_ba_v2_mvp.yaml`
+  - `docs/webui.md`
   - `docs/runbook.md`
-  - `docs/MVP_Training_Plan.md`
-  - `docs/BA_v2_MVP_Train_Candidate.md`
-  - `docs/BA_v2_MVP_Baseline.md`
-  - vorheriger Stand von `docs/reviews/Codex-Task-Report_last.md`
-- Installierte, tatsaechlich genutzte Model-Maker-Schnittstelle lokal geprueft:
-  - `requirements/modelmaker.txt` pinnt:
-    - `tensorflow==2.8.4`
-    - `tflite-model-maker==0.4.3`
-  - in `.venv-modelmaker-py39` real inspiziert:
-    - `object_detector.create(...)`
-    - `object_detector.DataLoader.from_csv(...)`
-    - EfficientDet-`InputReader`
-    - EfficientDet-`autoaugment.py`
+  - `docs/review-templates/Codex-Task-Report.md`
+  - bestehende WebUI-Dateien unter `src/owli_train/webui/`
+  - vorhandene Eval-Report-Struktur in `src/owli_train/eval/efficientdet_tflite.py`
 - Inhaltlich verifiziert:
-  - der aktuelle Repo-Pfad ist:
-    - COCO -> Model-Maker-CSV -> `DataLoader.from_csv(...)` -> TFRecord-Cache -> EfficientDet-`InputReader`
-  - der kleinste saubere Online-Hook liegt im aktuellen Produktpfad am `model_spec.hparams`
-  - Bounding Boxes werden im verwendeten EfficientDet-Dataloader fuer `random_horizontal_flip` sowie fuer Resize/Crop-Jitter gemeinsam mit dem Bild transformiert
-  - gezielte photometrische Einzelknobs (`brightness` / `contrast` / `color`) sind im aktuellen Repo-Pfad nicht als saubere Top-Level-Schalter vorhanden; sie sind nur indirekt ueber `autoaugment_policy` erreichbar
-  - ein frei gestaltbarer Repo-eigener `tf.data`-Augmentationspfad ist im aktuellen Model-Maker-Pfad nicht minimal-invasiv integrierbar
+  - die globale Compare-Tabelle bleibt unveraendert erhalten
+  - die neue Per-Class-Sicht nutzt nur die vorhandenen `per_class`-Felder aus den Eval-JSONs
+  - historische Alias-Namen werden nur innerhalb kuratierter Klassenzeilen gematcht
+  - fehlende Klassen oder fehlende `per_class`-Bloecke fuehren zu klaren `-`-Werten oder zu einer leeren Per-Class-Sektion statt zu Fehlern
+  - der Scope-Umschalter `BA core only` vs `BA core + rehearsal` arbeitet ueber denselben Compare-Pfad
 - Real ausgefuehrt:
-  - `python -m ruff format .`
-  - `python -m ruff check .`
-  - `python -m pytest`
-  - zusaetzlich gezielte Offline-Tests auf den betroffenen EfficientDet-Dateien
-  - lokale Python-Inspektion der dedizierten `.venv-modelmaker-py39`-API und der installierten Package-Quellen
+  - gezielte WebUI-Reader- und Route-Tests fuer die Per-Class-Sicht
+  - `ruff format`, `ruff check`, kompletter `pytest`-Lauf
+  - lokaler Uvicorn-Start gegen das echte Repo
+  - echte HTTP-GETs auf `/` und `/compare/runs` gegen das echte Repo
+  - lokaler Uvicorn-Start gegen ein temporaeres Sample-Repo mit mehreren Compare-Runs und Per-Class-Daten
+  - echte HTTP-GETs auf `/compare/runs` gegen das Sample-Repo fuer:
+    - Default-Per-Class-Sicht
+    - `BA core + rehearsal`
+    - gefilterte Stage-4-Ansicht mit `class_scope`
+- Nicht real verifiziert:
+  - eine Multi-Run-Per-Class-Ansicht gegen echte lokale Repo-Artefakte unter `work/runs`, weil dieses Verzeichnis im aktuellen Repo-Workspace weiterhin fehlt
+  - eine vollstaendige beliebige Per-Class-Auswahl, weil diese bewusst nicht Teil des kleinen Scopes ist
 
 ## Tests
-- `python -m ruff format src/owli_train/training/modelmaker_efficientdet.py tests/test_train_efficientdet_config.py tests/test_train_efficientdet_pipeline.py`
+- `python -m pytest tests/test_webui_reader.py tests/test_webui_app.py`
   - Exit-Code: `0`
-  - Ergebnis: betroffene Dateien formatiert
-- `python -m ruff check src/owli_train/training/modelmaker_efficientdet.py tests/test_train_efficientdet_config.py tests/test_train_efficientdet_pipeline.py`
-  - Exit-Code: `1` beim ersten Lauf
-  - Ergebnis: ein einzelner Annotation-Style-Fix (`UP037`) in `modelmaker_efficientdet.py`
-- `python -m pytest tests/test_train_efficientdet_config.py tests/test_train_efficientdet_pipeline.py tests/test_train_efficientdet_cli.py`
-  - Exit-Code: `0`
-  - Ergebnis: `18 passed`
+  - Ergebnis: `16 passed in 2.66s`
 - `python -m ruff format .`
   - Exit-Code: `0`
-  - Ergebnis: Repo nach Abschluss des Patches formatiert
+  - Ergebnis: `2 files reformatted, 79 files left unchanged`
 - `python -m ruff check .`
   - Exit-Code: `0`
-  - Ergebnis: alle Checks sauber
+  - Ergebnis: `All checks passed!`
 - `python -m pytest`
   - Exit-Code: `0`
-  - Ergebnis: `185 passed, 5 skipped`
+  - Ergebnis: `188 passed, 5 skipped in 7.74s`
+- `PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000`
+  - Exit-Code: `0` nach sauberem `CTRL+C`
+  - Ergebnis: WebUI startete lokal gegen das echte Repo
+- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8000'\npaths = ['/', '/compare/runs']\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\n        if path == '/compare/runs':\n            print('compare_title', 'Run / Eval Compare' in response.text)\n            print('per_class_title', 'Curated per-class view' in response.text)\nPY`
+  - Exit-Code: `0`
+  - Ergebnis:
+    - `/` -> `200`
+    - `/compare/runs` -> `200`
+    - Compare- und Per-Class-Ueberschrift im HTML vorhanden
+- `PYTHONPATH=src:. python - <<'PY'\nimport tempfile\nfrom pathlib import Path\n\nimport uvicorn\n\nfrom owli_train.webui.app import create_app\nfrom tests.webui_test_utils import build_sample_repo\n\nrepo_root = build_sample_repo(Path(tempfile.mkdtemp(prefix='owli-webui-per-class-')))\nprint(repo_root)\nuvicorn.run(create_app(repo_root=repo_root), host='127.0.0.1', port=8001)\nPY`
+  - Exit-Code: `0` nach sauberem `CTRL+C`
+  - Ergebnis: WebUI startete lokal gegen ein temporaeres Sample-Repo mit Per-Class-Compare-Daten
+- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8001'\npaths = [\n    '/compare/runs',\n    '/compare/runs?class_scope=ba_core_rehearsal',\n    '/compare/runs?run=work/runs/20260308-211806-ba-mvp-stage4-20260308&target=split:ba_mvp_stage4_with_coco_replay:test&class_scope=ba_core_rehearsal',\n]\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\n        print('per_class_title', 'Curated per-class view' in response.text)\n        print('fence_alias', 'obstacle_fence_rail' in response.text)\n        print('rehearsal_scope', 'BA core + rehearsal' in response.text)\n        print('truck_row', 'truck' in response.text)\n        print('selection_summary', 'Showing 1 eval rows across 1 runs' in response.text)\nPY`
+  - Exit-Code: `0`
+  - Ergebnis:
+    - Default-Compare rendert mit Per-Class-Sicht und Alias-Hinweis
+    - `BA core + rehearsal` rendert mit zusaetzlichen Rehearsal-Zeilen wie `truck`
+    - gefilterte Stage-4-Ansicht rendert mit `200` und passender Auswahlzusammenfassung
 
 ## Relevante Run-Kommandos
-- Aktuelle BA-v2-Feasibility-Note:
+- WebUI lokal in WSL2 starten:
 ```bash
-sed -n '1,260p' docs/BA_v2_Augmentation_Feasibility.md
+source .venv/bin/activate
+PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000 --reload
 ```
-- Optionaler minimaler Online-Augmentations-Hook im bestehenden Produktpfad:
-```yaml
-train:
-  augmentation:
-    rand_hflip: true
-    jitter_min: 0.9
-    jitter_max: 1.1
-    autoaugment_policy: v1
+- Compare-Seite lokal oeffnen:
+```text
+http://127.0.0.1:8000/compare/runs
 ```
-- WSL2-Trainingskommando im bestehenden Pfad bleibt unveraendert:
-```bash
-PYTHONPATH=src .venv-modelmaker-py39/bin/python -m owli_train train efficientdet \
-  --config configs/efficientdet_lite2_ba_v2_mvp.yaml \
-  --require-gpu
+- Optional die Per-Class-Sicht auf BA-Core plus Rehearsal erweitern:
+```text
+http://127.0.0.1:8000/compare/runs?class_scope=ba_core_rehearsal
+```
+- Optional eine gefilterte Compare-Ansicht mit Ziel und Scope aufrufen:
+```text
+http://127.0.0.1:8000/compare/runs?run=work/runs/<run-id>&target=<target-key>&class_scope=ba_core_rehearsal
 ```
 
 ## Offene Risiken
-- Der neue Hook beweist die technische Integrationsstelle, aber nicht den Modellnutzen; es wurde bewusst kein neuer groesserer Trainingslauf gestartet.
-- `autoaugment_policy` ist technisch verfuegbar, mischt aber photometrische und geometrische Ops und ist deshalb deutlich weniger kontrollierbar als `rand_hflip` plus moderates `jitter`.
-- Eine saubere, frei definierbare Repo-eigene Online-Augmentationspipeline vor Model Maker bleibt ohne groesseren Umbau weiter ausser Reichweite.
-- Explizite Translate-only- oder Brightness-only-Schalter sind im aktuellen Produktpfad weiter nicht sauber exponiert.
+- Die Per-Class-Sicht bleibt bewusst klein und kuratiert; sie ist keine generische Contract- oder Klassen-Explorer-Oberflaeche.
+- Historische Alias-Namen werden nur innerhalb einzelner kuratierter Reihen defensiv zusammengefuehrt; weitergehende Semantik-Mappings zwischen BA-v1 und BA-v2 werden absichtlich nicht erfunden.
+- Im echten Repo-Workspace konnte wegen fehlender `work/runs`-Artefakte nur das Rendern der leeren Compare-/Per-Class-Seite live gegen das aktuelle Repo verifiziert werden; die Multi-Run-Per-Class-Ansicht wurde live gegen das Test-Sample verifiziert.
 
 ## Nächster sinnvoller Schritt
-- Fahre genau einen kleinen BA-v2-Vergleichslauf im bestehenden Produktpfad mit nur `rand_hflip` plus moderatem `jitter` gegen die aktuelle Baseline, bevor `autoaugment_policy` oder ein groesserer Trainingsumbau ueberhaupt erwogen wird.
+- Ergaenze optional auf `/compare/runs` eine kleine, feste Delta-Spalte gegen den zuerst selektierten Baseline-Run fuer die kuratierten Per-Class-Metriken, ohne den UI-Scope auf freie Benchmark-Analysen auszuweiten.

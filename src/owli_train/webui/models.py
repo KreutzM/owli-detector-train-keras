@@ -204,6 +204,13 @@ class CompareTargetOptionView:
 
 
 @dataclass(frozen=True)
+class CompareClassScopeOptionView:
+    key: str
+    label: str
+    selected: bool
+
+
+@dataclass(frozen=True)
 class CompareRowView:
     run_id: str
     run_relative_path: str
@@ -220,13 +227,32 @@ class CompareRowView:
 
 
 @dataclass(frozen=True)
+class ComparePerClassCellView:
+    matched_class_name: str | None
+    metrics: dict[str, str]
+
+
+@dataclass(frozen=True)
+class ComparePerClassRowView:
+    label: str
+    role: str
+    note: str | None
+    cells: list[ComparePerClassCellView]
+
+
+@dataclass(frozen=True)
 class RunsCompareView:
     selected_target_key: str | None
     selected_target_label: str | None
     target_options: list[CompareTargetOptionView]
     run_options: list[CompareRunOptionView]
+    class_scope_key: str
+    class_scope_options: list[CompareClassScopeOptionView]
     metric_keys: list[str]
     rows: list[CompareRowView]
+    per_class_metric_keys: list[str]
+    per_class_rows: list[ComparePerClassRowView]
+    per_class_note: str
     selection_summary: str
     scope_note: str
 

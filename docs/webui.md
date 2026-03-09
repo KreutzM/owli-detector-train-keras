@@ -1,4 +1,4 @@
-# WebUI Phase 5
+# WebUI Phase 6
 
 ## Purpose
 - Add a small local browser entry point over the existing repo and artifact layout.
@@ -6,6 +6,7 @@
 - Add a first practical control seam for a few small whitelisted CLI jobs without building a full queue or worker platform.
 - Add useful dataset, run, eval, and golden detail pages so the UI works as a diagnosis surface, not only as a launcher list.
 - Add one small compare view so multiple runs can be checked side by side on the same eval target.
+- Add one small curated per-class extension on that compare view for the most important BA-core and rehearsal classes.
 - Add a first small bridge from the WebUI into local FiftyOne for visual dataset inspection.
 
 ## Current scope
@@ -17,6 +18,10 @@
   - target-group selection based on shared eval dataset/split
   - simple run selection
   - side-by-side AP, AP50, AP75, AR100, precision, and recall
+  - a curated per-class table with:
+    - `BA core only` or `BA core + rehearsal`
+    - `precision`, `recall`, `tp`, `fp`, `fn`
+    - defensive alias handling for historical names such as `obstacle_fence_rail` and `obstacle_hole_dropoff`
   - links back to run, eval, and golden details
 - dataset detail pages with:
   - COCO summary counts
@@ -45,14 +50,14 @@
   - persisted job status and logs
   - small launch forms for selected dataset-prep commands
 
-## Supported job types in phase 5
+## Supported job types in phase 6
 - `dataset validate`
 - `dataset split`
 - `dataset merge coco`
 - `dataset export modelmaker-csv`
 - `dataset materialize-images` with manifest-backed source resolution only
 
-## FiftyOne scope in phase 5
+## FiftyOne scope in phase 6
 - supported now:
   - dataset detail -> open supported COCO dataset in local FiftyOne
   - eval detail -> open the dataset referenced by eval JSON when `coco_path` and `images_dir` resolve inside the repo
@@ -63,7 +68,7 @@
   - embedded FiftyOne UI inside the WebUI
   - multi-user or durable session management
 
-## Explicit non-goals in phase 5
+## Explicit non-goals in phase 6
 - no training start/stop actions
 - no heavy GPU jobs
 - no teacher pseudo-labeling
@@ -147,7 +152,15 @@ Main routes:
   - dataset / split context from `coco_path` when that path resolves inside the repo
   - global metrics: `AP`, `AP50`, `AP75`, `AR100`, `precision`, `recall`
   - links to run, eval, and golden detail pages
+- The per-class section:
+  - uses the existing `per_class` block from the same eval JSON files
+  - shows only a small curated class set, not the full contract
+  - supports the metrics `precision`, `recall`, `tp`, `fp`, `fn`
+  - treats `obstacle_fence` and `obstacle_fence_rail` as one curated row only for display
+  - treats `obstacle_hole` and `obstacle_hole_dropoff` as one curated row only for display
+  - does not collapse unrelated classes such as `obstacle_barrier` into those historical rows
 - Missing metrics stay visible as `-` instead of hiding the whole row.
+- Curated per-class rows are only rendered when at least one selected eval report provides data for that class row.
 - Intentionally not supported yet:
   - arbitrary per-class compare builders
   - cross-run charts
