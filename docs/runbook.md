@@ -11,6 +11,32 @@ pip install -r requirements/dev.txt
 
 WSL-specific setup notes: `docs/wsl-setup.md`
 
+## Local WebUI (Phase 1, read-only)
+
+The local control UI is intentionally small and read-only. It exposes repo docs,
+label contracts, curated artifact roots, detected dataset directories, detected run
+directories, and config-referenced paths. It does not replace the CLI and it does not
+start training or dataset jobs in this phase.
+
+Code location:
+- `src/owli_train/webui/`
+
+Use the main tooling venv:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Default local URL:
+- `http://127.0.0.1:8000/`
+
+Additional note:
+- if you are not using the full dev environment, install `requirements/webui.txt`
+
+Dedicated note:
+- `docs/webui.md`
+
 ## Validate COCO
 
 ```powershell

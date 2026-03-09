@@ -74,3 +74,37 @@ See `docs/BA_v1_Labelset.md` for the historical verified BA-v1 interim contract.
 See `docs/MVP_Training_Plan.md` for the current transition from the historical BA-v1 baseline to the preferred BA-v2 hazard path.
 
 GPU note (RTX-3060 on Windows): TensorFlow GPU is generally smoothest in WSL2.
+
+## WebUI (Phase 1, read-only)
+
+The first local WebUI lives under `src/owli_train/webui/` and adds a small FastAPI +
+Uvicorn control surface over the existing repo state. It does not replace the CLI,
+does not edit datasets, and does not start jobs yet.
+
+Use the main tooling venv for this UI, not the dedicated Model Maker or teacher venvs.
+If you already installed `requirements/dev.txt`, the WebUI dependencies are included.
+Otherwise install `requirements/webui.txt`.
+
+WSL:
+
+```bash
+source .venv/bin/activate
+PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000 --reload
+```
+
+PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+$env:PYTHONPATH = "src"
+python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Open `http://127.0.0.1:8000/`.
+
+Phase-1 pages:
+- `/` dashboard for repo docs, contracts, artifact roots, detected datasets, and detected runs
+- `/contracts` for BA-v1 and BA-v2 ontology display
+- `/artifacts` for curated dataset/run/config path visibility
+
+See `docs/webui.md` for the local start path and current scope.
