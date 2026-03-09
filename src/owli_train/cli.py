@@ -23,6 +23,7 @@ from owli_train.data.coco import (
     validate_coco,
     write_coco,
 )
+from owli_train.data.coco_crops import export_coco_crops_with_config
 from owli_train.data.coco_replay import import_coco_replay_with_config
 from owli_train.data.mapillary_vistas import import_mapillary_vistas_to_coco
 from owli_train.data.materialize_images import (
@@ -509,6 +510,26 @@ def dataset_export_modelmaker_csv(
     print(
         "summary: "
         f"rows={artifacts.rows}, images={artifacts.images}, annotations={artifacts.annotations}"
+    )
+
+
+@dataset_export_app.command("coco-crops")
+def dataset_export_coco_crops(
+    config: Annotated[Path, typer.Option("--config", exists=True, readable=True)],
+):
+    try:
+        artifacts = export_coco_crops_with_config(config)
+    except ValueError as exc:
+        print(f"[red]ERROR[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    print(f"[green]OK[/green] wrote crop COCO: {artifacts.coco_path}")
+    print(f"images_dir: {artifacts.images_dir}")
+    print(f"class_names_json: {artifacts.class_names_path}")
+    print(f"qc_report: {artifacts.qc_report_path}")
+    print(
+        "summary: "
+        f"images={artifacts.images}, annotations={artifacts.annotations}, categories={artifacts.categories}"
     )
 
 

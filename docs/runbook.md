@@ -179,6 +179,68 @@ Optional split mapping:
 python -m owli_train dataset export modelmaker-csv --coco work\datasets\coco128\instances.json --images-dir data\coco128\images --splits-json work\splits\splits.json --out work\datasets\coco128\modelmaker.csv
 ```
 
+## Export small-object COCO crops for Stage-3
+
+This keeps the current Stage-3 full-image path intact and adds a small crop dataset from the
+existing Stage-3 `TRAIN` split only.
+
+```powershell
+python -m owli_train dataset export coco-crops --config configs\crop_ba_mvp_stage3_small_obstacles.yaml
+python -m owli_train dataset validate --coco work\datasets\ba_mvp_stage3_crops\instances_ba_v1.coco.json --images-dir work\datasets\ba_mvp_stage3_crops\images
+python -m owli_train dataset export modelmaker-csv --coco work\datasets\ba_mvp_stage3_crops\instances_ba_v1.coco.json --images-dir work\datasets\ba_mvp_stage3_crops\images --out work\datasets\ba_mvp_stage3_crops\modelmaker.csv
+```
+
+WSL equivalent:
+
+```bash
+python -m owli_train dataset export coco-crops --config configs/crop_ba_mvp_stage3_small_obstacles.yaml
+python -m owli_train dataset validate --coco work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json --images-dir work/datasets/ba_mvp_stage3_crops/images
+python -m owli_train dataset export modelmaker-csv --coco work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json --images-dir work/datasets/ba_mvp_stage3_crops/images --out work/datasets/ba_mvp_stage3_crops/modelmaker.csv
+```
+
+Artifacts:
+- crop COCO: `work\datasets\ba_mvp_stage3_crops\instances_ba_v1.coco.json`
+- crop images: `work\datasets\ba_mvp_stage3_crops\images`
+- QC report: `work\datasets\ba_mvp_stage3_crops\qc_report.json`
+- crop CSV: `work\datasets\ba_mvp_stage3_crops\modelmaker.csv`
+
+## Prepare Stage-3-plus-crops training input
+
+Merge the materialized Stage-3 dataset with the crop dataset, then materialize a combined
+images root for the next Lite2 comparison run.
+
+```powershell
+python -m owli_train dataset merge coco --manifest configs\merge_ba_mvp_stage3_plus_crops.yaml --out work\datasets\ba_mvp_stage3_plus_crops\instances_combined.json --report-out work\datasets\ba_mvp_stage3_plus_crops\instances_combined.report.json
+python -m owli_train dataset materialize-images --coco work\datasets\ba_mvp_stage3_plus_crops\instances_combined.json --merge-manifest configs\merge_ba_mvp_stage3_plus_crops.yaml --out-images-dir work\datasets\ba_mvp_stage3_plus_crops\images --out-coco work\datasets\ba_mvp_stage3_plus_crops\instances_materialized.json --mode auto
+python -m owli_train dataset validate --coco work\datasets\ba_mvp_stage3_plus_crops\instances_materialized.json --images-dir work\datasets\ba_mvp_stage3_plus_crops\images
+```
+
+Combine the existing Stage-3 CSV with the crop CSV so `VAL` and `TEST` stay unchanged and
+all crop rows stay `TRAIN`.
+
+```powershell
+@(
+  Get-Content work\datasets\ba_mvp_stage3_balanced_multisource\modelmaker.csv
+  Get-Content work\datasets\ba_mvp_stage3_crops\modelmaker.csv
+) | Set-Content work\datasets\ba_mvp_stage3_plus_crops\modelmaker.csv
+Copy-Item work\datasets\ba_mvp_stage3_balanced_multisource\modelmaker.class_names.json work\datasets\ba_mvp_stage3_plus_crops\modelmaker.class_names.json -Force
+```
+
+WSL equivalent:
+
+```bash
+cat \
+  work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.csv \
+  work/datasets/ba_mvp_stage3_crops/modelmaker.csv \
+  > work/datasets/ba_mvp_stage3_plus_crops/modelmaker.csv
+cp \
+  work/datasets/ba_mvp_stage3_balanced_multisource/modelmaker.class_names.json \
+  work/datasets/ba_mvp_stage3_plus_crops/modelmaker.class_names.json
+```
+
+Next training config:
+- `configs\efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml`
+
 ## Train detector (KerasCV YOLOv8 baseline)
 
 Install training dependencies first:

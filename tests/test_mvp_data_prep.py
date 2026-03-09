@@ -137,3 +137,65 @@ def test_stage3_balanced_multisource_manifest_stays_concrete_and_prefixed() -> N
     assert manifest["sources"][2]["coco"] == "../work/datasets/od_ba_v1/instances_ba_v1.coco.json"
     assert manifest["sources"][2]["file_name_prefix"] == "od_ba_v1"
     assert manifest["settings"]["allow_duplicate_file_names"] is False
+
+
+def test_stage3_small_object_crop_config_stays_train_only_and_ba_core_focused() -> None:
+    config = _load_yaml(Path("configs/crop_ba_mvp_stage3_small_obstacles.yaml"))
+    contract = _load_yaml(Path("configs/label_contracts/ba_v1.yaml"))
+
+    assert config["status"] == "first_stage3_plus_crops_small_object_probe"
+    assert (
+        config["source_coco"]
+        == "../work/splits/ba_mvp_stage3_balanced_multisource/instances_train.json"
+    )
+    assert (
+        config["source_images_dir"] == "../work/datasets/ba_mvp_stage3_balanced_multisource/images"
+    )
+    assert config["out_dir"] == "../work/datasets/ba_mvp_stage3_crops"
+    assert config["selection"]["target_classes"] == contract["roles"]["ba_core"]
+    assert config["selection"]["allowed_source_prefixes"] == [
+        "obstacle4",
+        "mapillary_vistas",
+        "od_ba_v1",
+    ]
+    assert config["selection"]["max_bbox_min_side"] == 48
+    assert config["selection"]["max_bbox_area_ratio"] == 0.01
+    assert config["selection"]["max_bbox_short_side_ratio"] == 0.05
+    assert config["selection"]["max_crops_per_class"] == 200
+    assert config["selection"]["max_crops_per_image"] == 1
+    assert config["crop"]["context_scale"] == 4.0
+    assert config["crop"]["min_size"] == 256
+    assert config["crop"]["max_size"] == 512
+    assert config["crop"]["min_retained_area_ratio"] == 0.5
+    assert config["crop"]["min_retained_bbox_min_side"] == 4
+    assert config["crop"]["file_name_prefix"] == "stage3_crops"
+
+
+def test_stage3_plus_crops_manifest_and_training_config_stay_aligned() -> None:
+    manifest = _load_yaml(Path("configs/merge_ba_mvp_stage3_plus_crops.yaml"))
+    train_config = _load_yaml(Path("configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml"))
+
+    assert [source["name"] for source in manifest["sources"]] == [
+        "ba_mvp_stage3_materialized",
+        "ba_mvp_stage3_crops",
+    ]
+    assert (
+        manifest["sources"][0]["coco"]
+        == "../work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json"
+    )
+    assert (
+        manifest["sources"][0]["images_dir"]
+        == "../work/datasets/ba_mvp_stage3_balanced_multisource/images"
+    )
+    assert (
+        manifest["sources"][1]["coco"]
+        == "../work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json"
+    )
+    assert manifest["sources"][1]["images_dir"] == "../work/datasets/ba_mvp_stage3_crops/images"
+    assert manifest["settings"]["allow_duplicate_file_names"] is False
+
+    assert train_config["data"]["csv"] == "work/datasets/ba_mvp_stage3_plus_crops/modelmaker.csv"
+    assert train_config["data"]["images_dir"] == "work/datasets/ba_mvp_stage3_plus_crops/images"
+    assert (
+        train_config["data"]["label_map_json"] == "configs/label_contracts/ba_v1.class_names.json"
+    )

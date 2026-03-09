@@ -14,6 +14,7 @@
 - Current verified multi-source baseline: [BA_MVP_Stage3_Baseline.md](./BA_MVP_Stage3_Baseline.md)
 - Current verified Stage-4 data pipeline: [BA_MVP_Stage4_Replay_Pipeline.md](./BA_MVP_Stage4_Replay_Pipeline.md)
 - Current verified Stage-4 comparison run: [BA_MVP_Stage4_Baseline.md](./BA_MVP_Stage4_Baseline.md)
+- Current verified small-object crop branch: [BA_MVP_Stage3_Crops.md](./BA_MVP_Stage3_Crops.md)
 
 ## Primary MVP Sources
 The MVP path is no longer Obstacle4-only. Obstacle4 remains the verified reference baseline, but the next training run is intended to be multi-source.
@@ -178,6 +179,46 @@ Current verified Stage-4 training result on repo HEAD:
   - overall rehearsal stabilization is not convincing enough yet
   - the current preferred multi-source baseline remains Stage-3
 
+### Stage-3-plus-crops. Small BA-core crop branch
+Goal:
+- probe whether a small amount of high-resolution crop training signal helps the weak small-object BA-core cases
+- keep the existing full-image Stage-3 path as the main baseline
+
+Current verified crop path on repo HEAD:
+- config:
+  - [`configs/crop_ba_mvp_stage3_small_obstacles.yaml`](../configs/crop_ba_mvp_stage3_small_obstacles.yaml)
+- dedicated note:
+  - [BA_MVP_Stage3_Crops.md](./BA_MVP_Stage3_Crops.md)
+- input stays train-only:
+  - `work/splits/ba_mvp_stage3_balanced_multisource/instances_train.json`
+- real crop export result:
+  - `work/datasets/ba_mvp_stage3_crops`
+  - `528` images
+  - `3001` annotations
+  - crop targets kept:
+    - `obstacle_bump`: `3`
+    - `obstacle_fence`: `176`
+    - `obstacle_hole`: `149`
+    - `obstacle_pole`: `200`
+- prepared comparison input:
+  - merge manifest:
+    - [`configs/merge_ba_mvp_stage3_plus_crops.yaml`](../configs/merge_ba_mvp_stage3_plus_crops.yaml)
+  - materialized dataset:
+    - `work/datasets/ba_mvp_stage3_plus_crops/instances_materialized.json`
+  - materialized images:
+    - `work/datasets/ba_mvp_stage3_plus_crops/images`
+  - Model Maker CSV:
+    - `work/datasets/ba_mvp_stage3_plus_crops/modelmaker.csv`
+  - next training config:
+    - [`configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml`](../configs/efficientdet_lite2_ba_mvp_stage3_plus_crops.yaml)
+
+Reading:
+- the current crop branch is intentionally narrow and obstacle-focused
+- `Mapillary` supplies most small-object seeds under the fixed heuristic
+- `Obstacle4` still contributes a small tail of difficult BA-core cases
+- `OD` is allowed but does not enter the first exported crop set under the current priority and caps
+- this branch should be evaluated as `Stage-3` vs. `Stage-3-plus-crops`, not as a new promoted baseline
+
 ## Repo Prep Artifacts for This MVP Path
 - [`configs/label_maps/obstacle4_to_ba.yaml`](../configs/label_maps/obstacle4_to_ba.yaml)
 - [`configs/label_maps/mapillary_vistas_to_ba.yaml`](../configs/label_maps/mapillary_vistas_to_ba.yaml)
@@ -247,6 +288,7 @@ Current exception:
 - Treat `Mapillary Vistas` and `OD` as reviewed BA supplements with conservative mappings on current repo HEAD.
 - Use the checked-in balanced Mapillary subset for the first multi-source MVP run instead of the full raw Mapillary export.
 - Treat [`BA_MVP_Stage3_Baseline.md`](./BA_MVP_Stage3_Baseline.md) as the current verified multi-source reference before adding `COCO replay`.
+- Treat [BA_MVP_Stage3_Crops.md](./BA_MVP_Stage3_Crops.md) as an additional small-object experiment branch, not as a baseline replacement.
 - Treat [`BA_MVP_Stage4_Baseline.md`](./BA_MVP_Stage4_Baseline.md) as the first real replay comparison result, not as a new default baseline.
 - Treat `TACO` as prep-only until its local taxonomy is verified.
 - Treat `COCO replay` as a narrow rehearsal mechanism, not as a return to general COCO training.

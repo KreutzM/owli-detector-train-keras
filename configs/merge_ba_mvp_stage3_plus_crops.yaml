@@ -1,0 +1,15 @@
+sources:
+  - name: ba_mvp_stage3_materialized
+    coco: ../work/datasets/ba_mvp_stage3_balanced_multisource/instances_materialized.json
+    images_dir: ../work/datasets/ba_mvp_stage3_balanced_multisource/images
+    pseudo: false
+
+  - name: ba_mvp_stage3_crops
+    coco: ../work/datasets/ba_mvp_stage3_crops/instances_ba_v1.coco.json
+    images_dir: ../work/datasets/ba_mvp_stage3_crops/images
+    pseudo: false
+
+settings:
+  same_class_iou: 0.75
+  pseudo_block_iou: 0.6
+  allow_duplicate_file_names: false

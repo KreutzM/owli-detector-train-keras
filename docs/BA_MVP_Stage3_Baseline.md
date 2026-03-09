@@ -231,6 +231,10 @@ Reading:
 
 ## Next Step Boundary
 - `COCO replay` is still intentionally absent here.
+- The next obstacle-focused experiment branch is now the small-object crop path in
+  [BA_MVP_Stage3_Crops.md](./BA_MVP_Stage3_Crops.md).
+- That branch keeps Stage-3 as the baseline and prepares a direct `Stage-3` vs.
+  `Stage-3-plus-crops` comparison, instead of replacing the current full-image setup.
 - The next baseline step should add a small explicit replay subset for:
   - `person`
   - `bicycle`
