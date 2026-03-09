@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="grid">
+    <article class="panel">
+      <h2>Curated roots</h2>
+      <ul class="item-list">
+        {% for root in model.artifact_roots %}
+          <li>
+            <div>
+              <strong>{{ root.label }}</strong>
+              <span class="status {{ 'status-present' if root.exists else 'status-missing' }}">
+                {{ 'present' if root.exists else 'missing' }}
+              </span>
+            </div>
+            <div class="path">{{ root.relative_path }}</div>
+            <p class="meta">
+              {{ root.note or "" }}
+              {% if root.detail %}
+                {{ root.detail }}.
+              {% endif %}
+            </p>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+
+    <article class="panel">
+      <h2>Detected datasets</h2>
+      {% if model.recent_datasets %}
+        <ul class="item-list">
+          {% for dataset in model.recent_datasets %}
+            <li>
+              <strong>{{ dataset.label }}</strong>
+              <div class="path">{{ dataset.relative_path }}</div>
+              <p class="meta">{{ dataset.summary }}</p>
+              {% if dataset.highlights %}
+                <div class="chips">
+                  {% for item in dataset.highlights %}
+                    <span class="chip">{{ item }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">No concrete dataset directories detected yet.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Detected runs</h2>
+    {% if model.recent_runs %}
+      <ul class="item-list">
+        {% for run in model.recent_runs %}
+          <li>
+            <strong>{{ run.label }}</strong>
+            <div class="path">{{ run.relative_path }}</div>
+            <p class="meta">{{ run.summary }}</p>
+            {% if run.highlights %}
+              <div class="chips">
+                {% for item in run.highlights %}
+                  <span class="chip">{{ item }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">No run directories detected yet.</div>
+    {% endif %}
+  </section>
+
+  {% for group in model.config_groups %}
+    <section class="panel">
+      <h2>{{ group.title }}</h2>
+      <p class="meta">{{ group.description }}</p>
+      {% if group.items %}
+        <ul class="item-list">
+          {% for item in group.items %}
+            <li>
+              <strong>{{ item.label }}</strong>
+              <div class="path">{{ item.relative_path }}</div>
+              <p class="meta">{{ item.description }}</p>
+              {% if item.targets %}
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Target</th>
+                      <th>Path</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for target in item.targets %}
+                      <tr>
+                        <td>{{ target.label }}</td>
+                        <td><code>{{ target.relative_path }}</code></td>
+                        <td>{{ 'present' if target.exists else 'missing' }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">No matching configs found.</div>
+      {% endif %}
+    </section>
+  {% endfor %}
+{% endblock %}
+

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {% for contract in model.contracts %}
+    <section class="panel">
+      <h2>{{ contract.title }}</h2>
+      <p class="meta">
+        {% if contract.status %}
+          Status: <strong>{{ contract.status }}</strong>.
+        {% endif %}
+        {{ contract.purpose or "No purpose text." }}
+        {% if contract.modified_at %}
+          Updated {{ contract.modified_at }}.
+        {% endif %}
+      </p>
+      <div class="path">{{ contract.relative_path }}</div>
+
+      {% if contract.roles %}
+        <div class="grid" style="margin-top: 1rem;">
+          {% for role in contract.roles %}
+            <article class="panel" style="box-shadow: none; background: rgba(255, 250, 242, 0.7);">
+              <h3>{{ role.name }}</h3>
+              <div class="chips">
+                {% for class_name in role.class_names %}
+                  <span class="chip">{{ class_name }}</span>
+                {% endfor %}
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <table style="margin-top: 1rem;">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Class</th>
+            <th>Role</th>
+            <th>Rationale</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in contract.classes %}
+            <tr>
+              <td>{{ item.order }}</td>
+              <td><code>{{ item.name }}</code></td>
+              <td>{{ item.role or "-" }}</td>
+              <td>{{ item.rationale or "-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if contract.out_of_scope %}
+        <div style="margin-top: 1rem;">
+          <h3>Out of scope</h3>
+          <div class="chips">
+            {% for item in contract.out_of_scope %}
+              <span class="chip">{{ item }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </section>
+  {% endfor %}
+{% endblock %}

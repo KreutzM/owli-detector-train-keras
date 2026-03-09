@@ -1,125 +1,200 @@
 # Codex Task Report
 
 ## Ziel
-- Den ersten echten Daten-/Mapping-Schritt auf die neue BA-v2-Hazard-Ontologie umsetzen.
-- Einen kleinen, defensiblen, real verifizierten BA-v2-Slice aus den aktuell am besten passenden Quellen erzeugen.
-- Den Pfad bis direkt vor einen ersten partiellen BA-v2-Trainingsinput vorbereiten, ohne einen Trainingslauf zu starten.
+- Die bestehende read-only WebUI um eine kleine, sichere Job-Steuerung erweitern.
+- Nur eine kleine Whitelist leichter CLI-Kommandos direkt aus dem Browser startbar machen.
+- Jobstatus, Exit-Code, Logs und erwartete Artefaktpfade persistent sichtbar machen, ohne die CLI zu ersetzen oder eine grosse Queue-/Worker-Plattform einzufuehren.
 
-## Was wurde geändert?
-- Kleine Runtime-Erweiterung fuer contract-geordnete Normalisierung ergaenzt:
-  - `src/owli_train/data/coco.py`
-  - `src/owli_train/cli.py`
-- Kleine Runtime-Erweiterung fuer contract-geordneten Merge aus Manifesten ergaenzt:
-  - `src/owli_train/data/merge_coco.py`
-- Neuer transitorischer Remap von verifizierten BA-v1-Quell-Exporten auf BA-v2 hazard:
-  - `configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml`
-- Neue BA-v2-Slice-Configs ergaenzt:
-  - `configs/balance_ba_v2_hazard_mapillary_slice01.yaml`
-  - `configs/balance_ba_v2_hazard_od_slice01.yaml`
-  - `configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml`
-- Neue dedizierte Slice-Doku ergaenzt:
-  - `docs/BA_v2_Hazard_Slice01_Mapillary_OD.md`
-- Bestehende Doku minimal auf den ersten realen BA-v2-Slice geschaerft:
-  - `docs/MVP_Training_Plan.md`
+## Was wurde geaendert?
+- WebUI-App um Jobseiten und Launcher-Routen erweitert:
+  - `src/owli_train/webui/app.py`
+- Neuer kleiner file-backed Job-Layer mit Whitelist, Store, Launcher und Worker:
+  - `src/owli_train/webui/jobs.py`
+  - `src/owli_train/webui/worker.py`
+- Neue Job-Templates ergaenzt:
+  - `src/owli_train/webui/templates/jobs.html`
+  - `src/owli_train/webui/templates/job_detail.html`
+- Bestehende WebUI-Modelle, Reader und Basis-Templates fuer Jobanzeige erweitert:
+  - `src/owli_train/webui/models.py`
+  - `src/owli_train/webui/readers.py`
+  - `src/owli_train/webui/templates/base.html`
+  - `src/owli_train/webui/templates/dashboard.html`
+- Kleine Tests fuer Job-Store, Worker, Launcher-Routen und Whitelist-Command-Building ergaenzt:
+  - `tests/test_webui_jobs.py`
+  - `tests/test_webui_app.py`
+  - `tests/webui_test_utils.py`
+- Doku und WebUI-Abhaengigkeiten auf Phase 2 aktualisiert:
+  - `README.md`
   - `docs/runbook.md`
-- Kleine Tests fuer normalize/merge und BA-v2-Slice-Configs ergaenzt oder erweitert:
-  - `tests/test_dataset_normalize.py`
-  - `tests/test_dataset_merge_coco.py`
-  - `tests/test_ba_v2_mapping_prep.py`
+  - `docs/webui.md`
+  - `requirements/webui.txt`
+  - `pyproject.toml`
 
 ## Was wurde wirklich verifiziert?
 - Statisch geprueft:
-  - `docs/BA_v1_Labelset.md`
-  - `docs/BA_v2_Hazard_Labelset.md`
-  - `docs/MVP_Training_Plan.md`
+  - `README.md`
   - `docs/runbook.md`
-  - `docs/android-export-contract.md`
-  - `configs/label_contracts/ba_v1.yaml`
-  - `configs/label_contracts/ba_v2_hazard.yaml`
-  - bestehende Label-Maps und Merge-Configs
-  - relevante Datenmodule unter `src/owli_train/data/*`
+  - `docs/webui.md`
+  - `src/owli_train/webui/*`
+  - `src/owli_train/cli.py`
+  - relevante Datenpfade:
+    - `src/owli_train/data/coco.py`
+    - `src/owli_train/data/split.py`
+    - `src/owli_train/data/merge_coco.py`
+    - `src/owli_train/data/materialize_images.py`
+    - `src/owli_train/data/modelmaker_csv.py`
+  - `docs/reviews/Codex-Task-Report_last.md` (vorheriger Stand)
 - Inhaltlich verifiziert:
-  - der kleinste robuste reale BA-v2-Einstiegspunkt ist aktuell `Mapillary + OD`
-  - `Obstacle4` wurde fuer diesen ersten Slice bewusst nicht verwendet
-  - `COCO replay` wurde fuer diesen ersten Slice bewusst nicht verwendet
-  - der erste reale BA-v2-Slice stuetzt aktuell nur:
-    - `obstacle_barrier`
-    - `obstacle_hole_dropoff`
-    - `obstacle_pole`
-  - weiterhin offen bleiben:
-    - `obstacle_ground`
-    - `obstacle_overhang`
-  - der erzeugte Slice ist daher noch kein vollstaendiger BA-v2-Trainingskandidat fuer den finalen Hazard-Contract
+  - der kleinste robuste lokale Job-Mechanismus ist ein file-backed JSON-Store pro Job plus eigener Python-Worker-Subprozess
+  - die Phase-2-Whitelist bleibt bewusst klein:
+    - `dataset validate`
+    - `dataset split`
+    - `dataset merge coco`
+    - `dataset export modelmaker-csv`
+    - `dataset materialize-images` mit Merge-Manifest
+  - keine freie Shell-Eingabe wird zugelassen
+  - Inputs fuer bestehende Dateien kommen nur aus bekannten Repo-Pfaden; Outputs werden auf `work/` begrenzt
 - Real ausgefuehrt:
-  - contract-geordnete BA-v2-Normalisierung fuer `Mapillary` und `OD`
-  - realer BA-v2-Balance-Lauf fuer `Mapillary`
-  - realer BA-v2-Pass-through mit QC fuer `OD`
-  - realer BA-v2-Merge
-  - realer Split mit `--ensure-train-class-coverage`
-  - reale Materialisierung der Bilder
-  - reale Validierung des materialisierten COCO
-  - reale Vorbereitung bis zum `ModelMaker`-CSV
+  - WebUI-Abhaengigkeiten installiert
+  - Ruff Format / Ruff Check / Pytest ausgefuehrt
+  - lokaler Uvicorn-Start der App
+  - echter HTTP-GET auf `/jobs`
+  - echter HTTP-POST auf `/jobs/launch/dataset_split`
+  - echter persistenter Split-Job ueber die neue Jobs-Route bis `succeeded` verifiziert
+  - echte Job-Detailseite per HTTP geladen
 
 ## Tests
-- `PYTHONPATH=src python -m owli_train dataset normalize --coco work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json --images-dir work/datasets/mapillary_vistas_ba_v1/images --label-map configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml --contract configs/label_contracts/ba_v2_hazard.yaml --out work/datasets/mapillary_vistas_ba_v2_hazard_source/instances_normalized.json`
+- `python -m pip install -r requirements/dev.txt`
   - Exit-Code: `0`
-- `PYTHONPATH=src python -m owli_train dataset normalize --coco work/datasets/od_ba_v1/instances_ba_v1.coco.json --images-dir work/datasets/od_ba_v1/images --label-map configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml --contract configs/label_contracts/ba_v2_hazard.yaml --out work/datasets/od_ba_v2_hazard_source/instances_normalized.json`
-  - Exit-Code: `0`
-- `PYTHONPATH=src python -m owli_train dataset balance-coco --config configs/balance_ba_v2_hazard_mapillary_slice01.yaml`
-  - Exit-Code: `0`
-  - Ergebnis: `957` Bilder, `21707` Annotationen, `9` Kategorien
-- `PYTHONPATH=src python -m owli_train dataset balance-coco --config configs/balance_ba_v2_hazard_od_slice01.yaml`
-  - Exit-Code: `0`
-  - Ergebnis: `1592` Bilder, `8911` Annotationen, `7` Kategorien
-- `PYTHONPATH=src python -m owli_train dataset merge coco --manifest configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml --out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.json --report-out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.report.json`
-  - Exit-Code: `0`
-  - Ergebnis: `2549` Bilder, `30604` Annotationen, `9` Kategorien
-- `PYTHONPATH=src python -m owli_train dataset split --coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.json --out-dir work/splits/ba_v2_hazard_slice01_mapillary_od --seed 1337 --ensure-train-class-coverage --write-coco`
-  - Exit-Code: `0`
-  - Ergebnis: `TRAIN=2039`, `VAL=254`, `TEST=256`
-- `PYTHONPATH=src python -m owli_train dataset materialize-images --coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.json --merge-manifest configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml --out-images-dir work/datasets/ba_v2_hazard_slice01_mapillary_od/images --out-coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_materialized.json --mode auto`
-  - Exit-Code: `0`
-  - Ergebnis: `2549` Bilder materialisiert, `2549` per Symlink vorhanden
-- `PYTHONPATH=src python -m owli_train dataset validate --coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_materialized.json --images-dir work/datasets/ba_v2_hazard_slice01_mapillary_od/images`
-  - Exit-Code: `0`
-  - Ergebnis: `images=2549`, `ann=30604`, `cats=9`
-- `PYTHONPATH=src python -m owli_train dataset export modelmaker-csv --coco work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_materialized.json --images-dir work/datasets/ba_v2_hazard_slice01_mapillary_od/images --splits-json work/splits/ba_v2_hazard_slice01_mapillary_od/splits.json --out work/datasets/ba_v2_hazard_slice01_mapillary_od/modelmaker.csv`
-  - Exit-Code: `0`
-  - Ergebnis: `rows=30604`, `images=2549`, `annotations=30604`
 - `python -m ruff format .`
   - Exit-Code: `0`
-  - Ergebnis: `1 file reformatted, 66 files left unchanged`
+  - Ergebnis: `2 files reformatted, 76 files left unchanged`
+- `python -m ruff check .`
+  - Exit-Code: `1`
+  - Ergebnis: kleine Import-/Typing-Korrekturen in `src/owli_train/webui/jobs.py`
+- `python -m ruff check src/owli_train/webui/jobs.py --fix`
+  - Exit-Code: `0`
+  - Ergebnis: `3` kleine Ruff-Fixes automatisch angewendet
+- `python -m ruff check .`
+  - Exit-Code: `0`
+  - Ergebnis: `All checks passed!`
+- `python -m pytest`
+  - Exit-Code: `2`
+  - Ergebnis: erster Lauf scheiterte an Python-3.10-Inkompatibilitaet durch `datetime.UTC`
+- `python -m ruff check src/owli_train/webui/app.py`
+  - Exit-Code: `0`
+- `python -m pytest`
+  - Exit-Code: `0`
+  - Ergebnis: `170 passed, 5 skipped in 5.37s`
+- `python -m ruff format .`
+  - Exit-Code: `0`
+  - Ergebnis: `1 file reformatted, 77 files left unchanged`
 - `python -m ruff check .`
   - Exit-Code: `0`
   - Ergebnis: `All checks passed!`
 - `python -m pytest`
   - Exit-Code: `0`
-  - Ergebnis: `162 passed, 5 skipped in 5.07s`
+  - Ergebnis: `171 passed, 5 skipped in 5.67s`
+- `PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000`
+  - Exit-Code: `0` nach sauberem `CTRL+C`
+  - Ergebnis: lokale App auf `http://127.0.0.1:8000`
+- 
+  ```bash
+  python - <<'PY'
+  import time
+  from pathlib import Path
+
+  import httpx
+
+  from owli_train.webui.jobs import JobService
+
+  base = 'http://127.0.0.1:8000'
+  repo_root = Path('/home/michael/src/2/owli-detector-train-keras')
+  service = JobService(repo_root)
+
+  with httpx.Client(base_url=base, timeout=10.0, follow_redirects=False) as client:
+      jobs_page = client.get('/jobs')
+      print('GET /jobs', jobs_page.status_code)
+      launch = client.post(
+          '/jobs/launch/dataset_split',
+          data={
+              'coco_path': 'tests/data/coco_min.json',
+              'out_dir': 'work/webui/splits/verification',
+              'seed': '1337',
+              'write_coco': 'on',
+              'ensure_train_class_coverage': 'on',
+          },
+      )
+      print('POST /jobs/launch/dataset_split', launch.status_code)
+      location = launch.headers.get('location', '')
+      print('Location', location)
+
+  job_id = location.rstrip('/').split('/')[-1]
+  for _ in range(60):
+      detail = service.get_job_detail(job_id)
+      if detail is not None and detail.record.status in {'succeeded', 'failed'}:
+          print('Job status', detail.record.status)
+          print('Exit code', detail.record.exit_code)
+          print('Artifacts present', [artifact.exists for artifact in detail.artifact_views])
+          break
+      time.sleep(0.1)
+  PY
+  ```
+  - Exit-Code: `0`
+  - Ergebnis:
+    - `GET /jobs 200`
+    - `POST /jobs/launch/dataset_split 303`
+    - realer Job endete mit `succeeded`
+    - Exit-Code `0`
+    - erwartete Split-Artefakte vorhanden
+- 
+  ```bash
+  python - <<'PY'
+  import httpx
+  from pathlib import Path
+  from owli_train.webui.jobs import JobService
+
+  service = JobService(Path('/home/michael/src/2/owli-detector-train-keras'))
+  job_id = service.list_jobs(limit=1)[0].job_id
+  with httpx.Client(base_url='http://127.0.0.1:8000', timeout=10.0) as client:
+      response = client.get(f'/jobs/{job_id}')
+      print(response.status_code)
+      print('dataset split' in response.text)
+      print('succeeded' in response.text)
+  PY
+  ```
+  - Exit-Code: `0`
+  - Ergebnis: Job-Detailseite antwortete mit `200`, Typ und Status waren im HTML sichtbar
 
 ## Relevante Run-Kommandos
-- BA-v2-Quell-Export-Konvertierung:
+- WSL2-Start der WebUI:
 ```bash
-PYTHONPATH=src python -m owli_train dataset normalize \
-  --coco work/datasets/mapillary_vistas_ba_v1/instances_ba_v1.coco.json \
-  --images-dir work/datasets/mapillary_vistas_ba_v1/images \
-  --label-map configs/label_maps/ba_v1_non_obstacle4_export_to_ba_v2_hazard.yaml \
-  --contract configs/label_contracts/ba_v2_hazard.yaml \
-  --out work/datasets/mapillary_vistas_ba_v2_hazard_source/instances_normalized.json
+source .venv/bin/activate
+PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000 --reload
 ```
-- BA-v2-Slice-Assembly:
+- Beispiel fuer einen realen UI-Job via HTTP:
 ```bash
-PYTHONPATH=src python -m owli_train dataset merge coco \
-  --manifest configs/merge_ba_v2_hazard_slice01_mapillary_od.yaml \
-  --out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.json \
-  --report-out work/datasets/ba_v2_hazard_slice01_mapillary_od/instances_combined.report.json
+python - <<'PY'
+import httpx
+with httpx.Client(base_url='http://127.0.0.1:8000', follow_redirects=False) as client:
+    response = client.post(
+        '/jobs/launch/dataset_split',
+        data={
+            'coco_path': 'tests/data/coco_min.json',
+            'out_dir': 'work/webui/splits/verification',
+            'seed': '1337',
+            'write_coco': 'on',
+            'ensure_train_class_coverage': 'on',
+        },
+    )
+    print(response.status_code, response.headers.get('location'))
+PY
 ```
 
 ## Offene Risiken
-- `obstacle_ground` und `obstacle_overhang` bleiben im ersten realen BA-v2-Slice ungestuetzt.
-- `obstacle_hole_dropoff` ist vorhanden, aber im Vergleich zu `obstacle_pole` und den Rehearsal-Klassen noch klein.
-- `obstacle_barrier` kommt aktuell praktisch nur ueber `Mapillary`.
-- Der Slice ist trainingsvorbereitet, aber wegen der zwei fehlenden Hazard-Core-Klassen noch kein vollstaendiger BA-v2-Trainingskandidat fuer den finalen Contract; ein Lite2-Lauf wurde bewusst noch nicht gestartet.
-- Bestehende Source-Artefaktdateinamen enthalten in einzelnen Zwischenordnern noch historische `instances_ba_v1.coco.json`-Namen, obwohl der Inhalt fuer diesen Slice BA-v2-konform ist.
+- Die Phase-2-Jobs bleiben bewusst lokal und klein; es gibt noch keine Abbruch-/Cancel-Funktion fuer laufende Jobs.
+- Die sichere Input-Auswahl basiert auf bekannten Repo-Pfaden; neue oder ungewoehnliche Datenpfade tauchen erst auf, wenn sie in den Auswahlkatalogen erfasst sind.
+- `dataset materialize-images` ist absichtlich nur ueber Merge-Manifeste freigeschaltet; der UI-Pfad deckt nicht die freie CLI-Variante mit beliebigen `--source-images-dir`-Listen ab.
 
-## Nächster sinnvoller Schritt
-- Ergaenze als naechsten kleinen BA-v2-Datenschritt gezielt belastbare Datenunterstuetzung fuer `obstacle_ground` oder `obstacle_overhang`, bevor der Slice als vollstaendiger BA-v2-Trainingskandidat behandelt wird.
+## Naechster sinnvoller Schritt
+- Ergaenze als naechsten kleinen Schritt eine staerkere Dataset-Analyse-/Visualisierung in der WebUI, zum Beispiel ueber interne Dataset-Statistikseiten oder eine erste eng begrenzte FiftyOne-Anbindung.

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="grid">
+    <article class="panel">
+      <h2>Project focus</h2>
+      <p class="meta">
+        This UI surfaces stable repo contracts, curated docs, and detected artifact roots, and now
+        adds a small whitelisted launcher for lightweight dataset-prep jobs without replacing the CLI.
+      </p>
+      <div class="chips">
+        <span class="chip">dataset prep</span>
+        <span class="chip">modelmaker export</span>
+        <span class="chip">job list + logs</span>
+        <span class="chip">whitelisted commands only</span>
+        <span class="chip">no training from UI</span>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Contracts at a glance</h2>
+      <ul class="item-list">
+        {% for contract in model.contracts %}
+          <li>
+            <div>
+              <strong>{{ contract.title }}</strong>
+              {% if contract.status %}
+                <span class="chip">{{ contract.status }}</span>
+              {% endif %}
+            </div>
+            <div class="path">{{ contract.relative_path }}</div>
+            <p class="meta">{{ contract.class_count }} classes. {{ contract.purpose or "No purpose text." }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Relevant docs</h2>
+      <ul class="item-list">
+        {% for doc in model.docs %}
+          <li>
+            <div>
+              <strong>{{ doc.label }}</strong>
+              <span class="status {{ 'status-present' if doc.exists else 'status-missing' }}">
+                {{ 'present' if doc.exists else 'missing' }}
+              </span>
+            </div>
+            <div class="path">{{ doc.relative_path }}</div>
+            <p class="meta">
+              {{ doc.note or "" }}
+              {% if doc.modified_at %}
+                Updated {{ doc.modified_at }}.
+              {% endif %}
+            </p>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+
+    <article class="panel">
+      <h2>Artifact roots</h2>
+      <ul class="item-list">
+        {% for root in model.artifact_roots %}
+          <li>
+            <div>
+              <strong>{{ root.label }}</strong>
+              <span class="status {{ 'status-present' if root.exists else 'status-missing' }}">
+                {{ 'present' if root.exists else 'missing' }}
+              </span>
+            </div>
+            <div class="path">{{ root.relative_path }}</div>
+            <p class="meta">
+              {{ root.note or "" }}
+              {% if root.detail %}
+                {{ root.detail }}.
+              {% endif %}
+            </p>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Detected dataset directories</h2>
+      {% if model.recent_datasets %}
+        <ul class="item-list">
+          {% for dataset in model.recent_datasets %}
+            <li>
+              <strong>{{ dataset.label }}</strong>
+              <div class="path">{{ dataset.relative_path }}</div>
+              <p class="meta">{{ dataset.summary }}{% if dataset.modified_at %}. Updated {{ dataset.modified_at }}{% endif %}</p>
+              {% if dataset.highlights %}
+                <div class="chips">
+                  {% for item in dataset.highlights %}
+                    <span class="chip">{{ item }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">No dataset directories detected under <span class="path">work/datasets</span>.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Detected run directories</h2>
+      {% if model.recent_runs %}
+        <ul class="item-list">
+          {% for run in model.recent_runs %}
+            <li>
+              <strong>{{ run.label }}</strong>
+              <div class="path">{{ run.relative_path }}</div>
+              <p class="meta">{{ run.summary }}{% if run.modified_at %}. Updated {{ run.modified_at }}{% endif %}</p>
+              {% if run.highlights %}
+                <div class="chips">
+                  {% for item in run.highlights %}
+                    <span class="chip">{{ item }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">No run directories detected under <span class="path">work/runs</span>.</div>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}
