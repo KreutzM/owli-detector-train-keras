@@ -1,3 +1,5 @@
+import json
+
 from owli_train.webui.readers import RepositoryReader
 from tests.webui_test_utils import build_sample_repo
 
@@ -24,7 +26,7 @@ def test_repository_reader_detects_artifacts_and_config_targets(tmp_path):
         item.relative_path == "work/datasets" and item.exists for item in model.artifact_roots
     )
     assert model.recent_datasets[0].relative_path == "work/datasets/demo-dataset"
-    assert model.recent_runs[0].relative_path == "work/runs/20260309-123000-demo"
+    assert any(item.relative_path == "work/runs/20260309-123000-demo" for item in model.recent_runs)
     assert any(
         group.title == "Dataset prep configs" and group.items for group in model.config_groups
     )
@@ -90,3 +92,39 @@ def test_repository_reader_marks_dataset_without_images_dir_as_not_launchable(tm
     assert dataset.fiftyone_target is not None
     assert dataset.fiftyone_target.can_launch is False
     assert "no local images directory" in dataset.fiftyone_target.message.lower()
+
+
+def test_repository_reader_builds_run_compare_from_common_eval_target(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    reader = RepositoryReader(repo_root)
+
+    compare_view = reader.load_runs_compare()
+
+    assert compare_view.selected_target_label == "ba_mvp_stage3_balanced_multisource / TEST"
+    assert [row.run_display_name for row in compare_view.rows] == [
+        "Stage-3 baseline",
+        "Stage-4 replay baseline",
+        "Stage-3-plus-crops baseline",
+    ]
+    assert compare_view.rows[0].config_path == "configs/efficientdet_lite2_ba_mvp_stage3.yaml"
+    assert compare_view.rows[1].metrics["AP50"] == "0.229"
+    assert compare_view.rows[2].golden_relative_path is not None
+
+
+def test_repository_reader_compare_handles_selected_run_and_missing_metrics(tmp_path):
+    repo_root = build_sample_repo(tmp_path)
+    report_path = (
+        repo_root / "work" / "runs" / "20260309-123000-demo" / "reports" / "eval_demo.json"
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report["metrics"] = {}
+    report["summary_counts"] = {"tp": 1, "fp": 0, "fn": 0}
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+    reader = RepositoryReader(repo_root)
+    compare_view = reader.load_runs_compare(selected_run_paths=["work/runs/20260309-123000-demo"])
+
+    assert len(compare_view.rows) == 1
+    assert compare_view.rows[0].run_relative_path == "work/runs/20260309-123000-demo"
+    assert compare_view.rows[0].metrics["AP"] == "-"
+    assert compare_view.rows[0].metrics["precision"] == "-"

@@ -227,6 +227,32 @@
         text-decoration: none;
       }
 
+      .inline-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem 1rem;
+        align-items: end;
+      }
+
+      .checkbox-list {
+        display: grid;
+        gap: 0.45rem;
+        margin-top: 0.5rem;
+      }
+
+      .checkbox-row {
+        display: flex;
+        gap: 0.55rem;
+        align-items: flex-start;
+        padding: 0.45rem 0.55rem;
+        border-radius: 12px;
+        background: rgba(255, 250, 242, 0.65);
+      }
+
+      .checkbox-row input {
+        margin-top: 0.25rem;
+      }
+
       .callout {
         padding: 0.8rem 0.9rem;
         border-radius: 16px;
@@ -340,12 +366,13 @@
     <div class="shell">
       <section class="hero">
         <h1>Owli Control UI</h1>
-        <p>Phase 3 analysis and small safe control surface over the existing CLI and filesystem pipeline.</p>
+        <p>Phase 5 analysis surface with run/eval comparison, safe small job launchers, and local artifact diagnostics.</p>
         <small>Repo root: {{ model.repo_root }}</small>
         <div class="badges">
           <span class="badge">FastAPI + Uvicorn</span>
           <span class="badge">Server-rendered templates</span>
           <span class="badge">Dataset + run diagnostics</span>
+          <span class="badge">Run / eval compare</span>
           <span class="badge">Whitelisted job launchers</span>
         </div>
       </section>
@@ -354,6 +381,7 @@
         <a href="{{ url_for('dashboard') }}">Dashboard</a>
         <a href="{{ url_for('contracts_page') }}">Contracts</a>
         <a href="{{ url_for('artifacts_page') }}">Datasets / Artifacts</a>
+        <a href="{{ url_for('compare_runs_page') }}">Compare Runs</a>
         <a href="{{ url_for('jobs_page') }}">Jobs</a>
       </nav>
 
@@ -361,7 +389,7 @@
         {% block content %}{% endblock %}
       </main>
 
-      <footer>Phase 3 keeps the CLI as the source of truth and adds read-mostly diagnostics plus small safe job launchers.</footer>
+      <footer>Phase 5 keeps the CLI and filesystem artifacts as the source of truth and adds small comparison, diagnostics, and safe launcher seams.</footer>
     </div>
   </body>
 </html>

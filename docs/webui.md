@@ -1,10 +1,11 @@
-# WebUI Phase 4
+# WebUI Phase 5
 
 ## Purpose
 - Add a small local browser entry point over the existing repo and artifact layout.
 - Keep the current CLI and filesystem pipeline as the source of truth.
 - Add a first practical control seam for a few small whitelisted CLI jobs without building a full queue or worker platform.
 - Add useful dataset, run, eval, and golden detail pages so the UI works as a diagnosis surface, not only as a launcher list.
+- Add one small compare view so multiple runs can be checked side by side on the same eval target.
 - Add a first small bridge from the WebUI into local FiftyOne for visual dataset inspection.
 
 ## Current scope
@@ -12,6 +13,11 @@
 - read-only dashboard for repo docs, label contracts, artifact roots, datasets, and runs
 - read-only contracts page for BA-v1 and BA-v2 hazard ontology visibility
 - read-only artifacts page for curated dataset/run/config path visibility
+- a small compare page for structured eval JSON reports with:
+  - target-group selection based on shared eval dataset/split
+  - simple run selection
+  - side-by-side AP, AP50, AP75, AR100, precision, and recall
+  - links back to run, eval, and golden details
 - dataset detail pages with:
   - COCO summary counts
   - class distribution
@@ -39,14 +45,14 @@
   - persisted job status and logs
   - small launch forms for selected dataset-prep commands
 
-## Supported job types in phase 4
+## Supported job types in phase 5
 - `dataset validate`
 - `dataset split`
 - `dataset merge coco`
 - `dataset export modelmaker-csv`
 - `dataset materialize-images` with manifest-backed source resolution only
 
-## FiftyOne scope in phase 4
+## FiftyOne scope in phase 5
 - supported now:
   - dataset detail -> open supported COCO dataset in local FiftyOne
   - eval detail -> open the dataset referenced by eval JSON when `coco_path` and `images_dir` resolve inside the repo
@@ -57,7 +63,7 @@
   - embedded FiftyOne UI inside the WebUI
   - multi-user or durable session management
 
-## Explicit non-goals in phase 4
+## Explicit non-goals in phase 5
 - no training start/stop actions
 - no heavy GPU jobs
 - no teacher pseudo-labeling
@@ -66,6 +72,8 @@
 - no database requirement
 - no Redis / Celery / RQ stack
 - no arbitrary shell command input
+- no generic experiment-tracking platform
+- no large charting or benchmark dashboard framework
 - no replacement of existing CLI commands
 
 ## Repo location
@@ -112,6 +120,7 @@ Main routes:
 - `/`
 - `/contracts`
 - `/artifacts`
+- `/compare/runs`
 - `/datasets/view?path=...`
 - `/runs/view?path=...`
 - `/evals/view?path=...`
@@ -128,6 +137,21 @@ Main routes:
 - persisted job files and logs under `work/webui/jobs/`
 - eval and golden JSON artifacts under `work/runs/*/reports/` when present
 - QC reports such as `work/datasets/*/qc_report.json` when present
+
+## Compare page behavior
+- The compare page reads only structured `eval*.json` files under `work/runs/*/reports/`.
+- The default view chooses the eval target with the widest run coverage after the current run selection.
+- Rows show:
+  - run path
+  - matched config path when the run-local config snapshot equals one checked-in repo config
+  - dataset / split context from `coco_path` when that path resolves inside the repo
+  - global metrics: `AP`, `AP50`, `AP75`, `AR100`, `precision`, `recall`
+  - links to run, eval, and golden detail pages
+- Missing metrics stay visible as `-` instead of hiding the whole row.
+- Intentionally not supported yet:
+  - arbitrary per-class compare builders
+  - cross-run charts
+  - database-backed experiment metadata
 
 ## FiftyOne runtime model
 - FiftyOne is optional and is only touched when the launch route is used

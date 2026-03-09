@@ -75,7 +75,7 @@ See `docs/MVP_Training_Plan.md` for the current transition from the historical B
 
 GPU note (RTX-3060 on Windows): TensorFlow GPU is generally smoothest in WSL2.
 
-## WebUI (Phase 4, analysis + safe job launchers + first FiftyOne hook)
+## WebUI (Phase 5, compare + diagnostics + safe job launchers + first FiftyOne hook)
 
 The first local WebUI lives under `src/owli_train/webui/` and adds a small FastAPI +
 Uvicorn control surface over the existing repo state. It still does not replace the CLI,
@@ -83,6 +83,7 @@ but it now includes:
 - read-only dataset detail pages with class distribution, split counts, and QC visibility
 - run detail pages with linked eval and golden reports
 - eval detail pages for global metrics and per-class counts where JSON reports exist
+- a small run/eval comparison page for comparable baselines and experiment rows
 - golden detail pages for model/image metadata and detection summaries
 - a first local FiftyOne bridge for opening supported datasets from dataset detail pages and eval-linked dataset references
 - a small whitelist of lightweight dataset-prep jobs with persistent status and log visibility
@@ -114,6 +115,7 @@ Current pages:
 - `/` dashboard for repo docs, contracts, artifact roots, detected datasets, and detected runs
 - `/contracts` for BA-v1 and BA-v2 ontology display
 - `/artifacts` for curated dataset/run/config path visibility
+- `/compare/runs` for side-by-side comparison of structured eval JSON reports from detected runs
 - `/datasets/view?path=...` for dataset details
 - `/runs/view?path=...` for run details
 - `/evals/view?path=...` for eval report details
@@ -121,7 +123,7 @@ Current pages:
 - `/fiftyone/open?source=...&path=...` as the small local launch bridge used by dataset and eval detail pages
 - `/jobs` for job list, job detail links, and safe launchers for selected CLI commands
 
-Phase-4 job whitelist:
+Phase-5 job whitelist:
 - `dataset validate`
 - `dataset split`
 - `dataset merge coco`
@@ -131,6 +133,7 @@ Phase-4 job whitelist:
 Deliberately not supported from the WebUI yet:
 - training jobs
 - teacher pseudo-labeling
+- large benchmark dashboards or interactive chart suites
 - prediction/eval overlays imported into FiftyOne
 - multi-user or long-lived session management
 - eval / golden batch pipelines

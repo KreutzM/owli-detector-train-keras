@@ -1,34 +1,38 @@
 # Codex Task Report
 
 ## Ziel
-- Die bestehende WebUI um einen ersten kleinen, lokalen FiftyOne-Hook erweitern.
-- Geeignete COCO-Datasets aus der Dataset-Detailseite direkt in FiftyOne oeffnen koennen.
-- Optional einen zweiten kleinen Oeffnungspfad ueber eval-verknuepfte Dataset-Referenzen anbieten.
-- Die bestehende WebUI-Struktur beibehalten, ohne FiftyOne voll einzubetten oder neue Job-/Session-Plattformen zu bauen.
+- Die bestehende FastAPI-WebUI um eine kleine, robuste Run-/Eval-Vergleichsseite erweitern.
+- Mehrere relevante Baselines und Experimentlaeufe im Browser ueber ihre wichtigsten Eval-Metriken vergleichbar machen.
+- Den Scope bewusst klein halten: bestehende Reader nutzen, keine neue Datenbank, keine Benchmark-Plattform, keine neue Job-Steuerung.
 
 ## Was wurde geändert?
-- Kleinen optionalen FiftyOne-Service fuer die WebUI eingefuehrt:
-  - `src/owli_train/webui/fiftyone.py`
-  - `src/owli_train/webui/fiftyone_launcher.py`
-- WebUI-App auf Phase 4 angehoben und um eine lokale Launch-Route erweitert:
-  - `src/owli_train/webui/app.py`
-- Reader-/View-Model-Layer um FiftyOne-Launch-Targets fuer Dataset- und Eval-Details erweitert:
-  - `src/owli_train/webui/readers.py`
+- Compare-View-Modelle fuer Run-Auswahl, Eval-Zielgruppen und Vergleichszeilen ergaenzt:
   - `src/owli_train/webui/models.py`
-- Dataset- und Eval-Detailseiten um kleine FiftyOne-Startpunkte und Fehlhinweise erweitert:
-  - `src/owli_train/webui/templates/dataset_detail.html`
-  - `src/owli_train/webui/templates/eval_detail.html`
-  - `src/owli_train/webui/templates/fiftyone_launch.html`
+- Reader-Layer um eine kleine Compare-Aufbereitung erweitert:
+  - scannt strukturierte `eval*.json`-Reports unter `work/runs/*/reports/`
+  - gruppiert vergleichbare Reports ueber gemeinsame Eval-Ziele
+  - extrahiert `AP`, `AP50`, `AP75`, `AR100`, `precision`, `recall`
+  - matched Run-Config-Snapshots wenn moeglich auf eingecheckte `configs/*.yaml`
+  - behandelt fehlende Metriken oder partielle Artefakte mit `-` statt Abbruch
+  - Dateien: `src/owli_train/webui/readers.py`
+- Neue WebUI-Route und Template fuer die Vergleichsansicht ergaenzt:
+  - Route: `/compare/runs`
+  - Template: `src/owli_train/webui/templates/compare_runs.html`
+  - Datei: `src/owli_train/webui/app.py`
+- Navigation und Ruecklinks auf die neue Vergleichsansicht erweitert:
   - `src/owli_train/webui/templates/base.html`
-- Kleine Tests fuer Reader, Route und fehlende FiftyOne-Abhaengigkeit ergaenzt:
+  - `src/owli_train/webui/templates/dashboard.html`
+  - `src/owli_train/webui/templates/run_detail.html`
+  - `src/owli_train/webui/templates/eval_detail.html`
+  - `src/owli_train/webui/templates/golden_detail.html`
+- Kleine Robustheitsanpassung an bestehende Run-Dateinamenschemata:
+  - `config.yaml` und `mapping_files.json` werden jetzt neben den aelteren Snapshot-Namen erkannt
+  - Datei: `src/owli_train/webui/readers.py`
+- Gezielt erweiterte WebUI-Tests inkl. Compare-Fixture mit mehreren Baselines:
+  - `tests/webui_test_utils.py`
   - `tests/test_webui_reader.py`
   - `tests/test_webui_app.py`
-  - `tests/test_webui_fiftyone.py`
-  - `tests/webui_test_utils.py`
-- Optionalen Installationspfad fuer FiftyOne dokumentiert:
-  - `requirements/fiftyone.txt`
-  - `pyproject.toml`
-- Doku auf den kleinen Phase-4-Scope aktualisiert:
+- Doku auf den kleinen Compare-Scope aktualisiert:
   - `README.md`
   - `docs/webui.md`
   - `docs/runbook.md`
@@ -39,39 +43,30 @@
   - `docs/webui.md`
   - `docs/runbook.md`
   - `docs/review-templates/Codex-Task-Report.md`
-  - `docs/reviews/Codex-Task-Report_last.md` (vorheriger Stand)
-  - `src/owli_train/webui/*`
-  - relevante COCO-/Eval-Pfadnutzung in:
-    - `src/owli_train/data/merge_coco.py`
-    - `src/owli_train/eval/detect.py`
-    - `src/owli_train/data/materialize_images.py`
+  - bestehende WebUI-Dateien unter `src/owli_train/webui/`
+  - Eval-Report-Struktur in `src/owli_train/eval/efficientdet_tflite.py`
+  - Training-Run-Artefakte in `src/owli_train/training/modelmaker_efficientdet.py`
 - Inhaltlich verifiziert:
-  - Dataset-Detailseiten markieren nur solche Datasets als FiftyOne-faehig, die einen COCO-Pfad plus lokales `<dataset>/images` haben.
-  - Eval-Detailseiten markieren nur solche Reports als FiftyOne-faehig, die repo-lokale `coco_path`- und `images_dir`-Felder enthalten.
-  - Fehlende Bilder, fehlende COCO-Pfade oder ungeeignete Artefakte fuehren zu klaren UI-Hinweisen statt zu WebUI-Startfehlern.
-  - Fehlendes `fiftyone` fuehrt nur auf der Launch-Route zu einer klaren Fehlermeldung; der normale WebUI-Start bleibt funktionsfaehig.
+  - die Compare-Seite liest nur strukturierte `eval*.json`-Artefakte, keine Markdown-Reports
+  - die Default-Auswahl nimmt das Eval-Ziel mit der groessten Run-Abdeckung nach aktueller Run-Auswahl
+  - bekannte Baselines werden nur ueber konkrete Namensmuster markiert, nicht ueber freie Vermutungen
+  - fehlende Metrikfelder bleiben sichtbar als `-`
+  - Run-/Eval-/Golden-Details bleiben aus der Compare-Seite direkt verlinkt
 - Real ausgefuehrt:
-  - gezielte WebUI-/FiftyOne-Tests
+  - gezielte WebUI-Reader- und Route-Tests
   - `ruff format`, `ruff check`, kompletter `pytest`-Lauf
   - lokaler Uvicorn-Start gegen das echte Repo
-  - echte HTTP-GETs auf Dashboard-/Artifacts-/Jobs-Seiten gegen das echte Repo
-  - lokaler Uvicorn-Start gegen ein temporaeres Sample-Repo mit Mini-Artefakten
-  - echte HTTP-GETs auf Dataset-/Eval-/FiftyOne-Routen gegen das Sample-Repo
-  - lokale Pruefung, dass `fiftyone` in der aktuellen venv nicht installiert ist
+  - echte HTTP-GETs auf `/`, `/compare/runs`, `/jobs` gegen das echte Repo
+  - lokaler Uvicorn-Start gegen ein temporaeres Sample-Repo mit mehreren Compare-Runs
+  - echte HTTP-GETs auf `/compare/runs` gegen das Sample-Repo fuer Default- und gefilterte Compare-Ansichten
 - Nicht real verifiziert:
-  - ein echter erfolgreicher FiftyOne-App-Start, weil `fiftyone` in der aktuellen lokalen venv nicht installiert ist
-  - die Runtime-Interaktion von `src/owli_train/webui/fiftyone_launcher.py` mit einer echten FiftyOne-Installation
+  - ein Compare-Lauf mit echten lokalen Repo-Run-Artefakten unter `work/runs`, weil im aktuellen Repo-Workspace kein solches Verzeichnis vorhanden war
+  - weitergehende per-class-Vergleichsansichten, weil diese bewusst nicht Teil dieses kleinen Scopes sind
 
 ## Tests
-- `python - <<'PY'\nimport importlib.util\nprint(importlib.util.find_spec('fiftyone'))\nPY`
+- `python -m pytest tests/test_webui_reader.py tests/test_webui_app.py`
   - Exit-Code: `0`
-  - Ergebnis: `None`
-- `python -m pytest tests/test_webui_reader.py tests/test_webui_app.py tests/test_webui_fiftyone.py`
-  - Exit-Code: `0`
-  - Ergebnis: `11 passed in 0.66s`
-- `python -m ruff check src/owli_train/webui tests/test_webui_app.py tests/test_webui_reader.py tests/test_webui_fiftyone.py tests/webui_test_utils.py`
-  - Exit-Code: `0`
-  - Ergebnis: `All checks passed!`
+  - Ergebnis: `13 passed in 0.89s`
 - `python -m ruff format .`
   - Exit-Code: `0`
   - Ergebnis: `2 files reformatted, 79 files left unchanged`
@@ -80,27 +75,26 @@
   - Ergebnis: `All checks passed!`
 - `python -m pytest`
   - Exit-Code: `0`
-  - Ergebnis: `182 passed, 5 skipped in 4.84s`
+  - Ergebnis: `185 passed, 5 skipped in 7.62s`
 - `PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000`
   - Exit-Code: `0` nach sauberem `CTRL+C`
   - Ergebnis: WebUI startete lokal gegen das echte Repo
-- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8000'\npaths = ['/', '/artifacts', '/jobs']\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\nPY`
+- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8000'\npaths = ['/', '/compare/runs', '/jobs']\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        marker = 'Run / Eval Compare' in response.text if path == '/compare/runs' else True\n        print(path, response.status_code, len(response.text), marker)\nPY`
   - Exit-Code: `0`
   - Ergebnis:
     - `/` -> `200`
-    - `/artifacts` -> `200`
+    - `/compare/runs` -> `200`
     - `/jobs` -> `200`
-- `PYTHONPATH=src:. python - <<'PY'\nimport tempfile\nfrom pathlib import Path\n\nimport uvicorn\n\nfrom owli_train.webui.app import create_app\nfrom tests.webui_test_utils import build_sample_repo\n\nrepo_root = build_sample_repo(Path(tempfile.mkdtemp(prefix='owli-webui-sample-')))\nprint(repo_root)\nuvicorn.run(create_app(repo_root=repo_root), host='127.0.0.1', port=8001)\nPY`
+    - Compare-Marker im HTML vorhanden
+- `PYTHONPATH=src:. python - <<'PY'\nimport tempfile\nfrom pathlib import Path\n\nimport uvicorn\n\nfrom owli_train.webui.app import create_app\nfrom tests.webui_test_utils import build_sample_repo\n\nrepo_root = build_sample_repo(Path(tempfile.mkdtemp(prefix='owli-webui-compare-')))\nprint(repo_root)\nuvicorn.run(create_app(repo_root=repo_root), host='127.0.0.1', port=8001)\nPY`
   - Exit-Code: `0` nach sauberem `CTRL+C`
-  - Ergebnis: WebUI startete lokal gegen ein temporaeres Sample-Repo mit geeignetem Mini-Dataset
-- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8001'\npaths = [\n    '/',\n    '/datasets/view?path=work/datasets/demo-dataset',\n    '/evals/view?path=work/runs/20260309-123000-demo/reports/eval_demo.json',\n    '/fiftyone/open?source=dataset&path=work/datasets/demo-dataset',\n]\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\n        if path.startswith('/fiftyone/open'):\n            marker = 'FiftyOne is not installed in this venv.' in response.text\n            print('missing_dependency_message', marker)\nPY`
+  - Ergebnis: WebUI startete lokal gegen ein temporaeres Sample-Repo mit mehreren Baseline-/Compare-Runs
+- `python - <<'PY'\nimport httpx\n\nbase = 'http://127.0.0.1:8001'\npaths = [\n    '/compare/runs',\n    '/compare/runs?run=work/runs/20260308-211806-ba-mvp-stage4-20260308&target=split:ba_mvp_stage4_with_coco_replay:test',\n]\nwith httpx.Client(base_url=base, timeout=10.0) as client:\n    for path in paths:\n        response = client.get(path)\n        print(path, response.status_code, len(response.text))\n        print('stage3_baseline', 'Stage-3 baseline' in response.text)\n        print('stage4_baseline', 'Stage-4 replay baseline' in response.text)\n        print('selection_summary', 'Showing 1 eval rows across 1 runs' in response.text)\nPY`
   - Exit-Code: `0`
   - Ergebnis:
-    - `/` -> `200`
-    - `/datasets/view?...` -> `200`
-    - `/evals/view?...` -> `200`
-    - `/fiftyone/open?...` -> `503`
-    - `missing_dependency_message` -> `True`
+    - Default-Compare rendert mit mehreren Baseline-Zeilen
+    - gefilterte Stage-4-Compare rendert mit `200`
+    - Filter-Zusammenfassung fuer `1` Run / `1` Eval-Zeile vorhanden
 
 ## Relevante Run-Kommandos
 - WebUI lokal in WSL2 starten:
@@ -108,21 +102,19 @@
 source .venv/bin/activate
 PYTHONPATH=src python -m uvicorn owli_train.webui.app:app --host 127.0.0.1 --port 8000 --reload
 ```
-- Optionalen FiftyOne-Pfad im selben WebUI-venv installieren:
-```bash
-source .venv/bin/activate
-pip install -r requirements/fiftyone.txt
+- Compare-Seite lokal oeffnen:
+```text
+http://127.0.0.1:8000/compare/runs
 ```
-- PowerShell-Aequivalent fuer FiftyOne:
-```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements\fiftyone.txt
+- Optional eine gefilterte Compare-Ansicht ueber Query-Parameter aufrufen:
+```text
+http://127.0.0.1:8000/compare/runs?run=work/runs/<run-id>&target=<target-key>
 ```
 
 ## Offene Risiken
-- Der erfolgreiche Runtime-Pfad in `src/owli_train/webui/fiftyone_launcher.py` konnte ohne lokale FiftyOne-Installation nur statisch geprueft werden.
-- Der aktuelle Scope oeffnet nur kuratierte COCO-Datasets mit klar aufloesbarem Images-Root; andere Repo-Artefakte werden absichtlich nicht heuristisch erraten.
-- Der Service verwaltet bewusst nur einen kleinen lokalen Launch-Pfad und keine robuste Mehrfach- oder Mehrbenutzer-Session-Verwaltung.
+- Die erste Compare-Seite vergleicht bewusst nur globale Kennzahlen aus strukturierten Eval-JSONs; feinere per-class-Tabellen zwischen Runs sind noch nicht Teil des UI-Scopes.
+- Die Config-Zuordnung ist absichtlich konservativ: nur exakte Snapshot-Matches auf eingecheckte `configs/*.yaml` werden als Repo-Config angezeigt.
+- Im echten Repo-Workspace konnte mangels vorhandener `work/runs`-Artefakte nur das leere Rendern der Compare-Seite live gegen das aktuelle Repo verifiziert werden; die Multi-Run-Ansicht wurde live gegen das Test-Sample verifiziert.
 
 ## Nächster sinnvoller Schritt
-- Ergaenze auf der Run-Detailseite je Eval-Report einen direkten FiftyOne-Kurzlink zum dort referenzierten Dataset, damit der Umweg ueber die Eval-Detailseite fuer den haeufigsten Analysepfad entfaellt.
+- Ergaenze auf `/compare/runs` optional eine kleine, feste per-class-Zusatzspalte fuer wenige kuratierte BA-Core- und Rehearsal-Klassen, aber nur fuer das jeweils ausgewaehlte gemeinsame Eval-Ziel.

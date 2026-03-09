@@ -12,6 +12,8 @@
       </tbody>
     </table>
     <p class="meta">
+      <a href="{{ url_for('compare_runs_page') }}">Back to compare</a>
+      ·
       {% if eval_detail.related_run_path %}
         <a href="{{ url_for('run_detail_page') }}?path={{ eval_detail.related_run_path }}">Back to run detail</a>
       {% else %}

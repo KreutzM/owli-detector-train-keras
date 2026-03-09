@@ -34,8 +34,8 @@ def create_app(repo_root: Path | None = None) -> FastAPI:
 
     app = FastAPI(
         title="Owli Control UI",
-        description="Phase 4 visibility, diagnostics, small whitelisted job control, and a first local FiftyOne bridge for datasets and eval-linked datasets.",
-        version="0.4.0",
+        description="Phase 5 visibility, run/eval comparison, small whitelisted job control, and a first local FiftyOne bridge for datasets and eval-linked datasets.",
+        version="0.5.0",
         lifespan=lifespan,
     )
     app.state.repo_root = resolved_repo_root
@@ -68,6 +68,22 @@ def create_app(repo_root: Path | None = None) -> FastAPI:
     @app.get("/artifacts", response_class=HTMLResponse, name="artifacts_page")
     def artifacts_page(request: Request) -> HTMLResponse:
         return templates.TemplateResponse(request, "artifacts.html", _context(request, "Artifacts"))
+
+    @app.get("/compare/runs", response_class=HTMLResponse, name="compare_runs_page")
+    def compare_runs_page(
+        request: Request,
+        run: list[str] | None = None,
+        target: str | None = None,
+    ) -> HTMLResponse:
+        compare_view = _reader().load_runs_compare(
+            selected_run_paths=run or [],
+            target_key=target,
+        )
+        context = {
+            **_context(request, "Run Compare"),
+            "compare_view": compare_view,
+        }
+        return templates.TemplateResponse(request, "compare_runs.html", context)
 
     @app.get("/datasets/view", response_class=HTMLResponse, name="dataset_detail_page")
     def dataset_detail_page(request: Request, path: str) -> HTMLResponse:
